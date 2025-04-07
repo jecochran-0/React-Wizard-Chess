@@ -3,7 +3,7 @@ import Square from "./Square";
 import { useChess } from "../../context/ChessContext";
 import { Square as ChessSquare } from "chess.js";
 import { getSpellById } from "../../utils/spells";
-import { SpellTarget, SpellTargetType } from "../../types/types";
+import { SpellTarget } from "../../types/types";
 
 const ChessBoard: React.FC = () => {
   const {
@@ -20,6 +20,7 @@ const ChessBoard: React.FC = () => {
   // State for spell targeting
   const [spellTargets, setSpellTargets] = useState<SpellTarget[]>([]);
   const [targetingMode, setTargetingMode] = useState<boolean>(false);
+  const [validTargets, setValidTargets] = useState<ChessSquare[]>([]);
 
   // Get the selected spell's details
   const selectedSpellDetails = selectedSpell
@@ -31,11 +32,60 @@ const ChessBoard: React.FC = () => {
     if (selectedSpell) {
       setTargetingMode(true);
       setSpellTargets([]);
+
+      // If it's Astral Swap, find all owned pieces as potential first targets
+      if (selectedSpell === "astralSwap") {
+        const ownedPieces: ChessSquare[] = [];
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          if (
+            boardState[squareKey] &&
+            boardState[squareKey].color === currentPlayer
+          ) {
+            ownedPieces.push(squareKey);
+          }
+        }
+        setValidTargets(ownedPieces);
+      } else {
+        setValidTargets([]);
+      }
     } else {
       setTargetingMode(false);
       setSpellTargets([]);
+      setValidTargets([]);
     }
-  }, [selectedSpell]);
+  }, [selectedSpell, currentPlayer, boardState]);
+
+  // Update valid targets when the first piece is selected for Astral Swap
+  useEffect(() => {
+    if (selectedSpell === "astralSwap" && spellTargets.length === 1) {
+      const firstSquare = spellTargets[0].square;
+      const firstPiece = boardState[firstSquare];
+
+      // Find all owned pieces as potential second targets, excluding the first piece
+      const ownedPieces: ChessSquare[] = [];
+      for (const square in boardState) {
+        const squareKey = square as ChessSquare;
+        if (
+          squareKey !== firstSquare &&
+          boardState[squareKey] &&
+          boardState[squareKey].color === currentPlayer &&
+          // For pawns, prevent swapping to the opposite end (causing promotion issues)
+          !(
+            firstPiece.type === "p" &&
+            (squareKey.endsWith("1") || squareKey.endsWith("8"))
+          ) &&
+          !(
+            boardState[squareKey].type === "p" &&
+            (firstSquare.endsWith("1") || firstSquare.endsWith("8"))
+          )
+        ) {
+          ownedPieces.push(squareKey);
+        }
+      }
+      setValidTargets(ownedPieces);
+    }
+  }, [spellTargets, selectedSpell, currentPlayer, boardState]);
 
   // Handle square click
   const handleSquareClick = (square: ChessSquare) => {
@@ -53,33 +103,67 @@ const ChessBoard: React.FC = () => {
     if (!selectedSpellDetails) return;
 
     const targetType = selectedSpellDetails.targetType;
-    const piece = boardState[square];
 
-    // Check if the clicked square is a valid source for the spell
-    const isValidSource = () => {
-      // For most spells, the source must be a friendly piece
-      if (piece && piece.color === currentPlayer) {
-        return true;
+    // For Astral Swap and other spells requiring specific targets
+    if (selectedSpell === "astralSwap") {
+      // First selection - only allow selecting valid first targets
+      if (spellTargets.length === 0 && validTargets.includes(square)) {
+        setSpellTargets([{ square, type: "source" }]);
       }
-      return false;
-    };
+      // Second selection - only allow selecting valid second targets
+      else if (spellTargets.length === 1 && validTargets.includes(square)) {
+        const sourceSquare = spellTargets[0].square;
+        // Cast the spell with both squares
+        castSpell(selectedSpell, [sourceSquare, square]);
+        setTargetingMode(false);
+        setSpellTargets([]);
+        setValidTargets([]);
+      }
+      return;
+    }
 
-    // Handle targeting based on spell type
+    // Other spell types
     switch (targetType) {
-      case "single":
+      case "single": {
         // Single target spells like Ember Crown
-        setSpellTargets([{ square, type: "target" }]);
-        // Attempt to cast the spell
-        if (selectedSpell) {
-          castSpell(selectedSpell, square);
-          setTargetingMode(false);
-          setSpellTargets([]);
+        const piece = boardState[square];
+        const isValidTarget =
+          piece &&
+          ((selectedSpellDetails.mustTargetOwnPiece &&
+            piece.color === currentPlayer) ||
+            (selectedSpellDetails.mustTargetOpponentPiece &&
+              piece.color !== currentPlayer) ||
+            (!selectedSpellDetails.mustTargetOwnPiece &&
+              !selectedSpellDetails.mustTargetOpponentPiece));
+
+        if (isValidTarget) {
+          setSpellTargets([{ square, type: "target" }]);
+          // Attempt to cast the spell
+          if (selectedSpell) {
+            castSpell(selectedSpell, square);
+            setTargetingMode(false);
+            setSpellTargets([]);
+            setValidTargets([]);
+          }
         }
         break;
+      }
 
-      case "multi":
+      case "multi": {
         // Multi-target spells
         const maxTargets = selectedSpellDetails.requiredTargets || 1;
+        const piece = boardState[square];
+
+        const isValidTarget =
+          piece &&
+          ((selectedSpellDetails.mustTargetOwnPiece &&
+            piece.color === currentPlayer) ||
+            (selectedSpellDetails.mustTargetOpponentPiece &&
+              piece.color !== currentPlayer) ||
+            (!selectedSpellDetails.mustTargetOwnPiece &&
+              !selectedSpellDetails.mustTargetOpponentPiece));
+
+        if (!isValidTarget) return;
 
         // Check if the square is already targeted
         const alreadyTargeted = spellTargets.some(
@@ -105,29 +189,34 @@ const ChessBoard: React.FC = () => {
             );
             setTargetingMode(false);
             setSpellTargets([]);
+            setValidTargets([]);
           }
         }
         break;
+      }
 
-      case "from-to":
-        // From-to spells like Astral Swap
+      case "from-to": {
         if (spellTargets.length === 0) {
-          // First click - select source
-          if (isValidSource()) {
+          // First click - validate source
+          const piece = boardState[square];
+          if (piece && piece.color === currentPlayer) {
             setSpellTargets([{ square, type: "source" }]);
           }
         } else {
-          // Second click - select destination
+          // Second click - validate destination
           const sourceSquare = spellTargets[0].square;
 
-          // Cast the spell with both squares
-          if (selectedSpell) {
-            castSpell(selectedSpell, [sourceSquare, square]);
+          // Check if destination is valid (for now, just ensure it's not the same square)
+          if (square !== sourceSquare) {
+            // Cast the spell with from-to format
+            castSpell(selectedSpell, { from: sourceSquare, to: square });
             setTargetingMode(false);
             setSpellTargets([]);
+            setValidTargets([]);
           }
         }
         break;
+      }
 
       default:
         break;
@@ -174,17 +263,16 @@ const ChessBoard: React.FC = () => {
         const piece = boardState[square] || null;
         const isSelected = selectedPiece === square;
         const isLegalMove = selectedPiece ? legalMoves.includes(square) : false;
-
-        // Check if this square is part of the last move
-        const isLastMove = false; // Implement this with move history
-
-        // Check if king is in check
-        const isCheck = false; // Implement this with chess.js
+        const isLastMove = false;
+        const isCheck = false;
 
         // Check if the square is being targeted for a spell
         const isTargeted = spellTargets.some(
           (target) => target.square === square
         );
+
+        // Check if this is a valid target for the current targeting phase
+        const isValidSpellTarget = validTargets.includes(square);
 
         rankSquares.push(
           <Square
@@ -197,6 +285,7 @@ const ChessBoard: React.FC = () => {
             isLastMove={isLastMove}
             isCheck={isCheck}
             isTargeted={isTargeted}
+            isValidTarget={isValidSpellTarget}
             onClick={() => handleSquareClick(square)}
           />
         );
@@ -257,23 +346,32 @@ const ChessBoard: React.FC = () => {
           {selectedSpellDetails.targetType === "single" && (
             <p>Select a target for {selectedSpellDetails.name}.</p>
           )}
-          {selectedSpellDetails.targetType === "multi" && (
-            <p>
-              Select {selectedSpellDetails.requiredTargets} targets for{" "}
-              {selectedSpellDetails.name}. Selected: {spellTargets.length}/
-              {selectedSpellDetails.requiredTargets}
-            </p>
-          )}
-          {selectedSpellDetails.targetType === "from-to" &&
+          {selectedSpellDetails.targetType === "multi" &&
+            selectedSpell === "astralSwap" &&
             spellTargets.length === 0 && (
-              <p>Select your first piece to swap.</p>
+              <p>Select the first piece to swap (highlighted in green).</p>
             )}
-          {selectedSpellDetails.targetType === "from-to" &&
+          {selectedSpellDetails.targetType === "multi" &&
+            selectedSpell === "astralSwap" &&
             spellTargets.length === 1 && (
               <p>
-                Now select your second piece to swap with{" "}
-                {spellTargets[0].square}.
+                Select the second piece to swap with {spellTargets[0].square}{" "}
+                (highlighted in green).
               </p>
+            )}
+          {selectedSpellDetails.targetType === "multi" &&
+            selectedSpell !== "astralSwap" && (
+              <p>
+                Select {selectedSpellDetails.requiredTargets} targets for{" "}
+                {selectedSpellDetails.name}. Selected: {spellTargets.length}/
+                {selectedSpellDetails.requiredTargets}
+              </p>
+            )}
+          {selectedSpellDetails.targetType === "from-to" &&
+            spellTargets.length === 0 && <p>Select your piece to move.</p>}
+          {selectedSpellDetails.targetType === "from-to" &&
+            spellTargets.length === 1 && (
+              <p>Select destination for piece at {spellTargets[0].square}</p>
             )}
         </div>
       )}

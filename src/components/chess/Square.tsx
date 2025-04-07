@@ -1,5 +1,6 @@
 import React from "react";
 import { Square as ChessSquare } from "chess.js";
+import { PieceMeta } from "../../types/types";
 
 // Define PieceMeta since we're having import issues
 interface PieceMeta {
@@ -19,7 +20,7 @@ interface Effect {
   modifiers?: Record<string, unknown>;
 }
 
-interface SquareProps {
+export interface SquareProps {
   square: ChessSquare;
   piece: PieceMeta | null;
   isLight: boolean;
@@ -28,6 +29,7 @@ interface SquareProps {
   isLastMove: boolean;
   isCheck: boolean;
   isTargeted: boolean;
+  isValidTarget?: boolean;
   onClick: () => void;
 }
 
@@ -40,141 +42,112 @@ const Square: React.FC<SquareProps> = ({
   isLastMove,
   isCheck,
   isTargeted,
+  isValidTarget,
   onClick,
 }) => {
-  // Determine square background color
-  const backgroundColor = isLight ? "#e2e8f0" : "#94a3b8";
+  // Square color determined by position
+  const bgColor = isLight ? "#f0f9ff" : "#1e293b";
 
-  // Get square style object
-  const getSquareStyle = () => {
-    const style: React.CSSProperties = {
-      width: "60px",
-      height: "60px",
-      position: "relative",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor,
-      fontSize: "36px",
-      transition: "all 0.1s ease-in-out",
-    };
-
-    // Add highlight for selected piece
-    if (isSelected) {
-      style.boxShadow = "inset 0 0 0 3px rgba(59, 130, 246, 0.8)";
-    }
-
-    // Add highlight for king in check
-    if (isCheck) {
-      style.boxShadow = "inset 0 0 0 3px rgba(220, 38, 38, 0.8)";
-    }
-
-    // Add highlight for last move
-    if (isLastMove) {
-      style.backgroundColor = isLight
-        ? "rgba(186, 230, 253, 0.8)"
-        : "rgba(125, 211, 252, 0.6)";
-    }
-
-    // Add highlight for targeted squares
-    if (isTargeted) {
-      style.boxShadow = "inset 0 0 0 3px rgba(168, 85, 247, 0.8)";
-      style.backgroundColor = isLight
-        ? "rgba(233, 213, 255, 0.6)"
-        : "rgba(192, 132, 252, 0.4)";
-    }
-
-    return style;
+  // Base square style
+  const style: React.CSSProperties = {
+    width: "50px",
+    height: "50px",
+    backgroundColor: bgColor,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+    cursor: "pointer",
   };
 
-  // Get piece display content
-  const getPieceContent = () => {
-    if (!piece) return null;
+  // Apply styles based on square state (in order of priority)
+  if (isSelected) {
+    style.backgroundColor = "#3b82f6"; // Selected piece
+    style.boxShadow = "inset 0 0 0 3px #2563eb";
+  } else if (isCheck) {
+    style.backgroundColor = "#ef4444"; // King in check
+  } else if (isLastMove) {
+    style.boxShadow = "inset 0 0 0 3px #f59e0b"; // Last move
+  }
 
-    // Map piece types to image paths
-    const getPieceImagePath = (color: string, type: string): string => {
-      return `/assets/Chess_Sprites/${color}_${type}.png`;
-    };
+  // Handle spell targeting visual indicators
+  if (isTargeted) {
+    style.boxShadow = "inset 0 0 0 3px #a855f7";
+    style.backgroundColor = isLight ? "#f5f3ff" : "#4c1d95";
+  }
 
-    const pieceImagePath = getPieceImagePath(piece.color, piece.type);
+  // Visual indicator for valid targets during spell casting
+  if (isValidTarget) {
+    style.boxShadow = "inset 0 0 0 3px #10b981";
+    style.backgroundColor = isLight ? "#ecfdf5" : "#064e3b";
+  }
 
+  // If we have a piece, display it
+  let pieceElement = null;
+  if (piece) {
+    // Check for active effects to apply visual indicators
     const hasEffects = piece.effects && piece.effects.length > 0;
 
-    return (
-      <div
+    // Get the piece image URL based on the piece color and type
+    const pieceType = piece.type.toUpperCase();
+    const pieceColor = piece.color === "w" ? "White" : "Black";
+    const pieceImage = `/assets/Chess_Sprites/${pieceColor}_${pieceType}.png`;
+
+    pieceElement = (
+      <img
+        src={pieceImage}
+        alt={`${pieceColor} ${pieceType}`}
         style={{
-          height: "85%",
           width: "85%",
-          position: "relative",
-          zIndex: 2,
+          height: "85%",
+          objectFit: "contain",
+          filter: hasEffects ? "drop-shadow(0 0 4px #a855f7)" : "none",
         }}
-      >
-        <img
-          src={pieceImagePath}
-          alt={`${piece.color}${piece.type}`}
+      />
+    );
+  }
+
+  return (
+    <div style={style} onClick={onClick}>
+      {pieceElement}
+
+      {/* Legal move indicator (dot) */}
+      {isLegalMove && !piece && (
+        <div
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            filter: hasEffects
-              ? "drop-shadow(0 0 4px rgba(168, 85, 247, 0.8))"
-              : "none",
+            width: "16px",
+            height: "16px",
+            borderRadius: "50%",
+            backgroundColor: "#6366f1",
+            opacity: 0.6,
           }}
         />
-      </div>
-    );
-  };
+      )}
 
-  // Render legal move indicator
-  const renderLegalMoveIndicator = () => {
-    if (!isLegalMove) return null;
-
-    if (piece) {
-      // Legal capture indicator - circle border
-      return (
+      {/* Legal capture indicator (border) */}
+      {isLegalMove && piece && (
         <div
           style={{
             position: "absolute",
-            top: "0",
-            left: "0",
-            right: "0",
-            bottom: "0",
-            border: "3px solid rgba(0, 0, 0, 0.3)",
-            borderRadius: "50%",
-            zIndex: 1,
+            width: "100%",
+            height: "100%",
+            border: "3px solid #6366f1",
+            borderRadius: "4px",
+            boxSizing: "border-box",
+            opacity: 0.8,
           }}
         />
-      );
-    } else {
-      // Legal move indicator - dot
-      return (
-        <div
-          style={{
-            width: "15px",
-            height: "15px",
-            borderRadius: "50%",
-            backgroundColor: "rgba(0, 0, 0, 0.2)",
-            zIndex: 1,
-          }}
-        />
-      );
-    }
-  };
+      )}
 
-  return (
-    <div style={getSquareStyle()} onClick={onClick}>
-      {getPieceContent()}
-      {renderLegalMoveIndicator()}
-
-      {/* Square notation - small text in bottom-right corner */}
+      {/* Square notation */}
       <div
         style={{
           position: "absolute",
           bottom: "2px",
           right: "2px",
           fontSize: "8px",
-          opacity: 0.6,
-          color: isLight ? "#0f172a" : "#e2e8f0",
+          color: isLight ? "#64748b" : "#cbd5e1",
+          opacity: 0.8,
         }}
       >
         {square}
