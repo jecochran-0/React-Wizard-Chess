@@ -5,189 +5,196 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { Square } from "chess.js";
+import { Chess, Square, Color } from "chess.js";
 import GameManager from "../game/GameManager";
-import { PlayerSpells, SpellId } from "../types/types";
+import {
+  PieceMeta,
+  SpellId,
+  PlayerSpells,
+  SpellTarget,
+  SpellTargetType,
+} from "../types/types";
 
-// Define the type for targets in castSpell
-type SpellTargetData = Square | Square[] | { from: Square; to: Square };
-
-export type ChessContextType = {
-  gameManager: GameManager;
-  currentPlayer: "w" | "b";
-  selectedPiece: Square | null;
-  setSelectedPiece: (square: Square | null) => void;
-  legalMoves: Square[];
-  lastMove: { from: Square; to: Square } | null;
-  kingInCheck: Square | null;
-  playerMana: Record<"w" | "b", number>;
+// Define the context type
+export interface ChessContextType {
+  // Game state
+  currentPlayer: Color;
+  playerMana: { w: number; b: number };
   playerSpells: PlayerSpells;
-  selectedSpell: SpellId | null;
-  selectSpell: (spellId: SpellId | null) => void;
-  castSpell: (spellId: SpellId, targets: SpellTargetData) => boolean;
-  endTurn: () => void;
+  boardState: Record<Square, PieceMeta>;
   gameLog: string[];
-  addToGameLog: (entry: string) => void;
-};
 
+  // Selected items
+  selectedPiece: Square | null;
+  selectedSpell: SpellId | null;
+  legalMoves: Square[];
+
+  // Game actions
+  selectPiece: (square: Square | null) => void;
+  selectSpell: (spellId: SpellId | null) => void;
+  makeMove: (from: Square, to: Square) => boolean;
+  castSpell: (
+    spellId: SpellId,
+    targets: Square | Square[] | { from: Square; to: Square }
+  ) => boolean;
+  endTurn: () => void;
+}
+
+// Create the context with a default value
 const ChessContext = createContext<ChessContextType | undefined>(undefined);
 
+// Default spells for each player
+const defaultPlayerSpells: PlayerSpells = {
+  w: ["astralSwap", "emberCrown", "frostShield", "shadowStrike", "arcaneArmor"],
+  b: ["astralSwap", "emberCrown", "frostShield", "shadowStrike", "arcaneArmor"],
+};
+
+// Provider component
 export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [gameManager] = useState(() => new GameManager());
-  const [currentPlayer, setCurrentPlayer] = useState<"w" | "b">(
+  // Initialize the game manager
+  const [gameManager] = useState(() => new GameManager(defaultPlayerSpells));
+
+  // Game state
+  const [currentPlayer, setCurrentPlayer] = useState<Color>(
     gameManager.getCurrentPlayer()
   );
-  const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
-  const [legalMoves, setLegalMoves] = useState<Square[]>([]);
-  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(
-    null
+  const [playerMana, setPlayerMana] = useState(gameManager.getPlayerMana());
+  const [boardState, setBoardState] = useState<Record<Square, PieceMeta>>(
+    gameManager.getBoardState() as Record<Square, PieceMeta>
   );
-  const [kingInCheck, setKingInCheck] = useState<Square | null>(null);
-  const [playerMana, setPlayerMana] = useState<Record<"w" | "b", number>>({
-    w: 10,
-    b: 10,
-  });
-  const [playerSpells, setPlayerSpells] = useState<PlayerSpells>({
-    w: ["astralSwap", "emberCrown", "frostShield"],
-    b: ["shadowStrike", "arcaneArmor", "timeWarp"],
-  });
-  const [selectedSpell, setSelectedSpell] = useState<SpellId | null>(null);
-  const [gameLog, setGameLog] = useState<string[]>([]);
+  const [gameLog, setGameLog] = useState<string[]>(gameManager.getGameLog());
 
-  // Initialize game state
-  useEffect(() => {
-    updateGameState();
-  }, []);
+  // Selected state
+  const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
+  const [selectedSpell, setSelectedSpell] = useState<SpellId | null>(null);
+  const [legalMoves, setLegalMoves] = useState<Square[]>([]);
 
   // Update legal moves when a piece is selected
   useEffect(() => {
     if (selectedPiece) {
-      const moves = gameManager.getLegalMovesFrom(selectedPiece);
-      setLegalMoves(moves);
+      const chess = new Chess(gameManager.getFEN());
+      const moves = chess.moves({ square: selectedPiece, verbose: true });
+      setLegalMoves(moves.map((move) => move.to as Square));
     } else {
       setLegalMoves([]);
     }
   }, [selectedPiece, gameManager]);
 
-  // Check for king in check on every board change
+  // Update game state after moves
   useEffect(() => {
-    const kingPos = gameManager.getKingInCheckPosition();
-    setKingInCheck(kingPos);
-  }, [gameManager, currentPlayer]);
-
-  // Update the game state variables from the game manager
-  const updateGameState = () => {
+    // Update current player
     setCurrentPlayer(gameManager.getCurrentPlayer());
-    setKingInCheck(gameManager.getKingInCheckPosition());
+
+    // Update board state
+    setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+
+    // Update player mana
+    setPlayerMana(gameManager.getPlayerMana());
+
+    // Update game log
+    setGameLog(gameManager.getGameLog());
+  }, [gameManager]);
+
+  // Select a piece
+  const selectPiece = (square: Square | null) => {
+    setSelectedPiece(square);
+    if (square) {
+      setSelectedSpell(null);
+    }
   };
 
   // Select a spell
   const selectSpell = (spellId: SpellId | null) => {
     setSelectedSpell(spellId);
-    // Deselect any selected piece when selecting a spell
-    setSelectedPiece(null);
+    if (spellId) {
+      setSelectedPiece(null);
+    }
+  };
+
+  // Make a move
+  const makeMove = (from: Square, to: Square): boolean => {
+    const result = gameManager.makeMove(from, to);
+
+    if (result) {
+      // Update UI state after the move
+      setCurrentPlayer(gameManager.getCurrentPlayer());
+      setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+      setPlayerMana(gameManager.getPlayerMana());
+      setGameLog(gameManager.getGameLog());
+
+      // Clear selection
+      setSelectedPiece(null);
+    }
+
+    return result;
   };
 
   // Cast a spell
-  const castSpell = (spellId: SpellId, targets: SpellTargetData): boolean => {
-    // Only allow the current player to cast spells
-    if (gameManager.getCurrentPlayer() !== currentPlayer) {
-      console.error("Not your turn");
-      return false;
-    }
+  const castSpell = (
+    spellId: SpellId,
+    targets: Square | Square[] | { from: Square; to: Square }
+  ): boolean => {
+    const result = gameManager.castSpell(spellId, targets);
 
-    // Check if player has enough mana
-    const spellCost = gameManager.getSpellCost(spellId);
-    if (playerMana[currentPlayer] < spellCost) {
-      console.error("Not enough mana");
-      return false;
-    }
+    if (result) {
+      // Update UI state after spell cast
+      setCurrentPlayer(gameManager.getCurrentPlayer());
+      setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+      setPlayerMana(gameManager.getPlayerMana());
+      setGameLog(gameManager.getGameLog());
 
-    // Use GameManager to cast the spell
-    const success = gameManager.castSpell(spellId, targets);
-
-    if (success) {
-      // Deduct mana cost
-      setPlayerMana((prev) => ({
-        ...prev,
-        [currentPlayer]: prev[currentPlayer] - spellCost,
-      }));
-
-      // Deselect the spell
+      // Clear spell selection
       setSelectedSpell(null);
-
-      // Add to game log
-      addToGameLog(
-        `${currentPlayer === "w" ? "White" : "Black"} cast ${spellId}`
-      );
-
-      return true;
     }
 
-    return false;
+    return result;
   };
 
   // End the current turn
   const endTurn = () => {
+    gameManager.endTurn();
+
+    // Update UI state after ending turn
+    setCurrentPlayer(gameManager.getCurrentPlayer());
+    setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+    setPlayerMana(gameManager.getPlayerMana());
+    setGameLog(gameManager.getGameLog());
+
     // Clear selections
     setSelectedPiece(null);
     setSelectedSpell(null);
-
-    // Process end of turn effects
-    gameManager.endTurn();
-
-    // Update current player
-    const newPlayer = gameManager.getCurrentPlayer();
-    setCurrentPlayer(newPlayer);
-
-    // Refresh mana for the new player
-    setPlayerMana((prev) => ({
-      ...prev,
-      [newPlayer]: Math.min(prev[newPlayer] + 2, 10), // Add 2 mana, capped at 10
-    }));
-
-    // Add to game log
-    addToGameLog(
-      `${currentPlayer === "w" ? "White" : "Black"} ended their turn`
-    );
-    addToGameLog(`${newPlayer === "w" ? "White" : "Black"} to move`);
   };
 
-  // Add entry to game log
-  const addToGameLog = (entry: string) => {
-    setGameLog((prev) => [...prev, entry]);
+  // Context value
+  const contextValue: ChessContextType = {
+    currentPlayer,
+    playerMana,
+    playerSpells: gameManager.getPlayerSpells(),
+    boardState,
+    gameLog,
+    selectedPiece,
+    selectedSpell,
+    legalMoves,
+    selectPiece,
+    selectSpell,
+    makeMove,
+    castSpell,
+    endTurn,
   };
 
   return (
-    <ChessContext.Provider
-      value={{
-        gameManager,
-        currentPlayer,
-        selectedPiece,
-        setSelectedPiece,
-        legalMoves,
-        lastMove,
-        kingInCheck,
-        playerMana,
-        playerSpells,
-        selectedSpell,
-        selectSpell,
-        castSpell,
-        endTurn,
-        gameLog,
-        addToGameLog,
-      }}
-    >
+    <ChessContext.Provider value={contextValue}>
       {children}
     </ChessContext.Provider>
   );
 };
 
-export const useChess = () => {
+// Custom hook to use the chess context
+export const useChess = (): ChessContextType => {
   const context = useContext(ChessContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useChess must be used within a ChessProvider");
   }
   return context;

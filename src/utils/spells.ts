@@ -1,96 +1,163 @@
 import { Spell, SpellId } from "../types/types";
 
-// Define all available spells in the game
-const spells: Record<SpellId, Spell> = {
-  // Astral Swap: Swap the positions of two pieces
-  astralSwap: {
+// Define all spells in the game
+const spells: Spell[] = [
+  {
     id: "astralSwap",
     name: "Astral Swap",
-    description: "Swap the positions of two pieces on the board.",
+    description: "Swap any two of your own pieces.",
     manaCost: 4,
-    targetType: "from-to",
-    imagePath: "/assets/spells/astral_swap.png",
+    targetType: "multi",
+    requiredTargets: 2,
     mustTargetOwnPiece: true,
   },
-
-  // Ember Crown: Add a damage effect to a piece
-  emberCrown: {
+  {
     id: "emberCrown",
     name: "Ember Crown",
-    description: "Enchant a piece with fire, dealing damage over time.",
-    manaCost: 3,
-    targetType: "single",
-    imagePath: "/assets/spells/ember_crown.png",
-  },
-
-  // Frost Shield: Protect a piece from capture
-  frostShield: {
-    id: "frostShield",
-    name: "Frost Shield",
-    description: "Protect a piece with ice, preventing capture for 2 turns.",
-    manaCost: 3,
-    targetType: "single",
-    imagePath: "/assets/spells/frost_shield.png",
-    mustTargetOwnPiece: true,
-  },
-
-  // Shadow Strike: Directly capture an enemy piece
-  shadowStrike: {
-    id: "shadowStrike",
-    name: "Shadow Strike",
-    description: "Immediately capture an enemy piece.",
+    description: "Transform a pawn to a queen for 3 turns, then it dies.",
     manaCost: 6,
     targetType: "single",
-    imagePath: "/assets/spells/shadow_strike.png",
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "frostShield",
+    name: "Frost Shield",
+    description: "Protect a piece from capture for 2 turns.",
+    manaCost: 3,
+    targetType: "single",
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "shadowStrike",
+    name: "Shadow Strike",
+    description: "Capture an enemy piece directly.",
+    manaCost: 5,
+    targetType: "single",
     mustTargetOpponentPiece: true,
   },
-
-  // Arcane Armor: Enhance a piece's defensive capabilities
-  arcaneArmor: {
+  {
     id: "arcaneArmor",
     name: "Arcane Armor",
-    description: "Enchant a piece with protective armor, enhancing defense.",
+    description: "Enhance a piece's defensive capabilities for 5 turns.",
+    manaCost: 3,
+    targetType: "single",
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "timeWarp",
+    name: "Chrono Recall",
+    description: "Return a piece to its position from 2 turns ago.",
+    manaCost: 3,
+    targetType: "from-to",
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "phantomStep",
+    name: "Phantom Step",
+    description: "Move a piece ignoring collisions, no captures.",
+    manaCost: 2,
+    targetType: "from-to",
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "mistformKnight",
+    name: "Mistform Knight",
+    description: "Move knight, then summon clone that disappears next turn.",
+    manaCost: 4,
+    targetType: "from-to",
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "kingsGambit",
+    name: "King's Gambit",
+    description: "Move King twice in one turn.",
     manaCost: 2,
     targetType: "single",
-    imagePath: "/assets/spells/arcane_armor.png",
     mustTargetOwnPiece: true,
   },
-
-  // Time Warp: Move a piece again
-  timeWarp: {
-    id: "timeWarp",
-    name: "Time Warp",
-    description: "Bend time to move a piece twice in one turn.",
+  {
+    id: "secondWind",
+    name: "Second Wind",
+    description: "Move two pieces (no capture or check).",
+    manaCost: 8,
+    targetType: "multi",
+    requiredTargets: 4, // 2 from-to pairs
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "nullfield",
+    name: "Nullfield",
+    description: "Remove any spell effect.",
     manaCost: 5,
-    targetType: "from-to",
-    imagePath: "/assets/spells/time_warp.png",
+    targetType: "single",
+  },
+  {
+    id: "veilOfShadows",
+    name: "Veil of Shadows",
+    description: "Hide board from enemy for 1 turn.",
+    manaCost: 4,
+    targetType: "single",
+    mustTargetEmptySquare: true,
+  },
+  {
+    id: "raiseBonewalker",
+    name: "Raise the Bonewalker",
+    description: "Summon pawn that auto-promotes in 6 turns.",
+    manaCost: 6,
+    targetType: "single",
+    mustTargetEmptySquare: true,
+  },
+  {
+    id: "cursedGlyph",
+    name: "Cursed Glyph",
+    description: "Trap square. Transform any piece that moves there.",
+    manaCost: 5,
+    targetType: "single",
+    mustTargetEmptySquare: true,
+  },
+  {
+    id: "pressureField",
+    name: "Pressure Field",
+    description: "Prevent ending adjacent to Rooks for 3 turns.",
+    manaCost: 3,
+    targetType: "single",
     mustTargetOwnPiece: true,
   },
-};
+];
 
-// Get a spell by its ID
+// Get a spell by ID
 export const getSpellById = (id: SpellId): Spell | undefined => {
-  return spells[id];
+  return spells.find((spell) => spell.id === id);
 };
 
-// Get the initial spells for a player
-export const getInitialSpells = (player: "w" | "b"): SpellId[] => {
-  if (player === "w") {
-    return ["astralSwap", "emberCrown", "frostShield"];
-  } else {
-    return ["shadowStrike", "arcaneArmor", "timeWarp"];
-  }
-};
-
-// Get spells that match a specific criteria
-export const getSpellsByProperty = <K extends keyof Spell, V extends Spell[K]>(
-  property: K,
-  value: V
-): Spell[] => {
-  return Object.values(spells).filter((spell) => spell[property] === value);
-};
-
-// Get all available spells
+// Get all spells
 export const getAllSpells = (): Spell[] => {
-  return Object.values(spells);
+  return [...spells];
+};
+
+// Get random spells (for spell selection phase)
+export const getRandomSpells = (count: number): Spell[] => {
+  const shuffled = [...spells].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
+// Get default spells for a player
+export const getDefaultSpells = (player: "w" | "b"): SpellId[] => {
+  if (player === "w") {
+    return [
+      "astralSwap",
+      "emberCrown",
+      "frostShield",
+      "shadowStrike",
+      "arcaneArmor",
+    ];
+  } else {
+    return [
+      "astralSwap",
+      "emberCrown",
+      "frostShield",
+      "shadowStrike",
+      "arcaneArmor",
+    ];
+  }
 };

@@ -7,7 +7,7 @@ import {
   SpellId,
   SpellTargetType,
 } from "../types/types";
-import { Square } from "chess.js";
+import { Chess, Square } from "chess.js";
 import GameManager from "./GameManager";
 
 // Define specialized target types
@@ -33,16 +33,13 @@ export class SpellEngine {
       return false;
     }
 
-    // Validate targets based on spell type
-    if (!this.validateTargets(spellId, targets)) {
-      console.error(`Invalid targets for spell ${spellId}`);
-      return false;
-    }
-
     // Switch based on spell ID to call the appropriate spell function
     switch (spellId) {
       case "astralSwap":
-        return this.castAstralSwap(targets as FromToTarget);
+        if (Array.isArray(targets) && targets.length === 2) {
+          return this.castAstralSwap(targets[0], targets[1]);
+        }
+        return false;
       case "emberCrown":
         return this.castEmberCrown(targets as SingleTarget);
       case "frostShield":
@@ -51,8 +48,6 @@ export class SpellEngine {
         return this.castShadowStrike(targets as SingleTarget);
       case "arcaneArmor":
         return this.castArcaneArmor(targets as SingleTarget);
-      case "timeWarp":
-        return this.castTimeWarp(targets as FromToTarget);
       default:
         console.error(`Implementation for spell ${spellId} not found`);
         return false;
@@ -63,25 +58,6 @@ export class SpellEngine {
   getSpellCost(spellId: SpellId): number {
     const spell = getSpellById(spellId);
     return spell ? spell.manaCost : 0;
-  }
-
-  // Validate spell targets
-  private validateTargets(spellId: SpellId, targets: SpellTargetData): boolean {
-    const spell = getSpellById(spellId);
-    if (!spell) return false;
-
-    // Check that the target format matches the spell's target type
-    if (spell.targetType === "single") {
-      return typeof targets === "string"; // Square is a string in chess.js
-    } else if (spell.targetType === "multi") {
-      return Array.isArray(targets);
-    } else if (spell.targetType === "from-to") {
-      return (
-        typeof targets === "object" && "from" in targets && "to" in targets
-      );
-    }
-
-    return false;
   }
 
   // Create a new effect
@@ -103,24 +79,68 @@ export class SpellEngine {
   // ===== SPELL IMPLEMENTATIONS =====
 
   // Astral Swap: Swap the positions of two pieces
-  private castAstralSwap(targets: FromToTarget): boolean {
-    const { from, to } = targets;
+  private castAstralSwap(square1: Square, square2: Square): boolean {
+    console.log(`Attempting to swap pieces between ${square1} and ${square2}`);
 
     // Get pieces at the source and destination
-    const sourcePiece = this.gameManager.getPieceAt(from);
-    const destPiece = this.gameManager.getPieceAt(to);
+    const piece1 = this.gameManager.getPieceAt(square1);
+    const piece2 = this.gameManager.getPieceAt(square2);
 
     // Both squares must have pieces
-    if (!sourcePiece || !destPiece) {
+    if (!piece1 || !piece2) {
+      console.error("Both squares must have pieces for Astral Swap");
       return false;
     }
 
-    // Implementation would use chess.js API to remove and place pieces
-    // This is a placeholder for the actual implementation that would
-    // need to interact with the underlying chess library
-    console.log(`Swapped pieces between ${from} and ${to}`);
+    // Both pieces must belong to the current player
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    if (piece1.color !== currentPlayer || piece2.color !== currentPlayer) {
+      console.error(
+        "Both pieces must belong to the current player for Astral Swap"
+      );
+      return false;
+    }
 
-    // For now, we'll simulate this being successful
+    // Check if the swap would result in a king in check
+    const tempBoard = new Chess(this.gameManager.getFEN());
+
+    // Get the piece objects as they are in chess.js format
+    const chessPiece1 = tempBoard.get(square1);
+    const chessPiece2 = tempBoard.get(square2);
+
+    if (!chessPiece1 || !chessPiece2) {
+      console.error("Failed to get chess.js pieces for swap");
+      return false;
+    }
+
+    // Temporarily remove both pieces
+    tempBoard.remove(square1);
+    tempBoard.remove(square2);
+
+    // Place them in swapped positions
+    tempBoard.put(
+      { type: chessPiece1.type, color: chessPiece1.color },
+      square2
+    );
+    tempBoard.put(
+      { type: chessPiece2.type, color: chessPiece2.color },
+      square1
+    );
+
+    // Check if the king is in check after the swap
+    if (tempBoard.isCheck()) {
+      console.error("Cannot swap pieces as it would result in check");
+      return false;
+    }
+
+    // Perform the actual swap
+    this.gameManager.swapPieces(square1, square2);
+
+    // Log the action
+    console.log(
+      `Successfully swapped pieces between ${square1} and ${square2}`
+    );
+
     return true;
   }
 
@@ -133,7 +153,7 @@ export class SpellEngine {
     }
 
     // Create a damage effect (flames) on the piece
-    const effect = this.createEffect("damage", 3, "emberCrown", {
+    const effect = this.createEffect("transform", 3, "emberCrown", {
       damagePerTurn: 1,
     });
 
@@ -171,9 +191,8 @@ export class SpellEngine {
       return false;
     }
 
-    // Implementation would use chess.js API to remove the piece
-    // This is a placeholder
-    console.log(`Captured enemy piece at ${target}`);
+    // Implement the capture
+    this.gameManager.removePiece(target);
 
     return true;
   }
@@ -195,23 +214,5 @@ export class SpellEngine {
     this.gameManager.addEffect(target, effect);
 
     return true;
-  }
-
-  // Time Warp: Move a piece again
-  private castTimeWarp(targets: FromToTarget): boolean {
-    const { from, to } = targets;
-
-    // Get the piece at the source
-    const piece = this.gameManager.getPieceAt(from);
-
-    // Must be a friendly piece
-    if (!piece || piece.color !== this.gameManager.getCurrentPlayer()) {
-      return false;
-    }
-
-    // Execute the move
-    const success = this.gameManager.makeMove(from, to);
-
-    return success;
   }
 }
