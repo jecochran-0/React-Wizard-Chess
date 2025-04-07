@@ -38,23 +38,28 @@ export interface ChessContextType {
     targets: Square | Square[] | { from: Square; to: Square }
   ) => boolean;
   endTurn: () => void;
+
+  // Game setup
+  setPlayerSpells: (playerSpells: PlayerSpells) => void;
 }
 
 // Create the context with a default value
 const ChessContext = createContext<ChessContextType | undefined>(undefined);
 
-// Default spells for each player
-const defaultPlayerSpells: PlayerSpells = {
-  w: ["astralSwap", "emberCrown", "frostShield", "shadowStrike", "arcaneArmor"],
-  b: ["astralSwap", "emberCrown", "frostShield", "shadowStrike", "arcaneArmor"],
+// Initial default spells for testing (these will be replaced)
+const initialPlayerSpells: PlayerSpells = {
+  w: [],
+  b: [],
 };
 
 // Provider component
 export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  // Initialize the game manager
-  const [gameManager] = useState(() => new GameManager(defaultPlayerSpells));
+  // Initialize the game manager with empty spell lists
+  const [gameManager] = useState(() => new GameManager(initialPlayerSpells));
+  const [playerSpells, setPlayerSpells] =
+    useState<PlayerSpells>(initialPlayerSpells);
 
   // Game state
   const [currentPlayer, setCurrentPlayer] = useState<Color>(
@@ -70,6 +75,15 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
   const [selectedSpell, setSelectedSpell] = useState<SpellId | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
+
+  // Update the gameManager when player spells change
+  useEffect(() => {
+    // Only update if the player spells actually have values (not empty arrays)
+    if (playerSpells.w.length > 0 || playerSpells.b.length > 0) {
+      console.log("Updating player spells in GameManager:", playerSpells);
+      gameManager.updatePlayerSpells(playerSpells);
+    }
+  }, [playerSpells, gameManager]);
 
   // Update legal moves when a piece is selected
   useEffect(() => {
@@ -167,11 +181,16 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedSpell(null);
   };
 
+  // Update player spells (called after spell selection phase)
+  const updatePlayerSpells = (newSpells: PlayerSpells) => {
+    setPlayerSpells(newSpells);
+  };
+
   // Context value
   const contextValue: ChessContextType = {
     currentPlayer,
     playerMana,
-    playerSpells: gameManager.getPlayerSpells(),
+    playerSpells,
     boardState,
     gameLog,
     selectedPiece,
@@ -182,6 +201,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     makeMove,
     castSpell,
     endTurn,
+    setPlayerSpells: updatePlayerSpells,
   };
 
   return (

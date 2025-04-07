@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ChessBoard from "../components/chess/ChessBoard";
 import { ChessProvider, useChess } from "../context/ChessContext";
 import SpellCard from "../components/chess/SpellCard";
@@ -6,6 +6,7 @@ import { getSpellById } from "../utils/spells";
 import { Spell, SpellId } from "../types/types";
 import "../styles/SpellCard.css";
 import backgroundImage from "/assets/MainMenu_Background.png";
+import { useGame } from "../context/GameContext";
 
 const GameContent: React.FC = () => {
   const {
@@ -287,11 +288,76 @@ const GameContent: React.FC = () => {
 };
 
 const Game: React.FC = () => {
+  const { gameConfig } = useGame();
+
   return (
     <ChessProvider>
-      <GameContent />
+      <GameWithSpells selectedGameSpells={gameConfig.selectedSpells} />
     </ChessProvider>
   );
+};
+
+// Map from kebab-case to camelCase
+const spellIdMapping: Record<string, string> = {
+  "astral-swap": "astralSwap",
+  "phantom-step": "phantomStep",
+  "ember-crown": "emberCrown",
+  "arcane-anchor": "arcaneArmor", // Note: using arcaneArmor for arcane-anchor
+  "mistform-knight": "mistformKnight",
+  "chrono-recall": "timeWarp", // Note: using timeWarp for chrono-recall
+  "cursed-glyph": "cursedGlyph",
+  "kings-gambit": "kingsGambit",
+  "dark-conversion": "darkConversion",
+  "spirit-link": "spiritLink",
+  "second-wind": "secondWind",
+  "pressure-field": "pressureField",
+  nullfield: "nullfield",
+  "veil-shadows": "veilOfShadows",
+  bonewalker: "raiseBonewalker",
+};
+
+// New component to handle setting spells
+const GameWithSpells: React.FC<{ selectedGameSpells: Spell[] }> = ({
+  selectedGameSpells,
+}) => {
+  const { setPlayerSpells } = useChess();
+
+  // Adding a ref to track if we've already processed the spells
+  const hasProcessedSpells = React.useRef(false);
+
+  useEffect(() => {
+    // Only process spells once to avoid infinite console logs and rerenders
+    if (
+      selectedGameSpells &&
+      selectedGameSpells.length > 0 &&
+      !hasProcessedSpells.current
+    ) {
+      // Set the flag to true so we don't reprocess
+      hasProcessedSpells.current = true;
+
+      // Convert from game spells format to chess context format
+      const spellIds = selectedGameSpells.map((spell) => {
+        // Use the mapping object to get the correct ID
+        const spellId =
+          spellIdMapping[spell.id] ||
+          // Fallback to regex replacement if not in mapping
+          spell.id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+
+        return spellId as SpellId;
+      });
+
+      // Ensure we have exactly 5 spells for each player
+      const validSpellIds = spellIds.slice(0, 5);
+
+      // Set the same spells for both players for now
+      setPlayerSpells({
+        w: validSpellIds,
+        b: validSpellIds,
+      });
+    }
+  }, [selectedGameSpells, setPlayerSpells]);
+
+  return <GameContent />;
 };
 
 export default Game;

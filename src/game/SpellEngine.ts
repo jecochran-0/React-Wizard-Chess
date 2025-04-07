@@ -40,6 +40,15 @@ export class SpellEngine {
           return this.castAstralSwap(targets[0], targets[1]);
         }
         return false;
+      case "phantomStep":
+        if (
+          typeof targets === "object" &&
+          "from" in targets &&
+          "to" in targets
+        ) {
+          return this.castPhantomStep(targets.from, targets.to);
+        }
+        return false;
       case "emberCrown":
         return this.castEmberCrown(targets as SingleTarget);
       case "frostShield":
@@ -139,6 +148,60 @@ export class SpellEngine {
     // Log the action
     console.log(
       `Successfully swapped pieces between ${square1} and ${square2}`
+    );
+
+    return true;
+  }
+
+  // Phantom Step: Move a piece ignoring collisions, no captures
+  private castPhantomStep(from: Square, to: Square): boolean {
+    console.log(`Attempting Phantom Step from ${from} to ${to}`);
+
+    // Get the piece at the source
+    const piece = this.gameManager.getPieceAt(from);
+
+    // Source must have a piece owned by the current player
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    if (!piece || piece.color !== currentPlayer) {
+      console.error("Source must have a piece owned by the current player");
+      return false;
+    }
+
+    // Destination must be empty (no captures allowed)
+    if (this.gameManager.getPieceAt(to)) {
+      console.error("Destination must be empty for Phantom Step");
+      return false;
+    }
+
+    // Check if the move would result in a king in check
+    const tempBoard = new Chess(this.gameManager.getFEN());
+
+    // Get the piece object as it is in chess.js format
+    const chessPiece = tempBoard.get(from);
+
+    if (!chessPiece) {
+      console.error("Failed to get chess.js piece for Phantom Step");
+      return false;
+    }
+
+    // Temporarily remove the piece
+    tempBoard.remove(from);
+
+    // Place it at the destination
+    tempBoard.put({ type: chessPiece.type, color: chessPiece.color }, to);
+
+    // Check if the king is in check after the move
+    if (tempBoard.isCheck()) {
+      console.error("Cannot make this move as it would result in check");
+      return false;
+    }
+
+    // Perform the move
+    this.gameManager.movePieceDirectly(from, to);
+
+    // Log the action
+    console.log(
+      `Successfully moved piece from ${from} to ${to} using Phantom Step`
     );
 
     return true;

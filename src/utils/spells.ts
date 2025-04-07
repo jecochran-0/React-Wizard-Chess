@@ -123,6 +123,24 @@ const spells: Spell[] = [
     targetType: "single",
     mustTargetOwnPiece: true,
   },
+  {
+    id: "darkConversion",
+    name: "Dark Conversion",
+    description: "Sacrifice 3 pawns to summon a Knight or Bishop.",
+    manaCost: 5,
+    targetType: "multi",
+    requiredTargets: 3,
+    mustTargetOwnPiece: true,
+  },
+  {
+    id: "spiritLink",
+    name: "Spirit Link",
+    description: "Link a major piece with pawns for enhanced protection.",
+    manaCost: 5,
+    targetType: "multi",
+    requiredTargets: 2,
+    mustTargetOwnPiece: true,
+  },
 ];
 
 // Get a spell by ID

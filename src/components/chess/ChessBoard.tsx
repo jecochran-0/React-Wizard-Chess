@@ -46,6 +46,20 @@ const ChessBoard: React.FC = () => {
           }
         }
         setValidTargets(ownedPieces);
+      }
+      // If it's Phantom Step, find all owned pieces as potential sources
+      else if (selectedSpell === "phantomStep") {
+        const ownedPieces: ChessSquare[] = [];
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          if (
+            boardState[squareKey] &&
+            boardState[squareKey].color === currentPlayer
+          ) {
+            ownedPieces.push(squareKey);
+          }
+        }
+        setValidTargets(ownedPieces);
       } else {
         setValidTargets([]);
       }
@@ -56,34 +70,62 @@ const ChessBoard: React.FC = () => {
     }
   }, [selectedSpell, currentPlayer, boardState]);
 
-  // Update valid targets when the first piece is selected for Astral Swap
+  // Update valid targets when the first piece is selected for spells requiring multiple targets
   useEffect(() => {
-    if (selectedSpell === "astralSwap" && spellTargets.length === 1) {
+    if (selectedSpell && spellTargets.length === 1) {
       const firstSquare = spellTargets[0].square;
-      const firstPiece = boardState[firstSquare];
 
-      // Find all owned pieces as potential second targets, excluding the first piece
-      const ownedPieces: ChessSquare[] = [];
-      for (const square in boardState) {
-        const squareKey = square as ChessSquare;
-        if (
-          squareKey !== firstSquare &&
-          boardState[squareKey] &&
-          boardState[squareKey].color === currentPlayer &&
-          // For pawns, prevent swapping to the opposite end (causing promotion issues)
-          !(
-            firstPiece.type === "p" &&
-            (squareKey.endsWith("1") || squareKey.endsWith("8"))
-          ) &&
-          !(
-            boardState[squareKey].type === "p" &&
-            (firstSquare.endsWith("1") || firstSquare.endsWith("8"))
-          )
-        ) {
-          ownedPieces.push(squareKey);
+      // For Astral Swap, find valid second pieces
+      if (selectedSpell === "astralSwap") {
+        const firstPiece = boardState[firstSquare];
+
+        // Find all owned pieces as potential second targets, excluding the first piece
+        const ownedPieces: ChessSquare[] = [];
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          if (
+            squareKey !== firstSquare &&
+            boardState[squareKey] &&
+            boardState[squareKey].color === currentPlayer &&
+            // For pawns, prevent swapping to the opposite end (causing promotion issues)
+            !(
+              firstPiece.type === "p" &&
+              (squareKey.endsWith("1") || squareKey.endsWith("8"))
+            ) &&
+            !(
+              boardState[squareKey].type === "p" &&
+              (firstSquare.endsWith("1") || firstSquare.endsWith("8"))
+            )
+          ) {
+            ownedPieces.push(squareKey);
+          }
         }
+        setValidTargets(ownedPieces);
       }
-      setValidTargets(ownedPieces);
+      // For Phantom Step, find valid destinations (empty squares)
+      else if (selectedSpell === "phantomStep") {
+        // Find all empty squares as potential destinations
+        const emptySquares: ChessSquare[] = [];
+        const files = "abcdefgh";
+        const ranks = "12345678";
+
+        // Check all possible squares
+        for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
+          for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
+            const squareKey = (files[fileIndex] +
+              ranks[rankIndex]) as ChessSquare;
+
+            // If it's empty, add it as a valid target
+            if (!boardState[squareKey]) {
+              emptySquares.push(squareKey);
+            }
+          }
+        }
+
+        setValidTargets(emptySquares);
+      } else {
+        setValidTargets([]);
+      }
     }
   }, [spellTargets, selectedSpell, currentPlayer, boardState]);
 
@@ -104,7 +146,7 @@ const ChessBoard: React.FC = () => {
 
     const targetType = selectedSpellDetails.targetType;
 
-    // For Astral Swap and other spells requiring specific targets
+    // For Astral Swap (special case for multi-target spell)
     if (selectedSpell === "astralSwap") {
       // First selection - only allow selecting valid first targets
       if (spellTargets.length === 0 && validTargets.includes(square)) {
@@ -118,6 +160,27 @@ const ChessBoard: React.FC = () => {
         setTargetingMode(false);
         setSpellTargets([]);
         setValidTargets([]);
+      }
+      return;
+    }
+
+    // For Phantom Step (using from-to targeting)
+    if (selectedSpell === "phantomStep") {
+      if (spellTargets.length === 0) {
+        // First click - only allow selecting valid source pieces
+        if (validTargets.includes(square)) {
+          setSpellTargets([{ square, type: "source" }]);
+        }
+      } else if (spellTargets.length === 1) {
+        // Second click - only allow selecting valid destination squares
+        if (validTargets.includes(square)) {
+          const sourceSquare = spellTargets[0].square;
+          // Cast the spell with from-to format
+          castSpell(selectedSpell, { from: sourceSquare, to: square });
+          setTargetingMode(false);
+          setSpellTargets([]);
+          setValidTargets([]);
+        }
       }
       return;
     }
@@ -346,19 +409,26 @@ const ChessBoard: React.FC = () => {
           {selectedSpellDetails.targetType === "single" && (
             <p>Select a target for {selectedSpellDetails.name}.</p>
           )}
-          {selectedSpellDetails.targetType === "multi" &&
-            selectedSpell === "astralSwap" &&
-            spellTargets.length === 0 && (
-              <p>Select the first piece to swap (highlighted in green).</p>
-            )}
-          {selectedSpellDetails.targetType === "multi" &&
-            selectedSpell === "astralSwap" &&
-            spellTargets.length === 1 && (
-              <p>
-                Select the second piece to swap with {spellTargets[0].square}{" "}
-                (highlighted in green).
-              </p>
-            )}
+          {selectedSpell === "astralSwap" && spellTargets.length === 0 && (
+            <p>Select the first piece to swap (highlighted in green).</p>
+          )}
+          {selectedSpell === "astralSwap" && spellTargets.length === 1 && (
+            <p>
+              Select the second piece to swap with {spellTargets[0].square}{" "}
+              (highlighted in green).
+            </p>
+          )}
+          {selectedSpell === "phantomStep" && spellTargets.length === 0 && (
+            <p>
+              Select a piece to move with Phantom Step (highlighted in green).
+            </p>
+          )}
+          {selectedSpell === "phantomStep" && spellTargets.length === 1 && (
+            <p>
+              Select a destination square for the piece at{" "}
+              {spellTargets[0].square} (highlighted in green).
+            </p>
+          )}
           {selectedSpellDetails.targetType === "multi" &&
             selectedSpell !== "astralSwap" && (
               <p>
@@ -368,8 +438,10 @@ const ChessBoard: React.FC = () => {
               </p>
             )}
           {selectedSpellDetails.targetType === "from-to" &&
+            selectedSpell !== "phantomStep" &&
             spellTargets.length === 0 && <p>Select your piece to move.</p>}
           {selectedSpellDetails.targetType === "from-to" &&
+            selectedSpell !== "phantomStep" &&
             spellTargets.length === 1 && (
               <p>Select destination for piece at {spellTargets[0].square}</p>
             )}

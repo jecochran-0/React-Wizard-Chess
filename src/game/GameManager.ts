@@ -417,6 +417,63 @@ class GameManager {
   getBoardState(): CustomBoardState {
     return this.customBoardState;
   }
+
+  // Move a piece directly for spells like Phantom Step
+  movePieceDirectly(from: Square, to: Square): boolean {
+    try {
+      // Get the piece
+      const piece = this.customBoardState[from];
+
+      if (!piece) {
+        console.error("No piece at source square");
+        return false;
+      }
+
+      // Check that destination is empty
+      if (this.customBoardState[to]) {
+        console.error("Destination square is not empty");
+        return false;
+      }
+
+      // Update chess.js board
+      const chessPiece = this.chess.get(from);
+
+      if (!chessPiece) {
+        console.error("Failed to get chess.js piece");
+        return false;
+      }
+
+      // Remove from source
+      this.chess.remove(from);
+
+      // Place at destination
+      this.chess.put({ type: chessPiece.type, color: chessPiece.color }, to);
+
+      // Update custom board state
+      const updatedPiece = { ...piece, square: to as Square, hasMoved: true };
+      delete this.customBoardState[from];
+      this.customBoardState[to] = updatedPiece;
+
+      // Log the move
+      this.gameLog.push(
+        `${
+          piece.color === "w" ? "White" : "Black"
+        } moved ${this.getPieceTypeName(
+          piece.type as PieceSymbol
+        )} from ${from} to ${to} using Phantom Step`
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error moving piece directly:", error);
+      return false;
+    }
+  }
+
+  // Method to update player spells after initialization
+  updatePlayerSpells(newSpells: PlayerSpells): void {
+    this.playerSpells = newSpells;
+  }
 }
 
 export default GameManager;
