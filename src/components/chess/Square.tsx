@@ -1,18 +1,34 @@
 import React from "react";
-import Piece from "./Piece";
-import { PieceCode } from "./pieceImages";
-import { PieceMeta, Square as SquareType } from "../../types/game";
+import { Square as ChessSquare } from "chess.js";
+
+// Define PieceMeta since we're having import issues
+interface PieceMeta {
+  type: string;
+  color: "w" | "b";
+  square: ChessSquare;
+  effects: Effect[];
+  hasMoved?: boolean;
+}
+
+// Define Effect for PieceMeta
+interface Effect {
+  id: string;
+  type: string;
+  duration: number;
+  source: string;
+  modifiers?: Record<string, unknown>;
+}
 
 interface SquareProps {
-  square: SquareType;
+  square: ChessSquare;
   piece: PieceMeta | null;
   isLight: boolean;
   isSelected: boolean;
-  isValidMove: boolean;
+  isLegalMove: boolean;
   isLastMove: boolean;
   isCheck: boolean;
-  hasGlyph: boolean;
-  onClick: (square: SquareType) => void;
+  isTargeted: boolean;
+  onClick: () => void;
 }
 
 const Square: React.FC<SquareProps> = ({
@@ -20,112 +36,149 @@ const Square: React.FC<SquareProps> = ({
   piece,
   isLight,
   isSelected,
-  isValidMove,
+  isLegalMove,
   isLastMove,
   isCheck,
-  hasGlyph,
+  isTargeted,
   onClick,
 }) => {
-  // Determine background color based on square position and state
-  const lightSquareColor = "#f0d9b5";
-  const darkSquareColor = "#b58863";
-  let backgroundColor = isLight ? lightSquareColor : darkSquareColor;
+  // Determine square background color
+  const backgroundColor = isLight ? "#e2e8f0" : "#94a3b8";
 
-  // Add a subtle indicator for the last move
-  const lastMoveStyle = isLastMove
-    ? {
-        boxShadow: "inset 0 0 0 3px rgba(255, 255, 0, 0.3)",
-      }
-    : {};
+  // Get square style object
+  const getSquareStyle = () => {
+    const style: React.CSSProperties = {
+      width: "60px",
+      height: "60px",
+      position: "relative",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor,
+      fontSize: "36px",
+      transition: "all 0.1s ease-in-out",
+    };
 
-  // Check indicator (red border)
-  const checkIndicator = isCheck
-    ? {
-        boxShadow: "inset 0 0 0 3px rgba(255, 0, 0, 0.6)",
-      }
-    : {};
+    // Add highlight for selected piece
+    if (isSelected) {
+      style.boxShadow = "inset 0 0 0 3px rgba(59, 130, 246, 0.8)";
+    }
 
-  // Glyph indicator (purple glow)
-  const glyphStyle = hasGlyph
-    ? {
-        backgroundImage:
-          "radial-gradient(circle at center, rgba(168, 85, 247, 0.2) 0%, transparent 70%)",
-      }
-    : {};
+    // Add highlight for king in check
+    if (isCheck) {
+      style.boxShadow = "inset 0 0 0 3px rgba(220, 38, 38, 0.8)";
+    }
 
-  // Selected square indicator (blue border)
-  const selectedStyle = isSelected
-    ? {
-        boxShadow: "inset 0 0 0 3px rgba(0, 0, 255, 0.4)",
-      }
-    : {};
+    // Add highlight for last move
+    if (isLastMove) {
+      style.backgroundColor = isLight
+        ? "rgba(186, 230, 253, 0.8)"
+        : "rgba(125, 211, 252, 0.6)";
+    }
+
+    // Add highlight for targeted squares
+    if (isTargeted) {
+      style.boxShadow = "inset 0 0 0 3px rgba(168, 85, 247, 0.8)";
+      style.backgroundColor = isLight
+        ? "rgba(233, 213, 255, 0.6)"
+        : "rgba(192, 132, 252, 0.4)";
+    }
+
+    return style;
+  };
+
+  // Get piece display content
+  const getPieceContent = () => {
+    if (!piece) return null;
+
+    // Map piece types to image paths
+    const getPieceImagePath = (color: string, type: string): string => {
+      return `/assets/Chess_Sprites/${color}_${type}.png`;
+    };
+
+    const pieceImagePath = getPieceImagePath(piece.color, piece.type);
+
+    const hasEffects = piece.effects && piece.effects.length > 0;
+
+    return (
+      <div
+        style={{
+          height: "85%",
+          width: "85%",
+          position: "relative",
+          zIndex: 2,
+        }}
+      >
+        <img
+          src={pieceImagePath}
+          alt={`${piece.color}${piece.type}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            filter: hasEffects
+              ? "drop-shadow(0 0 4px rgba(168, 85, 247, 0.8))"
+              : "none",
+          }}
+        />
+      </div>
+    );
+  };
+
+  // Render legal move indicator
+  const renderLegalMoveIndicator = () => {
+    if (!isLegalMove) return null;
+
+    if (piece) {
+      // Legal capture indicator - circle border
+      return (
+        <div
+          style={{
+            position: "absolute",
+            top: "0",
+            left: "0",
+            right: "0",
+            bottom: "0",
+            border: "3px solid rgba(0, 0, 0, 0.3)",
+            borderRadius: "50%",
+            zIndex: 1,
+          }}
+        />
+      );
+    } else {
+      // Legal move indicator - dot
+      return (
+        <div
+          style={{
+            width: "15px",
+            height: "15px",
+            borderRadius: "50%",
+            backgroundColor: "rgba(0, 0, 0, 0.2)",
+            zIndex: 1,
+          }}
+        />
+      );
+    }
+  };
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor,
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        ...lastMoveStyle,
-        ...checkIndicator,
-        ...glyphStyle,
-        ...selectedStyle,
-      }}
-      onClick={() => onClick(square)}
-    >
-      {/* Square notation (e.g., a1, h8) - visible in corners */}
+    <div style={getSquareStyle()} onClick={onClick}>
+      {getPieceContent()}
+      {renderLegalMoveIndicator()}
+
+      {/* Square notation - small text in bottom-right corner */}
       <div
         style={{
           position: "absolute",
           bottom: "2px",
-          left: "2px",
-          fontSize: "10px",
-          color: isLight ? "#b58863" : "#f0d9b5",
-          opacity: 0.7,
-          pointerEvents: "none",
+          right: "2px",
+          fontSize: "8px",
+          opacity: 0.6,
+          color: isLight ? "#0f172a" : "#e2e8f0",
         }}
       >
         {square}
       </div>
-
-      {/* Valid move indicator - only show for empty squares */}
-      {isValidMove && !piece && (
-        <div
-          style={{
-            width: "25%",
-            height: "25%",
-            borderRadius: "50%",
-            backgroundColor: "rgba(0, 0, 0, 0.2)",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
-      {/* Valid capture indicator - show for squares with opponent pieces */}
-      {isValidMove && piece && (
-        <div
-          style={{
-            position: "absolute",
-            inset: "0",
-            border: "3px solid rgba(0, 0, 0, 0.3)",
-            borderRadius: "50%",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
-      {/* Render piece if present */}
-      {piece && (
-        <Piece
-          piece={piece.piece as PieceCode}
-          effects={piece.effects || []}
-          onClick={() => onClick(square)}
-        />
-      )}
     </div>
   );
 };

@@ -1,9 +1,20 @@
 import { Chess, Move, Square as ChessSquare } from "chess.js";
-import { BoardState, Square as SquareType, PlayerColor } from "../types/game";
+import {
+  BoardState,
+  Square as SquareType,
+  PlayerColor,
+  PieceMeta,
+  MoveResult,
+  SpellTarget,
+  SpellCastResult,
+  GameState,
+} from "../types/game";
+import { SpellEngine } from "./SpellEngine";
+import { getSpellById } from "./spells";
 
 interface GlyphInfo {
-  turnsLeft: number;
-  triggered?: boolean;
+  square: string;
+  remaining: number;
 }
 
 /**
@@ -13,16 +24,29 @@ interface GlyphInfo {
 export class GameManager {
   private chess: Chess;
   private customBoardState: BoardState;
-  private currentPlayer: PlayerColor;
-  private moveHistory: Move[] = [];
+  private currentPlayer: PlayerColor = "w";
+  private lastMove: { from: SquareType; to: SquareType } | null = null;
   private effectTimers: Record<string, unknown> = {}; // Tracks time-based effects
   private glyphs: Record<string, GlyphInfo> = {};
+  private playerMana: Record<PlayerColor, number> = { w: 10, b: 10 };
+  private turn = 1;
+  private gameLog: string[] = [];
+  private spellEngine: SpellEngine;
+  private selectedSpell: string | null = null;
+  private kingPositions: Record<PlayerColor, SquareType> = {
+    w: "e1",
+    b: "e8",
+  };
 
   constructor() {
     this.chess = new Chess();
-    this.currentPlayer = "w"; // White starts
     this.customBoardState = {}; // Initialize with empty object first
     this.customBoardState = this.syncCustomBoardFromChess(); // Then populate it
+    this.spellEngine = new SpellEngine(
+      this.customBoardState,
+      this.chess,
+      this.currentPlayer
+    );
   }
 
   /**
@@ -70,8 +94,21 @@ export class GameManager {
   /**
    * Makes a standard chess move, handling both chess.js and customBoardState
    */
-  public makeMove(from: SquareType, to: SquareType): boolean {
+  public makeMove(from: SquareType, to: SquareType): MoveResult {
     try {
+      // Check for special effects that might prevent moves
+      if (this.hasAnchoredEffect(from)) {
+        return { success: false };
+      }
+
+      // Check pressure field effect
+      if (
+        this.spellEngine.hasPressureField() &&
+        this.spellEngine.isAdjacentToRook(to, this.currentPlayer)
+      ) {
+        return { success: false };
+      }
+
       // 1. Try the move in chess.js
       const move = this.chess.move({
         from: from as ChessSquare,
@@ -80,11 +117,11 @@ export class GameManager {
       });
 
       if (!move) {
-        return false; // Illegal move
+        return { success: false };
       }
 
       // 2. Record the move
-      this.moveHistory.push(move);
+      this.lastMove = { from, to };
 
       // 3. Update our custom board state to match
       this.customBoardState = this.syncCustomBoardFromChess();
@@ -95,10 +132,38 @@ export class GameManager {
       // 5. Process any end-of-turn effects
       this.processTurnEffects();
 
-      return true;
+      // Check if a piece was captured
+      if (move.captured) {
+        // If the captured piece was part of a spirit link, handle the special effects
+        this.spellEngine.onCapture(to);
+      }
+
+      // Check if a pawn was moved onto a glyph
+      if (this.customBoardState[to]?.piece[1] === "P") {
+        this.spellEngine.checkGlyphTrigger(to);
+      }
+
+      // Update king positions if a king moved
+      if (this.customBoardState[to]?.piece[1] === "K") {
+        this.kingPositions[this.customBoardState[to].piece[0] as PlayerColor] =
+          to;
+      }
+
+      // Log the move
+      this.gameLog.push(
+        `${
+          this.currentPlayer === "w" ? "White" : "Black"
+        } moved ${from} to ${to}`
+      );
+
+      return {
+        success: true,
+        isCheck: this.chess.isCheck(),
+        isCheckmate: this.chess.isCheckmate(),
+      };
     } catch (error) {
       console.error("Error making move:", error);
-      return false;
+      return { success: false };
     }
   }
 
@@ -218,7 +283,7 @@ export class GameManager {
     this.chess = new Chess();
     this.customBoardState = this.syncCustomBoardFromChess();
     this.currentPlayer = "w";
-    this.moveHistory = [];
+    this.lastMove = null;
     this.effectTimers = {};
     this.glyphs = {};
   }
@@ -251,5 +316,367 @@ export class GameManager {
    */
   public getGlyphs(): Record<string, GlyphInfo> {
     return { ...this.glyphs };
+  }
+
+  /**
+   * Get the current game state.
+   */
+  public getGameState(): GameState {
+    return {
+      boardState: this.customBoardState,
+      currentPlayer: this.currentPlayer,
+      playerMana: this.playerMana,
+      turn: this.turn,
+      status: this.getGameStatus(),
+      kingPositions: this.kingPositions,
+      gameLog: [...this.gameLog],
+    };
+  }
+
+  /**
+   * Get the current game status.
+   */
+  private getGameStatus() {
+    if (this.chess.isCheckmate()) return "checkmate";
+    if (this.chess.isDraw()) return "draw";
+    if (this.chess.isStalemate()) return "stalemate";
+    if (this.chess.isCheck()) return "check";
+    return "active";
+  }
+
+  /**
+   * End the current player's turn and switch to the other player
+   */
+  public endTurn(): void {
+    // Process end of turn effects
+    this.spellEngine.processEndOfTurnEffects();
+
+    // Switch player
+    this.currentPlayer = this.currentPlayer === "w" ? "b" : "w";
+
+    // Update turn counter if switching back to white
+    if (this.currentPlayer === "w") {
+      this.turn++;
+    }
+
+    // Add mana for the new turn (capped at 10)
+    this.playerMana[this.currentPlayer] = Math.min(
+      10,
+      this.playerMana[this.currentPlayer] + 2
+    );
+
+    // Update spell engine with new current player
+    this.spellEngine.updateReferences(
+      this.customBoardState,
+      this.chess,
+      this.currentPlayer
+    );
+
+    // Log the turn change
+    this.gameLog.push(
+      `Turn ${this.turn}: ${
+        this.currentPlayer === "w" ? "White" : "Black"
+      }'s turn`
+    );
+  }
+
+  /**
+   * Get valid moves for a given piece
+   */
+  public getValidMoves(square: SquareType): SquareType[] {
+    // If piece is anchored, it can't move
+    if (this.hasAnchoredEffect(square)) {
+      return [];
+    }
+
+    // Get all legal moves from chess.js
+    const moves = this.chess.moves({ square: square as any, verbose: true });
+
+    // Convert to an array of target squares
+    const validSquares = moves.map((move) => move.to as SquareType);
+
+    // Filter out moves that would end adjacent to a rook (if pressure field is active)
+    if (this.spellEngine.hasPressureField()) {
+      return validSquares.filter(
+        (sq) => !this.spellEngine.isAdjacentToRook(sq, this.currentPlayer)
+      );
+    }
+
+    return validSquares;
+  }
+
+  /**
+   * Select a spell for casting
+   */
+  public selectSpell(spellId: string): boolean {
+    const spell = getSpellById(spellId);
+    if (!spell) {
+      return false;
+    }
+
+    // Check if player has enough mana
+    if (this.playerMana[this.currentPlayer] < spell.manaCost) {
+      return false;
+    }
+
+    this.selectedSpell = spellId;
+    return true;
+  }
+
+  /**
+   * Get the currently selected spell ID
+   */
+  public getSelectedSpell(): string | null {
+    return this.selectedSpell;
+  }
+
+  /**
+   * Clear the selected spell
+   */
+  public clearSelectedSpell(): void {
+    this.selectedSpell = null;
+  }
+
+  /**
+   * Cast the selected spell with the provided targets
+   */
+  public castSpell(targets: SpellTarget): SpellCastResult {
+    // Make sure a spell is selected
+    if (!this.selectedSpell) {
+      return { success: false, error: "No spell selected" };
+    }
+
+    const spell = getSpellById(this.selectedSpell);
+    if (!spell) {
+      return { success: false, error: "Invalid spell" };
+    }
+
+    // Check if player has enough mana
+    if (this.playerMana[this.currentPlayer] < spell.manaCost) {
+      return { success: false, error: "Not enough mana" };
+    }
+
+    // Result of the spell casting
+    let success = false;
+    let affectedSquares: SquareType[] = [];
+
+    // Declare variables that will be used in multiple cases
+    let pawnSquares: SquareType[];
+    let summonSquare: SquareType;
+    let primarySquare: SquareType;
+    let backupSquares: SquareType[];
+    let moves: Array<{ from: SquareType; to: SquareType }>;
+
+    // Cast the spell based on its ID
+    switch (this.selectedSpell) {
+      case "astral_swap":
+        if (!targets.squares || targets.squares.length !== 2) {
+          return { success: false, error: "Astral Swap requires two pieces" };
+        }
+        success = this.spellEngine.castAstralSwap(
+          targets.squares[0],
+          targets.squares[1]
+        );
+        affectedSquares = targets.squares;
+        break;
+
+      case "phantom_step":
+        if (!targets.from || !targets.to) {
+          return {
+            success: false,
+            error: "Phantom Step requires source and destination squares",
+          };
+        }
+        success = this.spellEngine.castPhantomStep(targets.from, targets.to);
+        affectedSquares = [targets.from, targets.to];
+        break;
+
+      case "ember_crown":
+        if (!targets.squares || targets.squares.length === 0) {
+          return {
+            success: false,
+            error: "Ember Crown requires a target pawn",
+          };
+        }
+        success = this.spellEngine.castEmberCrown(targets.squares[0]);
+        affectedSquares = [targets.squares[0]];
+        break;
+
+      case "arcane_anchor":
+        if (!targets.squares || targets.squares.length === 0) {
+          return {
+            success: false,
+            error: "Arcane Anchor requires a target piece",
+          };
+        }
+        success = this.spellEngine.castArcaneAnchor(targets.squares[0]);
+        affectedSquares = [targets.squares[0]];
+        break;
+
+      case "mistform_knight":
+        if (!targets.from || !targets.to) {
+          return {
+            success: false,
+            error: "Mistform Knight requires source and destination squares",
+          };
+        }
+        success = this.spellEngine.castMistformKnight(targets.from, targets.to);
+        affectedSquares = [targets.from, targets.to];
+        break;
+
+      case "chrono_recall":
+        if (!targets.squares || targets.squares.length === 0) {
+          return {
+            success: false,
+            error: "Chrono Recall requires a target piece",
+          };
+        }
+        success = this.spellEngine.castChronoRecall(targets.squares[0]);
+        affectedSquares = [targets.squares[0]];
+        break;
+
+      case "cursed_glyph":
+        if (!targets.squares || targets.squares.length === 0) {
+          return {
+            success: false,
+            error: "Cursed Glyph requires a target square",
+          };
+        }
+        success = this.spellEngine.castCursedGlyph(targets.squares[0]);
+        affectedSquares = [targets.squares[0]];
+        break;
+
+      case "kings_gambit":
+        if (!targets.from || !targets.to) {
+          return {
+            success: false,
+            error: "King's Gambit requires source and destination squares",
+          };
+        }
+        success = this.spellEngine.castKingsGambit(targets.from, targets.to);
+        affectedSquares = [targets.from, targets.to];
+        break;
+
+      case "dark_conversion":
+        if (
+          !targets.squares ||
+          targets.squares.length < 4 ||
+          !targets.pieceType
+        ) {
+          return {
+            success: false,
+            error:
+              "Dark Conversion requires 3 pawns, a target square, and a piece type",
+          };
+        }
+        pawnSquares = targets.squares.slice(0, 3);
+        summonSquare = targets.squares[3];
+        success = this.spellEngine.castDarkConversion(
+          pawnSquares,
+          targets.pieceType as "N" | "B",
+          summonSquare
+        );
+        affectedSquares = targets.squares;
+        break;
+
+      case "spirit_link":
+        if (!targets.squares || targets.squares.length < 2) {
+          return {
+            success: false,
+            error:
+              "Spirit Link requires a primary piece and at least one backup",
+          };
+        }
+        primarySquare = targets.squares[0];
+        backupSquares = targets.squares.slice(1);
+        success = this.spellEngine.castSpiritLink(primarySquare, backupSquares);
+        affectedSquares = targets.squares;
+        break;
+
+      case "second_wind":
+        if (!targets.squares || targets.squares.length !== 4) {
+          return {
+            success: false,
+            error:
+              "Second Wind requires two source and two destination squares",
+          };
+        }
+        moves = [
+          { from: targets.squares[0], to: targets.squares[1] },
+          { from: targets.squares[2], to: targets.squares[3] },
+        ];
+        success = this.spellEngine.castSecondWind(moves);
+        affectedSquares = targets.squares;
+        break;
+
+      case "pressure_field":
+        success = this.spellEngine.castPressureField();
+        break;
+
+      case "nullfield":
+        if (!targets.squares || targets.squares.length === 0) {
+          return {
+            success: false,
+            error: "Nullfield requires a target square",
+          };
+        }
+        success = this.spellEngine.castNullfield(targets.squares[0]);
+        affectedSquares = [targets.squares[0]];
+        break;
+
+      case "veil_of_shadows":
+        success = this.spellEngine.castVeilOfShadows();
+        break;
+
+      case "raise_the_bonewalker":
+        if (!targets.squares || targets.squares.length === 0) {
+          return {
+            success: false,
+            error: "Raise the Bonewalker requires a target square",
+          };
+        }
+        success = this.spellEngine.castRaiseTheBonewalker(targets.squares[0]);
+        affectedSquares = [targets.squares[0]];
+        break;
+
+      default:
+        return { success: false, error: "Unimplemented spell" };
+    }
+
+    if (success) {
+      // Deduct mana cost
+      this.playerMana[this.currentPlayer] -= spell.manaCost;
+
+      // Log the spell cast
+      this.gameLog.push(
+        `${this.currentPlayer === "w" ? "White" : "Black"} cast ${spell.name}`
+      );
+
+      // Clear selected spell
+      this.clearSelectedSpell();
+
+      return {
+        success: true,
+        affectedSquares,
+        message: `${spell.name} cast successfully`,
+      };
+    } else {
+      return {
+        success: false,
+        error: `Failed to cast ${spell.name}. Check spell requirements.`,
+      };
+    }
+  }
+
+  private hasAnchoredEffect(square: SquareType): boolean {
+    const piece = this.customBoardState[square];
+    return piece?.effects?.includes("anchored") || false;
+  }
+
+  /**
+   * Check if the board should be hidden due to Veil of Shadows
+   */
+  public hasVeilOfShadows(): boolean {
+    return this.spellEngine.hasVeilOfShadows();
   }
 }

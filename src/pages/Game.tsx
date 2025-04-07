@@ -1,35 +1,44 @@
-import { useGame } from "../context/GameContext";
-import { useChess } from "../context/ChessContext";
+import React, { useState } from "react";
 import ChessBoard from "../components/chess/ChessBoard";
+import { ChessProvider, useChess } from "../context/ChessContext";
 import SpellCard from "../components/chess/SpellCard";
-import { useState, useEffect } from "react";
+import { getSpellById } from "../utils/spells";
+import { Spell, SpellId } from "../types/types";
+import "../styles/SpellCard.css";
 import backgroundImage from "/assets/MainMenu_Background.png";
 
-const Game = () => {
-  const { gameConfig } = useGame();
-  const { gameManager, updateCounter } = useChess();
-  const [selectedSpell, setSelectedSpell] = useState<string | null>(null);
-  const [currentPlayer, setCurrentPlayer] = useState<"w" | "b">(
-    gameManager.getCurrentPlayer()
-  );
+const GameContent: React.FC = () => {
+  const {
+    currentPlayer,
+    playerMana,
+    playerSpells,
+    selectedSpell,
+    selectSpell,
+    endTurn,
+    gameLog,
+  } = useChess();
 
-  // Update current player after each move
-  useEffect(() => {
-    const player = gameManager.getCurrentPlayer();
-    setCurrentPlayer(player);
-  }, [gameManager, updateCounter]);
+  const [logExpanded, setLogExpanded] = useState(true);
 
-  const handleSpellClick = (spellId: string) => {
-    // Toggle selected spell
-    setSelectedSpell((prev) => (prev === spellId ? null : spellId));
+  // Get spell objects from spell IDs
+  const spells =
+    playerSpells[currentPlayer]
+      ?.map((id: SpellId) => getSpellById(id))
+      .filter(Boolean) || [];
+
+  // Handle spell selection
+  const handleSpellSelect = (spellId: SpellId) => {
+    if (selectedSpell === spellId) {
+      // Deselect if already selected
+      selectSpell(null);
+    } else {
+      selectSpell(spellId);
+    }
   };
 
-  // Determine if this is the player's turn
-  const isPlayerTurn = currentPlayer === gameConfig.playerColor;
-
-  // Check if player has enough mana to cast a spell
-  const canCastSpell = (manaCost: number) => {
-    return isPlayerTurn && gameConfig.mana >= manaCost;
+  // Handle end turn button click
+  const handleEndTurn = () => {
+    endTurn();
   };
 
   return (
@@ -85,8 +94,8 @@ const Game = () => {
             <span
               style={{
                 fontWeight: "bold",
-                backgroundColor: currentPlayer === "w" ? "#d1d5db" : "white",
-                color: "#1e293b",
+                backgroundColor: currentPlayer === "w" ? "#d1d5db" : "black",
+                color: currentPlayer === "w" ? "#1e293b" : "white",
                 padding: "2px 8px",
                 borderRadius: "4px",
               }}
@@ -108,7 +117,7 @@ const Game = () => {
           >
             <span>Mana:</span>
             <span style={{ color: "#a855f7", fontWeight: "bold" }}>
-              {gameConfig.mana}/{gameConfig.maxMana}
+              {playerMana[currentPlayer]}/10
             </span>
           </div>
         </div>
@@ -124,7 +133,7 @@ const Game = () => {
           justifyContent: "space-between",
         }}
       >
-        {/* Spells panel - fixed width and height */}
+        {/* Spells panel - fixed width */}
         <div
           style={{
             display: "flex",
@@ -134,14 +143,13 @@ const Game = () => {
             backgroundColor: "rgba(15, 23, 42, 0.8)",
             borderRadius: "0 0 8px 0",
             width: "110px",
-            height: "360px",
             margin: "0",
-            flexShrink: 0,
+            height: "fit-content",
           }}
         >
           <h2
             style={{
-              fontSize: "11px",
+              fontSize: "12px",
               fontWeight: "600",
               margin: "0",
               textAlign: "center",
@@ -158,43 +166,38 @@ const Game = () => {
             style={{
               display: "flex",
               flexDirection: "column",
-              justifyContent: "space-between",
-              height: "290px",
-              overflow: "hidden",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            {gameConfig.selectedSpells.map((spell) => (
-              <SpellCard
-                key={spell.id}
-                spell={spell}
-                isSelected={selectedSpell === spell.id}
-                isDisabled={!canCastSpell(spell.manaCost)}
-                onClick={() => handleSpellClick(spell.id)}
-              />
-            ))}
+            {spells.map(
+              (spell: Spell) =>
+                spell && (
+                  <SpellCard
+                    key={spell.id}
+                    spell={spell}
+                    isSelected={selectedSpell === spell.id}
+                    isDisabled={false}
+                    playerMana={playerMana[currentPlayer]}
+                    onSelect={handleSpellSelect}
+                  />
+                )
+            )}
           </div>
 
           <button
-            onClick={() =>
-              alert(
-                "End turn functionality will be implemented in the next step"
-              )
-            }
+            onClick={handleEndTurn}
             style={{
-              backgroundColor: isPlayerTurn
-                ? "rgba(147, 51, 234, 0.9)"
-                : "rgba(75, 85, 99, 0.7)",
+              backgroundColor: "rgba(147, 51, 234, 0.9)",
               color: "white",
-              padding: "4px",
+              padding: "8px",
               borderRadius: "4px",
               fontWeight: "600",
               border: "none",
-              cursor: isPlayerTurn ? "pointer" : "not-allowed",
-              marginTop: "auto",
+              cursor: "pointer",
+              marginTop: "12px",
               transition: "all 0.3s",
-              fontSize: "11px",
             }}
-            disabled={!isPlayerTurn}
           >
             End Turn
           </button>
@@ -235,29 +238,59 @@ const Game = () => {
               textAlign: "center",
               borderBottom: "1px solid rgba(100, 116, 139, 0.5)",
               paddingBottom: "6px",
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
             }}
+            onClick={() => setLogExpanded(!logExpanded)}
           >
             Game Log
+            <span>{logExpanded ? "▲" : "▼"}</span>
           </h2>
 
-          <div
-            style={{
-              padding: "8px",
-              backgroundColor: "rgba(15, 23, 42, 0.6)",
-              borderRadius: "4px",
-              fontSize: "12px",
-              maxHeight: "300px",
-              overflow: "auto",
-            }}
-          >
-            <p>Game started. White to move.</p>
-            <p style={{ color: "#94a3b8", fontSize: "10px" }}>
-              Game log will be implemented in next steps.
-            </p>
-          </div>
+          {logExpanded && (
+            <div
+              style={{
+                padding: "8px",
+                backgroundColor: "rgba(15, 23, 42, 0.6)",
+                borderRadius: "4px",
+                fontSize: "12px",
+                maxHeight: "300px",
+                overflow: "auto",
+              }}
+            >
+              {gameLog.length > 0 ? (
+                gameLog.map((entry, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      marginBottom: "4px",
+                      padding: "2px 0",
+                      borderBottom:
+                        index < gameLog.length - 1
+                          ? "1px solid rgba(100, 116, 139, 0.2)"
+                          : "none",
+                    }}
+                  >
+                    {entry}
+                  </div>
+                ))
+              ) : (
+                <p>Game started. White to move.</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
+  );
+};
+
+const Game: React.FC = () => {
+  return (
+    <ChessProvider>
+      <GameContent />
+    </ChessProvider>
   );
 };
 

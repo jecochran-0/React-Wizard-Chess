@@ -1,155 +1,115 @@
 import React from "react";
-import { Spell } from "../../types/game";
+import { Spell } from "../../types/types";
 
-// Import spell card images
-import astralSwapImg from "/assets/Chess_Spells/ChatGPT Image Apr 4, 2025, 05_35_35 PM.png";
-import phantomStepImg from "/assets/Chess_Spells/Phantom_Step.png";
-import emberCrownImg from "/assets/Chess_Spells/Ember_Crown.png";
-import arcaneAnchorImg from "/assets/Chess_Spells/Arcane_Anchor.png";
-import mistformKnightImg from "/assets/Chess_Spells/Mistform_Knight.png";
-import chronoRecallImg from "/assets/Chess_Spells/Chrono_Recall.png";
-import cursedGlyphImg from "/assets/Chess_Spells/Cursed_Glyph.png";
-import kingsGambitImg from "/assets/Chess_Spells/Kings_Gambit.png";
-import darkConversionImg from "/assets/Chess_Spells/Dark_Conversion.png";
-import spiritLinkImg from "/assets/Chess_Spells/Spirit_Link.png";
-import secondWindImg from "/assets/Chess_Spells/Second_Wind.png";
-import pressureFieldImg from "/assets/Chess_Spells/Pressure_Field.png";
-import nullfieldImg from "/assets/Chess_Spells/nullfield.png";
-import veilOfShadowsImg from "/assets/Chess_Spells/Veil_Of_Shadows.png";
-import bonewalkerImg from "/assets/Chess_Spells/Raise_The_Bonewalker.png";
-import cardBackImg from "/assets/Chess_Spells/spell_card_back.png";
-
-// Map spell IDs to their respective images
+// Map of spell IDs to their image files
 const spellImages: Record<string, string> = {
-  "astral-swap": astralSwapImg,
-  "phantom-step": phantomStepImg,
-  "ember-crown": emberCrownImg,
-  "arcane-anchor": arcaneAnchorImg,
-  "mistform-knight": mistformKnightImg,
-  "chrono-recall": chronoRecallImg,
-  "cursed-glyph": cursedGlyphImg,
-  "kings-gambit": kingsGambitImg,
-  "dark-conversion": darkConversionImg,
-  "spirit-link": spiritLinkImg,
-  "second-wind": secondWindImg,
-  "pressure-field": pressureFieldImg,
-  nullfield: nullfieldImg,
-  "veil-shadows": veilOfShadowsImg,
-  bonewalker: bonewalkerImg,
+  astralSwap: "/assets/Chess_Spells/ChatGPT Image Apr 4, 2025, 05_35_35 PM.png",
+  emberCrown: "/assets/Chess_Spells/Ember_Crown.png",
+  frostShield: "/assets/Chess_Spells/Arcane_Anchor.png", // Using Arcane_Anchor for Frost Shield
+  shadowStrike: "/assets/Chess_Spells/Veil_Of_Shadows.png",
+  arcaneArmor: "/assets/Chess_Spells/Arcane_Anchor.png",
+  timeWarp: "/assets/Chess_Spells/Chrono_Recall.png",
+  default: "/assets/Chess_Spells/spell_card_back.png",
 };
 
 interface SpellCardProps {
   spell: Spell;
-  isSelected?: boolean;
-  isDisabled?: boolean;
-  onClick: () => void;
+  isSelected: boolean;
+  isDisabled: boolean;
+  playerMana: number;
+  onSelect: (spellId: string) => void;
 }
 
 const SpellCard: React.FC<SpellCardProps> = ({
   spell,
-  isSelected = false,
-  isDisabled = false,
-  onClick,
+  isSelected,
+  isDisabled,
+  playerMana,
+  onSelect,
 }) => {
-  // Function to determine if the spell is castable (has enough mana)
-  const isCastable = !isDisabled;
-  const spellImage = spellImages[spell.id] || cardBackImg;
+  // Check if player has enough mana
+  const hasEnoughMana = playerMana >= spell.manaCost;
+  // Determine if the card is usable
+  const isUsable = !isDisabled && hasEnoughMana;
+
+  // Handle click on spell card
+  const handleClick = () => {
+    if (isUsable) {
+      onSelect(spell.id);
+    }
+  };
+
+  // Get the spell's image
+  const getSpellImage = () => {
+    const imagePath = spellImages[spell.id] || spellImages.default;
+
+    return (
+      <div className="spell-card-image">
+        <img
+          src={imagePath}
+          alt={spell.name}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            borderRadius: "4px 4px 0 0",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "0",
+            width: "100%",
+            backgroundColor: "rgba(15, 23, 42, 0.7)",
+            padding: "2px 4px",
+            fontSize: "9px",
+            color: "white",
+            textAlign: "center",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {spell.name}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "40px",
-        marginBottom: "5px",
-        cursor: isDisabled ? "not-allowed" : "pointer",
-        opacity: isDisabled ? 0.7 : 1,
-        transform: isSelected ? "translateY(-1px)" : "none",
-        transition: "all 0.2s ease",
-      }}
-      onClick={isCastable ? onClick : undefined}
+      className={`spell-card ${isSelected ? "selected" : ""} ${
+        !isUsable ? "disabled" : ""
+      }`}
+      onClick={handleClick}
+      title={`${spell.name}: ${spell.description} (Cost: ${spell.manaCost})`}
     >
-      {/* Card Image */}
-      <img
-        src={spellImage}
-        alt={spell.name}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          borderRadius: "3px",
-          border: isSelected
-            ? "1px solid #a855f7"
-            : "1px solid rgba(255, 255, 255, 0.2)",
-          boxShadow: isSelected
-            ? "0 0 5px rgba(168, 85, 247, 0.4)"
-            : "0 1px 3px rgba(0, 0, 0, 0.2)",
-          transition: "all 0.2s ease",
-        }}
-      />
+      <div className="spell-card-inner">
+        {getSpellImage()}
+        <div className="mana-cost">{spell.manaCost}</div>
 
-      {/* Mana Cost Badge */}
-      <div
-        style={{
-          position: "absolute",
-          top: "2px",
-          right: "2px",
-          backgroundColor: "rgba(59, 130, 246, 0.9)",
-          color: "white",
-          fontSize: "9px",
-          fontWeight: "bold",
-          padding: "1px 3px",
-          borderRadius: "2px",
-          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
-          border: "1px solid rgba(255, 255, 255, 0.3)",
-          lineHeight: 1,
-        }}
-      >
-        {spell.manaCost}
+        {/* Disabled overlay when spell can't be cast */}
+        {!isUsable && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontSize: "10px",
+              borderRadius: "4px",
+            }}
+          >
+            {!hasEnoughMana ? "Need Mana" : "Cannot Cast"}
+          </div>
+        )}
       </div>
-
-      {/* Selected Glow Effect */}
-      {isSelected && (
-        <div
-          style={{
-            position: "absolute",
-            inset: "-1px",
-            borderRadius: "4px",
-            background:
-              "radial-gradient(circle at center, rgba(168, 85, 247, 0.3) 0%, transparent 70%)",
-            pointerEvents: "none",
-            animation: "pulse 2s infinite",
-          }}
-        />
-      )}
-
-      {/* Disabled Overlay */}
-      {isDisabled && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "3px",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontSize: "8px",
-            textAlign: "center",
-            padding: "2px",
-          }}
-        >
-          No mana
-        </div>
-      )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-      `}</style>
     </div>
   );
 };
