@@ -1,12 +1,23 @@
 import { useGame } from "../context/GameContext";
+import { useChess } from "../context/ChessContext";
 import ChessBoard from "../components/chess/ChessBoard";
 import SpellCard from "../components/chess/SpellCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import backgroundImage from "/assets/MainMenu_Background.png";
 
 const Game = () => {
   const { gameConfig } = useGame();
+  const { gameManager, updateCounter } = useChess();
   const [selectedSpell, setSelectedSpell] = useState<string | null>(null);
-  const [currentPlayer] = useState<"w" | "b">("w"); // White starts
+  const [currentPlayer, setCurrentPlayer] = useState<"w" | "b">(
+    gameManager.getCurrentPlayer()
+  );
+
+  // Update current player after each move
+  useEffect(() => {
+    const player = gameManager.getCurrentPlayer();
+    setCurrentPlayer(player);
+  }, [gameManager, updateCounter]);
 
   const handleSpellClick = (spellId: string) => {
     // Toggle selected spell
@@ -23,15 +34,15 @@ const Game = () => {
 
   return (
     <div
-      className="game-container"
       style={{
-        minHeight: "100vh",
+        height: "100vh",
+        width: "100vw",
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        background:
-          "linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #0f172a 100%)",
-        color: "white",
-        padding: "1rem",
       }}
     >
       {/* Header with game info */}
@@ -40,48 +51,44 @@ const Game = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1rem",
-          padding: "0.5rem",
-          borderRadius: "0.5rem",
-          backgroundColor: "rgba(30, 41, 59, 0.7)",
+          padding: "10px 20px",
+          backgroundColor: "rgba(15, 23, 42, 0.8)",
+          borderBottom: "1px solid rgba(100, 116, 139, 0.3)",
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-              margin: 0,
-              backgroundImage:
-                "linear-gradient(135deg, #a855f7 10%, #d8b4fe 80%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            Wizard's Chess
-          </h1>
-        </div>
+        <h1
+          style={{
+            fontSize: "24px",
+            fontWeight: "bold",
+            margin: 0,
+            background: "linear-gradient(135deg, #a855f7 10%, #d8b4fe 80%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          Wizard's Chess
+        </h1>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <div style={{ display: "flex", gap: "20px" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.3rem 0.6rem",
+              gap: "8px",
+              padding: "4px 10px",
               backgroundColor: "rgba(15, 23, 42, 0.7)",
-              borderRadius: "0.4rem",
+              borderRadius: "6px",
+              color: "white",
             }}
           >
             <span>Turn:</span>
             <span
               style={{
                 fontWeight: "bold",
-                color: currentPlayer === "w" ? "#f8fafc" : "#1e293b",
-                backgroundColor: currentPlayer === "w" ? "#94a3b8" : "#f8fafc",
-                padding: "0.1rem 0.5rem",
-                borderRadius: "0.3rem",
+                backgroundColor: currentPlayer === "w" ? "#d1d5db" : "white",
+                color: "#1e293b",
+                padding: "2px 8px",
+                borderRadius: "4px",
               }}
             >
               {currentPlayer === "w" ? "White" : "Black"}
@@ -92,55 +99,56 @@ const Game = () => {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.3rem 0.6rem",
+              gap: "8px",
+              padding: "4px 10px",
               backgroundColor: "rgba(15, 23, 42, 0.7)",
-              borderRadius: "0.4rem",
+              borderRadius: "6px",
+              color: "white",
             }}
           >
             <span>Mana:</span>
-            <span
-              style={{
-                color: "#a855f7",
-                fontWeight: "bold",
-              }}
-            >
+            <span style={{ color: "#a855f7", fontWeight: "bold" }}>
               {gameConfig.mana}/{gameConfig.maxMana}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Main game area: spells on left, board in center */}
+      {/* Main game area */}
       <div
         style={{
           display: "flex",
-          flexDirection: "row",
-          gap: "1rem",
           flexGrow: 1,
-          flexWrap: "wrap",
+          height: "calc(100vh - 60px)",
+          width: "100%",
+          justifyContent: "space-between",
         }}
       >
-        {/* Spells panel */}
+        {/* Spells panel - fixed width and height */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "0.6rem",
-            padding: "1rem",
-            backgroundColor: "rgba(30, 41, 59, 0.7)",
-            borderRadius: "0.5rem",
-            minWidth: "200px",
-            maxWidth: "250px",
+            gap: "4px",
+            padding: "8px",
+            backgroundColor: "rgba(15, 23, 42, 0.8)",
+            borderRadius: "0 0 8px 0",
+            width: "110px",
+            height: "360px",
+            margin: "0",
+            flexShrink: 0,
           }}
         >
           <h2
             style={{
-              fontSize: "1.1rem",
-              margin: "0 0 0.5rem 0",
+              fontSize: "11px",
+              fontWeight: "600",
+              margin: "0",
               textAlign: "center",
               borderBottom: "1px solid rgba(100, 116, 139, 0.5)",
-              paddingBottom: "0.5rem",
+              paddingBottom: "4px",
+              marginBottom: "4px",
+              color: "white",
             }}
           >
             Your Spells
@@ -150,8 +158,9 @@ const Game = () => {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "0.6rem",
-              flexGrow: 1,
+              justifyContent: "space-between",
+              height: "290px",
+              overflow: "hidden",
             }}
           >
             {gameConfig.selectedSpells.map((spell) => (
@@ -176,13 +185,14 @@ const Game = () => {
                 ? "rgba(147, 51, 234, 0.9)"
                 : "rgba(75, 85, 99, 0.7)",
               color: "white",
-              padding: "0.6rem",
-              borderRadius: "0.4rem",
-              fontWeight: "bold",
+              padding: "4px",
+              borderRadius: "4px",
+              fontWeight: "600",
               border: "none",
               cursor: isPlayerTurn ? "pointer" : "not-allowed",
-              marginTop: "0.5rem",
+              marginTop: "auto",
               transition: "all 0.3s",
+              fontSize: "11px",
             }}
             disabled={!isPlayerTurn}
           >
@@ -190,38 +200,41 @@ const Game = () => {
           </button>
         </div>
 
-        {/* Chess board */}
+        {/* Chess board - centered */}
         <div
           style={{
-            flexGrow: 1,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            flexGrow: 1,
+            padding: "10px",
           }}
         >
           <ChessBoard />
         </div>
 
-        {/* Game log - could be added in the future */}
+        {/* Game log - fixed width */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            padding: "1rem",
-            backgroundColor: "rgba(30, 41, 59, 0.7)",
-            borderRadius: "0.5rem",
-            minWidth: "200px",
-            maxWidth: "250px",
-            height: "100%",
+            gap: "8px",
+            padding: "10px",
+            backgroundColor: "rgba(15, 23, 42, 0.8)",
+            borderRadius: "0 0 0 8px",
+            width: "180px",
+            margin: "0",
+            color: "white",
+            height: "fit-content",
           }}
         >
           <h2
             style={{
-              fontSize: "1.1rem",
-              margin: "0 0 0.5rem 0",
+              fontSize: "14px",
+              margin: "0",
               textAlign: "center",
               borderBottom: "1px solid rgba(100, 116, 139, 0.5)",
-              paddingBottom: "0.5rem",
+              paddingBottom: "6px",
             }}
           >
             Game Log
@@ -229,14 +242,18 @@ const Game = () => {
 
           <div
             style={{
-              fontSize: "0.9rem",
-              color: "#94a3b8",
-              flexGrow: 1,
-              overflowY: "auto",
+              padding: "8px",
+              backgroundColor: "rgba(15, 23, 42, 0.6)",
+              borderRadius: "4px",
+              fontSize: "12px",
+              maxHeight: "300px",
+              overflow: "auto",
             }}
           >
             <p>Game started. White to move.</p>
-            <p>Game log will be implemented in next steps.</p>
+            <p style={{ color: "#94a3b8", fontSize: "10px" }}>
+              Game log will be implemented in next steps.
+            </p>
           </div>
         </div>
       </div>

@@ -1,6 +1,43 @@
 import React from "react";
 import { Spell } from "../../types/game";
 
+// Import spell card images
+import astralSwapImg from "/assets/Chess_Spells/ChatGPT Image Apr 4, 2025, 05_35_35 PM.png";
+import phantomStepImg from "/assets/Chess_Spells/Phantom_Step.png";
+import emberCrownImg from "/assets/Chess_Spells/Ember_Crown.png";
+import arcaneAnchorImg from "/assets/Chess_Spells/Arcane_Anchor.png";
+import mistformKnightImg from "/assets/Chess_Spells/Mistform_Knight.png";
+import chronoRecallImg from "/assets/Chess_Spells/Chrono_Recall.png";
+import cursedGlyphImg from "/assets/Chess_Spells/Cursed_Glyph.png";
+import kingsGambitImg from "/assets/Chess_Spells/Kings_Gambit.png";
+import darkConversionImg from "/assets/Chess_Spells/Dark_Conversion.png";
+import spiritLinkImg from "/assets/Chess_Spells/Spirit_Link.png";
+import secondWindImg from "/assets/Chess_Spells/Second_Wind.png";
+import pressureFieldImg from "/assets/Chess_Spells/Pressure_Field.png";
+import nullfieldImg from "/assets/Chess_Spells/nullfield.png";
+import veilOfShadowsImg from "/assets/Chess_Spells/Veil_Of_Shadows.png";
+import bonewalkerImg from "/assets/Chess_Spells/Raise_The_Bonewalker.png";
+import cardBackImg from "/assets/Chess_Spells/spell_card_back.png";
+
+// Map spell IDs to their respective images
+const spellImages: Record<string, string> = {
+  "astral-swap": astralSwapImg,
+  "phantom-step": phantomStepImg,
+  "ember-crown": emberCrownImg,
+  "arcane-anchor": arcaneAnchorImg,
+  "mistform-knight": mistformKnightImg,
+  "chrono-recall": chronoRecallImg,
+  "cursed-glyph": cursedGlyphImg,
+  "kings-gambit": kingsGambitImg,
+  "dark-conversion": darkConversionImg,
+  "spirit-link": spiritLinkImg,
+  "second-wind": secondWindImg,
+  "pressure-field": pressureFieldImg,
+  nullfield: nullfieldImg,
+  "veil-shadows": veilOfShadowsImg,
+  bonewalker: bonewalkerImg,
+};
+
 interface SpellCardProps {
   spell: Spell;
   isSelected?: boolean;
@@ -16,94 +53,103 @@ const SpellCard: React.FC<SpellCardProps> = ({
 }) => {
   // Function to determine if the spell is castable (has enough mana)
   const isCastable = !isDisabled;
-
-  // Card style varies based on selection and disabled state
-  const cardStyle: React.CSSProperties = {
-    position: "relative",
-    padding: "0.5rem",
-    borderRadius: "0.5rem",
-    backgroundColor: isSelected
-      ? "rgba(139, 92, 246, 0.3)"
-      : "rgba(15, 23, 42, 0.7)",
-    border: isSelected
-      ? "2px solid #a855f7"
-      : "1px solid rgba(100, 116, 139, 0.5)",
-    boxShadow: isSelected
-      ? "0 0 15px rgba(168, 85, 247, 0.4)"
-      : "0 4px 6px rgba(0, 0, 0, 0.1)",
-    transition: "all 0.2s ease",
-    opacity: isDisabled ? 0.6 : 1,
-    cursor: isDisabled ? "not-allowed" : "pointer",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-  };
+  const spellImage = spellImages[spell.id] || cardBackImg;
 
   return (
     <div
-      style={cardStyle}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "40px",
+        marginBottom: "5px",
+        cursor: isDisabled ? "not-allowed" : "pointer",
+        opacity: isDisabled ? 0.7 : 1,
+        transform: isSelected ? "translateY(-1px)" : "none",
+        transition: "all 0.2s ease",
+      }}
       onClick={isCastable ? onClick : undefined}
-      className="spell-card"
     >
-      {/* Spell Name */}
-      <div
+      {/* Card Image */}
+      <img
+        src={spellImage}
+        alt={spell.name}
         style={{
-          fontWeight: "bold",
-          fontSize: "0.9rem",
-          marginBottom: "0.3rem",
-          textAlign: "center",
-          color: isSelected ? "#d8b4fe" : "white",
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          borderRadius: "3px",
+          border: isSelected
+            ? "1px solid #a855f7"
+            : "1px solid rgba(255, 255, 255, 0.2)",
+          boxShadow: isSelected
+            ? "0 0 5px rgba(168, 85, 247, 0.4)"
+            : "0 1px 3px rgba(0, 0, 0, 0.2)",
+          transition: "all 0.2s ease",
         }}
-      >
-        {spell.name}
-      </div>
+      />
 
-      {/* Mana Cost */}
+      {/* Mana Cost Badge */}
       <div
         style={{
           position: "absolute",
-          top: "0.3rem",
-          right: "0.3rem",
-          backgroundColor: "rgba(59, 130, 246, 0.7)",
+          top: "2px",
+          right: "2px",
+          backgroundColor: "rgba(59, 130, 246, 0.9)",
           color: "white",
-          fontSize: "0.75rem",
-          borderRadius: "0.3rem",
-          padding: "0.1rem 0.3rem",
+          fontSize: "9px",
           fontWeight: "bold",
+          padding: "1px 3px",
+          borderRadius: "2px",
+          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
+          lineHeight: 1,
         }}
       >
         {spell.manaCost}
       </div>
 
-      {/* Spell Description */}
-      <div
-        style={{
-          fontSize: "0.75rem",
-          color: "#e2e8f0",
-          marginTop: "auto",
-          lineHeight: "1.1",
-        }}
-      >
-        {spell.description.length > 70
-          ? `${spell.description.substring(0, 70)}...`
-          : spell.description}
-      </div>
-
-      {/* Selected Indicator */}
+      {/* Selected Glow Effect */}
       {isSelected && (
         <div
           style={{
             position: "absolute",
-            bottom: "0.4rem",
-            right: "0.4rem",
-            width: "0.5rem",
-            height: "0.5rem",
-            borderRadius: "50%",
-            backgroundColor: "#a855f7",
-            boxShadow: "0 0 5px #a855f7",
+            inset: "-1px",
+            borderRadius: "4px",
+            background:
+              "radial-gradient(circle at center, rgba(168, 85, 247, 0.3) 0%, transparent 70%)",
+            pointerEvents: "none",
+            animation: "pulse 2s infinite",
           }}
-        ></div>
+        />
       )}
+
+      {/* Disabled Overlay */}
+      {isDisabled && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "3px",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontSize: "8px",
+            textAlign: "center",
+            padding: "2px",
+          }}
+        >
+          No mana
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { GameProvider, useGame } from "./context/GameContext";
+import { ChessProvider } from "./context/ChessContext";
 import MainMenu from "./pages/MainMenu";
 import SpellSelection from "./pages/SpellSelection";
 import Game from "./pages/Game";
@@ -12,7 +13,11 @@ function GameContent() {
     case "spell-selection":
       return <SpellSelection />;
     case "game":
-      return <Game />;
+      return (
+        <ChessProvider>
+          <Game />
+        </ChessProvider>
+      );
     default:
       return <MainMenu />;
   }

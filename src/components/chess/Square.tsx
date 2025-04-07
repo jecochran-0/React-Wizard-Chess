@@ -17,7 +17,7 @@ interface SquareProps {
 
 const Square: React.FC<SquareProps> = ({
   square,
-  piece = null,
+  piece,
   isLight,
   isSelected,
   isValidMove,
@@ -26,44 +26,42 @@ const Square: React.FC<SquareProps> = ({
   hasGlyph,
   onClick,
 }) => {
-  // Determine the background color based on the square properties
-  let backgroundColor: string;
+  // Determine background color based on square position and state
+  const lightSquareColor = "#f0d9b5";
+  const darkSquareColor = "#b58863";
+  let backgroundColor = isLight ? lightSquareColor : darkSquareColor;
 
-  if (isSelected) {
-    backgroundColor = isLight ? "#f0d9b5" : "#b58863";
-  } else if (isValidMove) {
-    backgroundColor = isLight
-      ? "rgba(100, 255, 100, 0.5)"
-      : "rgba(100, 200, 100, 0.4)";
-  } else if (isLastMove) {
-    backgroundColor = isLight
-      ? "rgba(255, 255, 0, 0.2)"
-      : "rgba(255, 255, 0, 0.15)";
-  } else {
-    backgroundColor = isLight ? "#f0d9b5" : "#b58863";
-  }
+  // Add a subtle indicator for the last move
+  const lastMoveStyle = isLastMove
+    ? {
+        boxShadow: "inset 0 0 0 3px rgba(255, 255, 0, 0.3)",
+      }
+    : {};
 
-  // Check indicator
-  const checkIndicator: React.CSSProperties =
-    isCheck && piece && piece.piece.endsWith("K")
-      ? {
-          boxShadow: "inset 0 0 15px rgba(255, 0, 0, 0.7)",
-          border: "2px solid rgba(255, 0, 0, 0.6)",
-        }
-      : {};
+  // Check indicator (red border)
+  const checkIndicator = isCheck
+    ? {
+        boxShadow: "inset 0 0 0 3px rgba(255, 0, 0, 0.6)",
+      }
+    : {};
 
-  // Glyph indicator
-  const glyphStyle: React.CSSProperties = hasGlyph
+  // Glyph indicator (purple glow)
+  const glyphStyle = hasGlyph
     ? {
         backgroundImage:
-          "radial-gradient(circle, transparent 60%, rgba(128, 0, 128, 0.3) 90%)",
-        boxShadow: "inset 0 0 5px purple",
+          "radial-gradient(circle at center, rgba(168, 85, 247, 0.2) 0%, transparent 70%)",
+      }
+    : {};
+
+  // Selected square indicator (blue border)
+  const selectedStyle = isSelected
+    ? {
+        boxShadow: "inset 0 0 0 3px rgba(0, 0, 255, 0.4)",
       }
     : {};
 
   return (
     <div
-      className="square"
       style={{
         width: "100%",
         height: "100%",
@@ -72,8 +70,10 @@ const Square: React.FC<SquareProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        ...lastMoveStyle,
         ...checkIndicator,
         ...glyphStyle,
+        ...selectedStyle,
       }}
       onClick={() => onClick(square)}
     >
@@ -92,14 +92,27 @@ const Square: React.FC<SquareProps> = ({
         {square}
       </div>
 
-      {/* Move indicator */}
+      {/* Valid move indicator - only show for empty squares */}
       {isValidMove && !piece && (
         <div
           style={{
-            width: "30%",
-            height: "30%",
+            width: "25%",
+            height: "25%",
             borderRadius: "50%",
             backgroundColor: "rgba(0, 0, 0, 0.2)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Valid capture indicator - show for squares with opponent pieces */}
+      {isValidMove && piece && (
+        <div
+          style={{
+            position: "absolute",
+            inset: "0",
+            border: "3px solid rgba(0, 0, 0, 0.3)",
+            borderRadius: "50%",
             pointerEvents: "none",
           }}
         />
