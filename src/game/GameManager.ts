@@ -419,7 +419,11 @@ class GameManager {
   }
 
   // Move a piece directly for spells like Phantom Step
-  movePieceDirectly(from: Square, to: Square): boolean {
+  movePieceDirectly(
+    from: Square,
+    to: Square,
+    endTurnAfterMove: boolean = false
+  ): boolean {
     try {
       // Get the piece
       const piece = this.customBoardState[from];
@@ -458,10 +462,32 @@ class GameManager {
       this.gameLog.push(
         `${
           piece.color === "w" ? "White" : "Black"
-        } moved ${this.getPieceTypeName(
-          piece.type as PieceSymbol
-        )} from ${from} to ${to} using Phantom Step`
+        } cast phantomStep on from ${from} to ${to}`
       );
+
+      // If specified, end the turn after moving the piece
+      // This is used by spells like Phantom Step
+      if (endTurnAfterMove) {
+        // Manually switch turns in the chess.js board
+        if (this.chess.turn() === "w") {
+          this.chess.load(this.chess.fen().replace(" w ", " b "));
+        } else {
+          this.chess.load(this.chess.fen().replace(" b ", " w "));
+        }
+
+        // Process end of turn effects
+        this.processEndOfTurnEffects();
+
+        // Add mana to the next player
+        this.currentPlayerMana[this.chess.turn()] = Math.min(
+          this.currentPlayerMana[this.chess.turn()] + 1,
+          10
+        );
+
+        this.gameLog.push(
+          `${this.chess.turn() === "w" ? "Black" : "White"} ended their turn`
+        );
+      }
 
       return true;
     } catch (error) {

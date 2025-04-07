@@ -173,6 +173,14 @@ export class SpellEngine {
       return false;
     }
 
+    // Validate that the move follows the piece's normal movement pattern
+    if (!this.isValidPhantomStepMove(from, to, piece.type)) {
+      console.error(
+        "Invalid phantom step move - doesn't follow piece's movement pattern"
+      );
+      return false;
+    }
+
     // Check if the move would result in a king in check
     const tempBoard = new Chess(this.gameManager.getFEN());
 
@@ -196,15 +204,93 @@ export class SpellEngine {
       return false;
     }
 
-    // Perform the move
-    this.gameManager.movePieceDirectly(from, to);
+    // Perform the move and end the turn in one operation
+    this.gameManager.movePieceDirectly(from, to, true);
 
     // Log the action
     console.log(
-      `Successfully moved piece from ${from} to ${to} using Phantom Step`
+      `Successfully moved piece from ${from} to ${to} using Phantom Step and ended turn`
     );
 
     return true;
+  }
+
+  // Helper method to validate phantom step moves based on piece type
+  private isValidPhantomStepMove(
+    from: Square,
+    to: Square,
+    pieceType: string
+  ): boolean {
+    // Extract file and rank
+    const fromFile = from.charAt(0);
+    const fromRank = parseInt(from.charAt(1));
+    const toFile = to.charAt(0);
+    const toRank = parseInt(to.charAt(1));
+
+    // Calculate differences
+    const fileDiff = Math.abs(fromFile.charCodeAt(0) - toFile.charCodeAt(0));
+    const rankDiff = Math.abs(fromRank - toRank);
+
+    // Can't move to the same square
+    if (fileDiff === 0 && rankDiff === 0) {
+      return false;
+    }
+
+    // For pawn movements - declare variables outside the switch
+    const direction = this.gameManager.getCurrentPlayer() === "w" ? -1 : 1;
+    const forwardMove = toRank - fromRank === direction;
+    const doubleMove = toRank - fromRank === 2 * direction;
+    const diagonalCapture = fileDiff === 1 && toRank - fromRank === direction;
+    const hasMoved = this.gameManager.getPieceAt(from)?.hasMoved;
+
+    switch (pieceType) {
+      case "r": // Rook: move horizontally or vertically
+        return fileDiff === 0 || rankDiff === 0;
+
+      case "b": // Bishop: move diagonally
+        return fileDiff === rankDiff;
+
+      case "n": // Knight: move in L-shape
+        return (
+          (fileDiff === 1 && rankDiff === 2) ||
+          (fileDiff === 2 && rankDiff === 1)
+        );
+
+      case "q": // Queen: move horizontally, vertically, or diagonally
+        return fileDiff === 0 || rankDiff === 0 || fileDiff === rankDiff;
+
+      case "k": // King: move one square in any direction
+        return fileDiff <= 1 && rankDiff <= 1;
+
+      case "p": // Pawn: move forward or diagonally
+        // Pawns can't move backward with phantom step
+        if (
+          (this.gameManager.getCurrentPlayer() === "w" && toRank > fromRank) ||
+          (this.gameManager.getCurrentPlayer() === "b" && toRank < fromRank)
+        ) {
+          return false;
+        }
+
+        // Regular forward move by 1
+        if (forwardMove && fileDiff === 0) {
+          return true;
+        }
+
+        // Double move if pawn hasn't moved yet
+        if (doubleMove && fileDiff === 0 && !hasMoved) {
+          return true;
+        }
+
+        // Diagonal move (allowed for Phantom Step even without capture)
+        if (diagonalCapture) {
+          return true;
+        }
+
+        return false;
+
+      default:
+        return false;
+    }
   }
 
   // Ember Crown: Add a damage effect to a piece

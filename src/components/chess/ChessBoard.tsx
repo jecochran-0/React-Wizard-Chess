@@ -104,25 +104,298 @@ const ChessBoard: React.FC = () => {
       }
       // For Phantom Step, find valid destinations (empty squares)
       else if (selectedSpell === "phantomStep") {
+        const sourcePiece = boardState[firstSquare];
+
+        // Get the piece type to determine valid movement patterns
+        const pieceType = sourcePiece?.type;
+
         // Find all empty squares as potential destinations
-        const emptySquares: ChessSquare[] = [];
+        const validDestinations: ChessSquare[] = [];
         const files = "abcdefgh";
         const ranks = "12345678";
 
-        // Check all possible squares
-        for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
-          for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
-            const squareKey = (files[fileIndex] +
-              ranks[rankIndex]) as ChessSquare;
+        // We need to identify valid move patterns based on piece type
+        if (pieceType) {
+          // For a ROOK: can move any number of squares horizontally or vertically
+          if (pieceType === "r") {
+            // Get the current position
+            const file = firstSquare.charAt(0);
+            const rank = firstSquare.charAt(1);
+            const fileIndex = files.indexOf(file);
+            const rankIndex = ranks.indexOf(rank);
 
-            // If it's empty, add it as a valid target
-            if (!boardState[squareKey]) {
-              emptySquares.push(squareKey);
+            // Check horizontal moves (along the same rank)
+            for (let f = 0; f < 8; f++) {
+              if (f !== fileIndex) {
+                // Skip the current position
+                const targetSquare = (files[f] + rank) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  // Must be empty
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Check vertical moves (along the same file)
+            for (let r = 0; r < 8; r++) {
+              if (r !== rankIndex) {
+                // Skip the current position
+                const targetSquare = (file + ranks[r]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  // Must be empty
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+          }
+          // For a BISHOP: can move any number of squares diagonally
+          else if (pieceType === "b") {
+            const file = firstSquare.charAt(0);
+            const rank = firstSquare.charAt(1);
+            const fileIndex = files.indexOf(file);
+            const rankIndex = ranks.indexOf(rank);
+
+            // Check all four diagonal directions
+            // Top-right diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex + i < 8 && rankIndex - i >= 0) {
+                const targetSquare = (files[fileIndex + i] +
+                  ranks[rankIndex - i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Top-left diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex - i >= 0 && rankIndex - i >= 0) {
+                const targetSquare = (files[fileIndex - i] +
+                  ranks[rankIndex - i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Bottom-right diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex + i < 8 && rankIndex + i < 8) {
+                const targetSquare = (files[fileIndex + i] +
+                  ranks[rankIndex + i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Bottom-left diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex - i >= 0 && rankIndex + i < 8) {
+                const targetSquare = (files[fileIndex - i] +
+                  ranks[rankIndex + i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+          }
+          // For a QUEEN: can move any number of squares horizontally, vertically, or diagonally
+          else if (pieceType === "q") {
+            const file = firstSquare.charAt(0);
+            const rank = firstSquare.charAt(1);
+            const fileIndex = files.indexOf(file);
+            const rankIndex = ranks.indexOf(rank);
+
+            // Horizontal and vertical moves (like a rook)
+            // Check horizontal moves
+            for (let f = 0; f < 8; f++) {
+              if (f !== fileIndex) {
+                const targetSquare = (files[f] + rank) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Check vertical moves
+            for (let r = 0; r < 8; r++) {
+              if (r !== rankIndex) {
+                const targetSquare = (file + ranks[r]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Diagonal moves (like a bishop)
+            // Top-right diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex + i < 8 && rankIndex - i >= 0) {
+                const targetSquare = (files[fileIndex + i] +
+                  ranks[rankIndex - i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Top-left diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex - i >= 0 && rankIndex - i >= 0) {
+                const targetSquare = (files[fileIndex - i] +
+                  ranks[rankIndex - i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Bottom-right diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex + i < 8 && rankIndex + i < 8) {
+                const targetSquare = (files[fileIndex + i] +
+                  ranks[rankIndex + i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+
+            // Bottom-left diagonal
+            for (let i = 1; i < 8; i++) {
+              if (fileIndex - i >= 0 && rankIndex + i < 8) {
+                const targetSquare = (files[fileIndex - i] +
+                  ranks[rankIndex + i]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+          }
+          // For a KNIGHT: can move in an L-shape pattern
+          else if (pieceType === "n") {
+            const file = firstSquare.charAt(0);
+            const rank = firstSquare.charAt(1);
+            const fileIndex = files.indexOf(file);
+            const rankIndex = ranks.indexOf(rank);
+
+            // All 8 possible knight moves
+            const knightMoves = [
+              { fileOffset: 1, rankOffset: 2 },
+              { fileOffset: 2, rankOffset: 1 },
+              { fileOffset: 2, rankOffset: -1 },
+              { fileOffset: 1, rankOffset: -2 },
+              { fileOffset: -1, rankOffset: -2 },
+              { fileOffset: -2, rankOffset: -1 },
+              { fileOffset: -2, rankOffset: 1 },
+              { fileOffset: -1, rankOffset: 2 },
+            ];
+
+            for (const move of knightMoves) {
+              const newFileIndex = fileIndex + move.fileOffset;
+              const newRankIndex = rankIndex + move.rankOffset;
+
+              // Check if the new position is within the board
+              if (
+                newFileIndex >= 0 &&
+                newFileIndex < 8 &&
+                newRankIndex >= 0 &&
+                newRankIndex < 8
+              ) {
+                const targetSquare = (files[newFileIndex] +
+                  ranks[newRankIndex]) as ChessSquare;
+                if (!boardState[targetSquare]) {
+                  validDestinations.push(targetSquare);
+                }
+              }
+            }
+          }
+          // For a KING: can move one square in any direction
+          else if (pieceType === "k") {
+            const file = firstSquare.charAt(0);
+            const rank = firstSquare.charAt(1);
+            const fileIndex = files.indexOf(file);
+            const rankIndex = ranks.indexOf(rank);
+
+            // All 8 possible adjacent squares
+            for (let fOffset = -1; fOffset <= 1; fOffset++) {
+              for (let rOffset = -1; rOffset <= 1; rOffset++) {
+                // Skip the current position (0,0 offset)
+                if (fOffset === 0 && rOffset === 0) continue;
+
+                const newFileIndex = fileIndex + fOffset;
+                const newRankIndex = rankIndex + rOffset;
+
+                // Check if the new position is within the board
+                if (
+                  newFileIndex >= 0 &&
+                  newFileIndex < 8 &&
+                  newRankIndex >= 0 &&
+                  newRankIndex < 8
+                ) {
+                  const targetSquare = (files[newFileIndex] +
+                    ranks[newRankIndex]) as ChessSquare;
+                  if (!boardState[targetSquare]) {
+                    validDestinations.push(targetSquare);
+                  }
+                }
+              }
+            }
+          }
+          // For a PAWN: moves forward one or two squares (if not moved), captures diagonally
+          else if (pieceType === "p") {
+            const file = firstSquare.charAt(0);
+            const rank = firstSquare.charAt(1);
+            const fileIndex = files.indexOf(file);
+            const rankIndex = ranks.indexOf(rank);
+
+            // Determine forward direction based on color
+            const direction = sourcePiece.color === "w" ? -1 : 1;
+
+            // Forward move one square
+            if (rankIndex + direction >= 0 && rankIndex + direction < 8) {
+              const oneForward = (file +
+                ranks[rankIndex + direction]) as ChessSquare;
+              if (!boardState[oneForward]) {
+                validDestinations.push(oneForward);
+
+                // Two squares forward if not moved
+                if (
+                  !sourcePiece.hasMoved &&
+                  rankIndex + 2 * direction >= 0 &&
+                  rankIndex + 2 * direction < 8
+                ) {
+                  const twoForward = (file +
+                    ranks[rankIndex + 2 * direction]) as ChessSquare;
+                  if (!boardState[twoForward]) {
+                    validDestinations.push(twoForward);
+                  }
+                }
+              }
+            }
+
+            // With Phantom Step, pawns cannot capture diagonally
+            // But they can move diagonally to empty squares (allowing phantom step "captures")
+            // Check diagonal moves
+            for (let fOffset = -1; fOffset <= 1; fOffset += 2) {
+              if (
+                fileIndex + fOffset >= 0 &&
+                fileIndex + fOffset < 8 &&
+                rankIndex + direction >= 0 &&
+                rankIndex + direction < 8
+              ) {
+                const diagonalSquare = (files[fileIndex + fOffset] +
+                  ranks[rankIndex + direction]) as ChessSquare;
+                if (!boardState[diagonalSquare]) {
+                  validDestinations.push(diagonalSquare);
+                }
+              }
             }
           }
         }
 
-        setValidTargets(emptySquares);
+        setValidTargets(validDestinations);
       } else {
         setValidTargets([]);
       }
