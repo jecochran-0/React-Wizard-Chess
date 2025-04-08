@@ -2,6 +2,7 @@ import React from "react";
 import { Square as ChessSquare } from "chess.js";
 import { PieceMeta } from "../../types/types";
 import "./square.css"; // Import the CSS for animations
+import arcaneAnchorIcon from "/assets/Chess_Effects/arcaneAnchorIcon.png";
 
 export interface SquareProps {
   square: ChessSquare;
@@ -15,6 +16,34 @@ export interface SquareProps {
   isValidTarget?: boolean;
   onClick: () => void;
 }
+
+// Helper function to get the display type of a piece
+const getPieceDisplayType = (type: string): string => {
+  const pieceTypes: Record<string, string> = {
+    p: "Pawn",
+    r: "Rook",
+    n: "Knight",
+    b: "Bishop",
+    q: "Queen",
+    k: "King",
+  };
+  return pieceTypes[type] || type.toUpperCase();
+};
+
+// Helper function to get the piece image path
+const getPieceImage = (piece: PieceMeta): string => {
+  const pieceColor = piece.color === "w" ? "White" : "Black";
+
+  // If this piece has an ember crown effect, ALWAYS use the ember queen image
+  if (piece.effects?.some((effect) => effect.source === "emberCrown")) {
+    return piece.color === "w"
+      ? "/assets/Chess_Sprites/W_Ember_Q.png"
+      : "/assets/Chess_Sprites/B_Ember_Queen.png";
+  }
+
+  // Standard image based on piece type
+  return `/assets/Chess_Sprites/${pieceColor}_${piece.type.toUpperCase()}.png`;
+};
 
 const Square: React.FC<SquareProps> = ({
   square,
@@ -65,70 +94,53 @@ const Square: React.FC<SquareProps> = ({
     style.backgroundColor = isLight ? "#ecfdf5" : "#064e3b";
   }
 
-  // If we have a piece, display it
+  // Check for Arcane Anchor/Armor effect
+  const hasArcaneArmorEffect = piece?.effects?.some(
+    (effect) => effect.source === "arcaneArmor"
+  );
+
+  // Log when we detect an Arcane Armor effect for debugging
+  if (hasArcaneArmorEffect) {
+    console.log(`Arcane Armor effect detected on ${square}`, {
+      piece: piece?.type,
+      color: piece?.color,
+      effects: piece?.effects
+        ?.filter((e) => e.source === "arcaneArmor")
+        .map((e) => ({
+          id: e.id,
+          duration: e.duration,
+          modifiers: e.modifiers,
+        })),
+    });
+  }
+
+  // Check for Ember Crown effect
+  const hasEmberCrownEffect = piece?.effects?.some(
+    (effect) => effect.source === "emberCrown"
+  );
+
+  // Find the main ember crown effect (for duration)
+  const mainEmberEffect = piece?.effects?.find(
+    (effect) =>
+      effect.source === "emberCrown" && !effect.id.includes("emberVisual")
+  );
+
+  // Check if the piece has any effects
+  const hasEffects = hasEmberCrownEffect || hasArcaneArmorEffect;
+
+  // Prepare piece element if there is a piece
   let pieceElement = null;
   if (piece) {
-    // Determine if piece has effects
-    const hasEffects = piece.effects && piece.effects.length > 0;
+    // Get piece display type (for alt text)
+    const displayType = getPieceDisplayType(piece.type);
+    const pieceColor = piece.color === "w" ? "white" : "black";
 
-    // Check for specific effects
-    const hasEmberCrownEffect = piece.effects?.some(
-      (effect) => effect.source === "emberCrown"
-    );
+    // Get the appropriate piece image
+    const pieceImage = getPieceImage(piece);
 
-    const hasArcaneAnchorEffect = piece.effects?.some(
-      (effect) => effect.source === "arcaneAnchor"
-    );
+    // Determine any special styling for pieces with effects
+    let filterStyle = "";
 
-    // Find the main ember crown effect (the one that expires) for debugging
-    const mainEmberEffect = piece.effects?.find(
-      (effect) =>
-        effect.source === "emberCrown" && !effect.id.includes("emberVisual")
-    );
-
-    // Log effect details for debugging
-    if (hasEffects) {
-      if (hasEmberCrownEffect) {
-        console.log(`EMBER CROWN at ${square}:`, {
-          type: piece.type,
-          mainEffectTurns: mainEmberEffect?.duration || "N/A",
-          effectCount: piece.effects.length,
-          allEffects: piece.effects.map(
-            (e) => `${e.id.substring(0, 10)}... (${e.duration})`
-          ),
-        });
-      }
-
-      if (hasArcaneAnchorEffect) {
-        console.log(`ARCANE ANCHOR at ${square}:`, {
-          type: piece.type,
-          effects: piece.effects
-            .filter((e) => e.source === "arcaneAnchor")
-            .map((e) => `${e.id.substring(0, 10)}... (${e.duration})`),
-        });
-      }
-    }
-
-    // Get the piece color for the image path
-    const pieceColor = piece.color === "w" ? "White" : "Black";
-
-    // Determine the piece type
-    const displayType = piece.type.toUpperCase();
-    let pieceImage;
-
-    // If this piece has an ember crown effect, ALWAYS use the ember queen image
-    if (hasEmberCrownEffect) {
-      pieceImage =
-        piece.color === "w"
-          ? "/assets/Chess_Sprites/W_Ember_Q.png"
-          : "/assets/Chess_Sprites/B_Ember_Queen.png";
-    } else {
-      // Standard image based on piece type
-      pieceImage = `/assets/Chess_Sprites/${pieceColor}_${displayType}.png`;
-    }
-
-    // Apply visual effects based on active effects
-    let filterStyle = "none";
     if (hasEmberCrownEffect) {
       // Visual indicator for remaining turns
       const turnsLeft = mainEmberEffect?.duration || 0;
@@ -138,11 +150,7 @@ const Square: React.FC<SquareProps> = ({
       filterStyle = `drop-shadow(0 0 ${
         6 * intensity
       }px #ef4444) drop-shadow(0 0 ${10 * intensity}px #f97316)`;
-    } else if (hasArcaneAnchorEffect) {
-      // Blue shield glow for anchored pieces
-      filterStyle =
-        "drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 12px #2563eb)";
-    } else if (hasEffects) {
+    } else if (hasEffects && !hasArcaneArmorEffect) {
       // Generic effect for other spells
       filterStyle = "drop-shadow(0 0 4px #a855f7)";
     }
@@ -157,63 +165,68 @@ const Square: React.FC<SquareProps> = ({
             height: "100%",
             objectFit: "contain",
             filter: filterStyle,
+            position: "relative",
+            zIndex: 1,
           }}
         />
 
         {/* Add a pulsing flame effect for Ember Crown */}
+        {hasEmberCrownEffect && <div className="ember-crown-effect" />}
+
+        {/* Add light blue glow effect for Arcane Armor */}
+        {hasArcaneArmorEffect && <div className="arcane-anchor-glow" />}
+
+        {/* Add ember queen icon for ember crown pieces */}
         {hasEmberCrownEffect && (
-          <div className="ember-crown-effect">
-            {/* Add turn counter */}
-            {mainEmberEffect && mainEmberEffect.duration > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "-15px",
-                  right: "-10px",
-                  backgroundColor: "#ef4444",
-                  color: "white",
-                  borderRadius: "50%",
-                  width: "20px",
-                  height: "20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  border: "2px solid #7f1d1d",
-                }}
-              >
-                {mainEmberEffect.duration}
-              </div>
-            )}
+          <div
+            style={{
+              position: "absolute",
+              top: "-6px",
+              right: "-6px",
+              fontSize: "16px",
+              color: "#f97316",
+              textShadow: "0 0 3px #000",
+              background: "rgba(0,0,0,0.5)",
+              borderRadius: "50%",
+              width: "18px",
+              height: "18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 5,
+            }}
+          >
+            🔥
           </div>
         )}
 
-        {/* Add arcane shield effect for Arcane Anchor */}
-        {hasArcaneAnchorEffect && (
-          <div className="arcane-anchor-effect">
-            {/* Add an anchor icon or shield indicator */}
-            <div
-              style={{
-                position: "absolute",
-                top: "-12px",
-                right: "-12px",
-                backgroundColor: "#3b82f6",
-                color: "white",
-                borderRadius: "50%",
-                width: "24px",
-                height: "24px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "16px",
-                fontWeight: "bold",
-                border: "2px solid #1e40af",
-                boxShadow: "0 0 8px #3b82f6",
-              }}
-            >
-              ⚓
-            </div>
+        {/* Add anchor icon for arcane armor pieces */}
+        {hasArcaneArmorEffect && (
+          <div
+            style={{
+              position: "absolute",
+              top: "-8px",
+              right: "-8px",
+              width: "26px",
+              height: "26px",
+              borderRadius: "50%",
+
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+              fontSize: "16px",
+              color: "white",
+              fontWeight: "bold",
+
+              textShadow: "0 0 4px #3b82f6",
+            }}
+          >
+            <img
+              src={arcaneAnchorIcon}
+              alt="Arcane Anchor Icon"
+              style={{ width: "100%", height: "100%" }}
+            />
           </div>
         )}
       </div>
@@ -221,7 +234,7 @@ const Square: React.FC<SquareProps> = ({
   }
 
   return (
-    <div style={style} onClick={onClick}>
+    <div className="square" style={style} onClick={onClick}>
       {pieceElement}
 
       {/* Legal move indicator (dot) */}

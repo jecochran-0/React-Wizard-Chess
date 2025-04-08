@@ -50,55 +50,83 @@
   animation: pulse 2s infinite reverse;
 }
 
-/* Arcane Anchor Effect Animation */
-@keyframes shield-pulse {
+/* Arcane Anchor Glow Animation */
+@keyframes anchorPulse {
   0% {
-    opacity: 0.2;
-    transform: scale(0.9);
+    opacity: 0.4;
+    transform: scale(0.95);
   }
   50% {
-    opacity: 0.5;
-    transform: scale(1.1);
+    opacity: 0.7;
+    transform: scale(1.05);
   }
   100% {
-    opacity: 0.2;
-    transform: scale(0.9);
+    opacity: 0.4;
+    transform: scale(0.95);
   }
 }
 
-.arcane-anchor-effect {
+.arcane-anchor-glow {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: -1;
-}
-
-/* Shield border animation */
-.arcane-anchor-effect::before {
-  content: "";
-  position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
   border-radius: 50%;
-  border: 3px solid rgba(59, 130, 246, 0.5);
-  animation: shield-pulse 2s infinite;
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.3) 0%,
+    rgba(37, 99, 235, 0.2) 70%,
+    transparent 100%
+  );
+  animation: anchorPulse 2s infinite;
   z-index: -1;
+  box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.3);
 }
 
-/* Shield glow effect */
-.arcane-anchor-effect::after {
+/* Add an additional inner glow for arcane anchor */
+.arcane-anchor-glow::after {
   content: "";
   position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border-radius: 5px;
-  box-shadow: 0 0 10px 2px rgba(59, 130, 246, 0.3);
-  animation: shield-pulse 3s infinite alternate;
-  z-index: -2;
+  top: 20%;
+  left: 20%;
+  right: 20%;
+  bottom: 20%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(147, 197, 253, 0.4) 0%,
+    rgba(59, 130, 246, 0.3) 50%,
+    transparent 100%
+  );
+  animation: anchorPulse 2.5s infinite reverse;
+}
+
+/* Add a glow around the square for anchored/armored pieces */
+.square:has(.arcane-anchor-glow) {
+  box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.7);
+  animation: pulse-anchor 2s infinite;
+}
+
+@keyframes pulse-anchor {
+  0%,
+  100% {
+    box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.8);
+  }
+}
+
+/* Anchor badge animation */
+@keyframes anchor-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px 2px rgba(59, 130, 246, 0.6);
+    background-color: rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.8);
+    background-color: rgba(59, 130, 246, 0.5);
+  }
 }
