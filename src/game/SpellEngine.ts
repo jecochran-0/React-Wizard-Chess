@@ -66,6 +66,10 @@ export class SpellEngine {
             success = this.castCursedGlyph(targetInfo);
           }
           break;
+        case "kingsGambit":
+          // The Kings Gambit spell doesn't require a target
+          success = this.castKingsGambit();
+          break;
         case "astralSwap":
           if (Array.isArray(targetInfo) && targetInfo.length === 2) {
             success = this.castAstralSwap(targetInfo[0], targetInfo[1]);
@@ -759,5 +763,62 @@ export class SpellEngine {
     }
 
     return true;
+  }
+
+  /**
+   * King's Gambit: Allow king to move twice in one turn
+   * This spell creates a temporary effect that allows the king to move again in the same turn
+   */
+  private castKingsGambit(): boolean {
+    console.log("Attempting to cast King's Gambit");
+
+    // Check that the current player's king isn't in check
+    if (this.gameManager.isKingInCheck()) {
+      console.error("Cannot cast King's Gambit while in check");
+      return false;
+    }
+
+    // Create an effect that allows the king to move a second time
+    const effect: Effect = {
+      id: uuidv4(),
+      type: "buff",
+      duration: 1, // Last only for the current turn
+      source: "kingsGambit",
+      modifiers: {
+        allowSecondKingMove: true,
+        removeOnExpire: true,
+      },
+    };
+
+    // Add the effect to the game state
+    // Since we don't have a dedicated global effects system, we'll add it to the king
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+
+    // Find the king's square
+    const kingSquare = this.findKingSquare(currentPlayer);
+    if (!kingSquare) {
+      console.error("Could not find king square");
+      return false;
+    }
+
+    // Add the effect to the king
+    this.gameManager.addEffect(kingSquare, effect);
+
+    // Log the spell cast
+    console.log("King's Gambit cast - the king can move twice this turn");
+
+    return true;
+  }
+
+  /**
+   * Helper function to find the current player's king square
+   */
+  private findKingSquare(player: "w" | "b"): Square | null {
+    const pieces = this.gameManager.getAllPieces();
+    const kingPiece = pieces.find(
+      (p) => p.piece.type === "k" && p.piece.color === player
+    );
+
+    return kingPiece ? kingPiece.square : null;
   }
 }

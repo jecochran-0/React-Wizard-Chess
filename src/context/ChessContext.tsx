@@ -213,22 +213,56 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
 
   // Make a move
   const makeMove = (from: Square, to: Square): boolean => {
+    // Get the piece before making the move to check for Kings Gambit effect
+    const movingPiece = boardState[from];
+    const isKing = movingPiece && movingPiece.type === "k";
+    const hasKingsGambitEffect =
+      isKing &&
+      movingPiece.effects?.some(
+        (effect) =>
+          effect.source === "kingsGambit" &&
+          effect.modifiers?.allowSecondKingMove === true
+      );
+
+    console.log(
+      `Making move: ${from} to ${to}, hasKingsGambitEffect: ${hasKingsGambitEffect}`
+    );
+
     const result = gameManager.makeMove(from, to);
 
     if (result) {
-      // Update UI state after the move
-      setCurrentPlayer(gameManager.getCurrentPlayer());
-      setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
-      setPlayerMana(gameManager.getPlayerMana());
-      setGameLog(gameManager.getGameLog());
+      // If this is a king with Kings Gambit effect, we want to keep the same player's turn
+      if (hasKingsGambitEffect) {
+        console.log(
+          `King with Kings Gambit effect moved from ${from} to ${to}, preventing turn end`
+        );
 
-      // Explicitly update the glyphs after the move to ensure triggered glyphs are removed from UI
-      const updatedGlyphs = gameManager.getGlyphs();
-      setBoardGlyphs(updatedGlyphs);
-      console.log("Updated board glyphs after move:", updatedGlyphs);
+        // Update board state but don't change the current player
+        setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+        setPlayerMana(gameManager.getPlayerMana());
+        setGameLog(gameManager.getGameLog());
 
-      // Clear selection
-      setSelectedPiece(null);
+        // Update board glyphs
+        const updatedGlyphs = gameManager.getGlyphs();
+        setBoardGlyphs(updatedGlyphs);
+
+        // Don't clear selection for Kings Gambit so the player can select the king again
+        // But we're now selecting the king at its new position in the ChessBoard component
+      } else {
+        // Normal move - update UI state after the move
+        setCurrentPlayer(gameManager.getCurrentPlayer());
+        setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+        setPlayerMana(gameManager.getPlayerMana());
+        setGameLog(gameManager.getGameLog());
+
+        // Explicitly update the glyphs after the move to ensure triggered glyphs are removed from UI
+        const updatedGlyphs = gameManager.getGlyphs();
+        setBoardGlyphs(updatedGlyphs);
+        console.log("Updated board glyphs after move:", updatedGlyphs);
+
+        // Clear selection
+        setSelectedPiece(null);
+      }
     }
 
     return result;

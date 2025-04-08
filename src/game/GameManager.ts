@@ -204,6 +204,16 @@ class GameManager {
         return false;
       }
 
+      // Check if this is a king with the Kings Gambit effect
+      const isKing = pieceBeforeMove && pieceBeforeMove.type === "k";
+      const hasKingsGambitEffect =
+        isKing &&
+        pieceBeforeMove.effects.some(
+          (effect) =>
+            effect.source === "kingsGambit" &&
+            effect.modifiers?.allowSecondKingMove === true
+        );
+
       // Add detailed logging for debugging the issue with Arcane Anchor
       const targetPiece = this.customBoardState[to];
       if (targetPiece) {
@@ -381,6 +391,43 @@ class GameManager {
           this.currentPlayerMana[currentPlayer] + 1,
           10
         );
+
+        // IMPORTANT: If this is a king with Kings Gambit effect, don't end turn or process effects
+        if (hasKingsGambitEffect) {
+          console.log("King with Kings Gambit effect moved - not ending turn");
+
+          // Force the turn back to the original player
+          // This is necessary because chess.js automatically switches turns after a move
+          const originalPlayer = currentPlayer;
+          if (this.chess.turn() !== originalPlayer) {
+            console.log(
+              `Restoring turn to ${originalPlayer} after Kings Gambit move`
+            );
+            // Manually switch turns in chess.js back to the original player
+            this.chess.load(
+              this.chess
+                .fen()
+                .replace(` ${this.chess.turn()} `, ` ${originalPlayer} `)
+            );
+          }
+
+          // Mark the effect as having been used by removing it
+          // This ensures the king can only move twice, not infinitely
+          if (this.customBoardState[to]) {
+            console.log("Removing Kings Gambit effect after first move");
+            this.customBoardState[to].effects = this.customBoardState[
+              to
+            ].effects.filter(
+              (effect) =>
+                !(
+                  effect.source === "kingsGambit" &&
+                  effect.modifiers?.allowSecondKingMove
+                )
+            );
+          }
+
+          return true;
+        }
 
         // IMPORTANT: Count this move as a turn completion for the current player
         // This is critical for effects like Ember Crown that should count down based on player turns

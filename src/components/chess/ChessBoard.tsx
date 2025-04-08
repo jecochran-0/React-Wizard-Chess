@@ -4,7 +4,6 @@ import { useChess } from "../../context/ChessContext";
 import Square from "./Square";
 import { getSpellById } from "../../utils/spells";
 import { SpellTargetType, Effect } from "../../types/types";
-import Popup from "../ui/Popup";
 
 // Define a type for chess piece that matches the board state structure
 interface ChessPiece {
@@ -43,13 +42,24 @@ const ChessBoard: React.FC = () => {
   const [targetingMode, setTargetingMode] = useState<TargetingMode>(null);
   const [validTargets, setValidTargets] = useState<ChessSquare[]>([]);
 
-  // State for popup
-  const [popupMessage, setPopupMessage] = useState<string>("");
-  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
+  // Replace popup with a message indicator
+  const [statusMessage, setStatusMessage] = useState<string>("");
+  const [showMessage, setShowMessage] = useState<boolean>(false);
 
   // Get the position of the king that is in check (if any)
   // Using a state variable to track if the king is in check or not
   const [kingInCheck, setKingInCheck] = useState<ChessSquare | null>(null);
+
+  // Show a status message with automatic timeout
+  const showStatusMessage = (message: string, duration = 3000) => {
+    setStatusMessage(message);
+    setShowMessage(true);
+
+    // Auto-hide after duration
+    setTimeout(() => {
+      setShowMessage(false);
+    }, duration);
+  };
 
   // Check if king is in check using the chess.js library
   useEffect(() => {
@@ -114,7 +124,21 @@ const ChessBoard: React.FC = () => {
     }
 
     switch (spellId) {
-      case "emberCrown":
+      case "kingsGambit": {
+        // Find the king owned by the current player
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          const piece = boardState[squareKey];
+          if (piece && piece.color === currentPlayer && piece.type === "k") {
+            validSquares.push(squareKey);
+            break; // Only need one king
+          }
+        }
+        console.log(`Found king at ${validSquares[0]} for King's Gambit spell`);
+        break;
+      }
+
+      case "emberCrown": {
         // Find pawns owned by the current player
         for (const square in boardState) {
           const squareKey = square as ChessSquare;
@@ -124,8 +148,10 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
 
-      case "mistformKnight":
+      // Add blocks for other cases to follow the pattern
+      case "mistformKnight": {
         // Find knights owned by the current player
         if (spellTargets.length === 0) {
           console.log("Finding knights for Mistform Knight spell");
@@ -138,9 +164,10 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
 
       case "arcaneAnchor":
-      case "arcaneArmor":
+      case "arcaneArmor": {
         // Find any pieces owned by the current player
         for (const square in boardState) {
           const squareKey = square as ChessSquare;
@@ -150,8 +177,9 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
 
-      case "astralSwap":
+      case "astralSwap": {
         // Only find first targets here - second targets are handled in handleSpellTargeting
         console.log("Finding initial targets for Astral Swap");
         for (const square in boardState) {
@@ -163,8 +191,9 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
 
-      case "phantomStep":
+      case "phantomStep": {
         // Only handle the initial target selection here
         // The second target (destination) is handled directly in handleSpellTargeting
         if (spellTargets.length === 0) {
@@ -178,10 +207,11 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
 
       // Add handling for other spells
       case "frostShield":
-      case "shadowStrike":
+      case "shadowStrike": {
         // Default to finding all valid targets based on spell requirements
         for (const square in boardState) {
           const squareKey = square as ChessSquare;
@@ -201,15 +231,15 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
 
-      case "chronoRecall":
+      case "chronoRecall": {
         console.log("Finding valid targets for Chrono Recall");
         console.log("Current player:", currentPlayer);
         console.log("BoardState type:", typeof boardState);
 
         // Log all pieces owned by the current player for debugging
         console.log("All pieces owned by current player:");
-        let piecesWithHistory = 0;
 
         // Find pieces owned by the current player that have move history
         for (const square in boardState) {
@@ -236,7 +266,6 @@ const ChessBoard: React.FC = () => {
 
             // Check if the piece has move history (prevPositions is used in GameManager)
             if (piece.prevPositions && piece.prevPositions.length >= 2) {
-              piecesWithHistory++;
               console.log(
                 `Piece at ${squareKey} has sufficient move history for Chrono Recall: ${JSON.stringify(
                   piece.prevPositions
@@ -248,11 +277,12 @@ const ChessBoard: React.FC = () => {
         }
 
         console.log(
-          `Found ${piecesWithHistory} pieces with sufficient history out of ${validSquares.length} valid targets`
+          `Found ${validSquares.length} valid targets with sufficient history for Chrono Recall`
         );
         break;
+      }
 
-      default:
+      default: {
         // Default behavior for other spells - allow targeting any square with pieces
         for (const square in boardState) {
           const squareKey = square as ChessSquare;
@@ -261,6 +291,7 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
     }
 
     setValidTargets(validSquares);
@@ -318,11 +349,10 @@ const ChessBoard: React.FC = () => {
             );
 
           if (hasProtection) {
-            // Show a popup message that the piece cannot be captured
-            setPopupMessage(
+            // Show a message that the piece cannot be captured
+            showStatusMessage(
               "This piece cannot be captured due to a protection effect!"
             );
-            setIsPopupOpen(true);
             console.log(
               `Cannot capture piece at ${square} due to protection effect`
             );
@@ -330,8 +360,44 @@ const ChessBoard: React.FC = () => {
           }
         }
 
+        // Check if we're moving a king and need to track for King's Gambit
+        const movingPiece = boardState[selectedPiece];
+        const isKing = movingPiece && movingPiece.type === "k";
+        const hasKingsGambitEffect =
+          isKing &&
+          movingPiece.effects?.some(
+            (effect: Effect) =>
+              effect.source === "kingsGambit" &&
+              effect.modifiers?.allowSecondKingMove === true
+          );
+
+        // Track if this is the first king move with Kings Gambit
+        const isFirstKingMove = isKing && hasKingsGambitEffect;
+
+        console.log(
+          `Moving piece: ${movingPiece?.type}, isKing: ${isKing}, hasKingsGambitEffect: ${hasKingsGambitEffect}`
+        );
+
         // If we get here, the move is valid - make the move
-        makeMove(selectedPiece, square);
+        const moveSuccess = makeMove(selectedPiece, square);
+
+        // If the move was successful and this was a king with King's Gambit effect
+        if (moveSuccess && isFirstKingMove) {
+          console.log(
+            "First king move with King's Gambit. King can move again this turn."
+          );
+
+          // After the king moves, we need to select it again to allow a second move
+          // Get the new position of the king (which is the destination square)
+          setTimeout(() => {
+            // Select the king at its new position
+            selectPiece(square);
+            showStatusMessage(
+              "King's Gambit active: You can move your king once more this turn.",
+              5000
+            );
+          }, 100);
+        }
       } else {
         // If it's not a legal move, either select a new piece or deselect
         const piece = boardState[square as keyof typeof boardState];
@@ -351,11 +417,10 @@ const ChessBoard: React.FC = () => {
         );
 
         if (hasPreventMovementEffect) {
-          // Show a popup message that the piece cannot move
-          setPopupMessage(
+          // Show a message that the piece cannot move
+          showStatusMessage(
             "This piece cannot move due to the Arcane Anchor effect!"
           );
-          setIsPopupOpen(true);
           console.log(
             `Cannot select piece at ${square} with Arcane Anchor effect for movement`
           );
@@ -391,13 +456,13 @@ const ChessBoard: React.FC = () => {
           // The castSpell method in ChessContext will update the UI with the new glyph
         } else {
           console.log(`Failed to cast Cursed Glyph on ${square}`);
-          setPopupMessage("Failed to cast Cursed Glyph. Try another location.");
-          setIsPopupOpen(true);
+          showStatusMessage(
+            "Failed to cast Cursed Glyph. Try another location."
+          );
         }
         return;
       } else {
-        setPopupMessage("Cursed Glyph must be placed on an empty square.");
-        setIsPopupOpen(true);
+        showStatusMessage("Cursed Glyph must be placed on an empty square.");
         return;
       }
     }
@@ -419,12 +484,20 @@ const ChessBoard: React.FC = () => {
     // Logic based on the spell's targeting mode
     switch (targetingMode) {
       case "single":
-        // For single-target spells like Ember Crown or Arcane Anchor
+        // For single-target spells like Ember Crown or Kings Gambit
         success = castSpell(selectedSpell, square);
         if (success) {
           console.log(`Successfully cast ${selectedSpell} on ${square}`);
           setSpellTargets([]);
           setTargetingMode(null);
+
+          // Show success message for Kings Gambit
+          if (selectedSpell === "kingsGambit") {
+            showStatusMessage(
+              "King's Gambit cast! You can now move your king twice in one turn.",
+              5000
+            );
+          }
         }
         break;
 
@@ -995,14 +1068,27 @@ const ChessBoard: React.FC = () => {
   return (
     <div className="chess-board-container">
       {renderTargetingInstructions()}
-      <div className="chess-board">{renderBoard()}</div>
 
-      {/* Add the Popup component */}
-      <Popup
-        message={popupMessage}
-        isOpen={isPopupOpen}
-        onClose={() => setIsPopupOpen(false)}
-      />
+      {/* Status message indicator */}
+      {showMessage && (
+        <div
+          className="status-message"
+          style={{
+            backgroundColor: "rgba(79, 70, 229, 0.2)",
+            padding: "10px",
+            marginBottom: "15px",
+            borderRadius: "4px",
+            textAlign: "center",
+            fontWeight: "bold",
+            border: "1px solid rgba(79, 70, 229, 0.4)",
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          {statusMessage}
+        </div>
+      )}
+
+      <div className="chess-board">{renderBoard()}</div>
     </div>
   );
 };
