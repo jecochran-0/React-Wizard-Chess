@@ -276,6 +276,24 @@ class GameManager {
         // Update the custom board state
         this.syncCustomBoardFromChess();
 
+        // BUGFIX: Check if this was a capture move (indicated by move.captured)
+        // When capturing a piece with effects like Ember Crown, we must make sure those effects
+        // don't transfer to the capturing piece
+        if (move.captured) {
+          console.log(
+            `Capture detected: ${from} took piece at ${to} (${move.captured})`
+          );
+
+          // If there's a piece at the destination now, ensure it doesn't have any leftover effects
+          // from the piece that was captured
+          if (this.customBoardState[to]) {
+            console.log(
+              `Clearing any effects from captured piece at ${to} before applying effects from capturing piece`
+            );
+            this.customBoardState[to].effects = [];
+          }
+        }
+
         // Important: Preserve effects from the original piece to the moved piece
         if (pieceEffects.length > 0 && this.customBoardState[to]) {
           console.log(
