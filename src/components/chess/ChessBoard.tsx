@@ -117,26 +117,15 @@ const ChessBoard: React.FC = () => {
         break;
 
       case "phantomStep":
-        // For the first target (source), find owned pieces that can move
+        // Only handle the initial target selection here
+        // The second target (destination) is handled directly in handleSpellTargeting
         if (spellTargets.length === 0) {
+          console.log("Finding initial piece selection for Phantom Step");
           for (const square in boardState) {
             const squareKey = square as ChessSquare;
             const piece = boardState[squareKey];
             if (piece && piece.color === currentPlayer) {
               validSquares.push(squareKey);
-            }
-          }
-        }
-        // For the second target (destination), find empty squares
-        else if (spellTargets.length === 1 && isFromToTarget(spellTargets[0])) {
-          // Find all empty squares for the destination
-          for (let rank = 1; rank <= 8; rank++) {
-            for (const file of "abcdefgh") {
-              const square = `${file}${rank}` as ChessSquare;
-              // Check if the square is empty
-              if (!boardState[square]) {
-                validSquares.push(square);
-              }
             }
           }
         }
@@ -428,17 +417,50 @@ const ChessBoard: React.FC = () => {
         // For spells like Phantom Step that require a source and destination
         if (spellTargets.length === 0) {
           // First click - select source
-          setSpellTargets([{ from: square, to: "" as ChessSquare }]);
-          // Find valid destinations for the second click
-          findValidTargetsForSpell(selectedSpell);
-        } else if (
-          spellTargets.length === 1 &&
-          isFromToTarget(spellTargets[0])
-        ) {
+          console.log(
+            `Selected source piece for ${selectedSpell} at ${square}`
+          );
+
+          // For from-to type spells, store the first target as a simple square
+          setSpellTargets([square]);
+
+          // For Phantom Step, we need to show valid piece moves as destinations
+          if (selectedSpell === "phantomStep") {
+            const piece = boardState[square];
+            if (!piece) return;
+
+            console.log(
+              `Finding valid Phantom Step destinations for ${piece.type} at ${square}`
+            );
+
+            // Get possible moves for this piece that follow its normal movement pattern
+            const possibleMoves = getPhantomStepMoves(
+              square,
+              piece,
+              boardState
+            );
+
+            console.log(
+              `Found ${possibleMoves.length} valid moves for Phantom Step following piece pattern`
+            );
+            setValidTargets(possibleMoves);
+          } else {
+            // For other from-to spells, use the standard valid target finding
+            findValidTargetsForSpell(selectedSpell);
+          }
+        } else if (spellTargets.length === 1) {
           // Second click - select destination
+          const fromSquare = spellTargets[0] as ChessSquare;
+          const toSquare = square;
+
+          console.log(
+            `Casting ${selectedSpell} from ${fromSquare} to ${toSquare}`
+          );
+
+          // Create fromToTarget object for the spell
           fromToTarget = {
-            from: (spellTargets[0] as FromToTarget).from,
-            to: square,
+            from: fromSquare,
+            to: toSquare,
           };
 
           success = castSpell(selectedSpell, fromToTarget);
@@ -448,10 +470,240 @@ const ChessBoard: React.FC = () => {
             );
             setSpellTargets([]);
             setTargetingMode(null);
+            setValidTargets([]);
           }
         }
         break;
     }
+  };
+
+  // Helper function to get valid moves for Phantom Step
+  // This finds moves that follow the piece's movement pattern but ignores pieces in the way
+  const getPhantomStepMoves = (
+    square: ChessSquare,
+    piece: { type: string; color: string },
+    boardState: Record<string, any>
+  ): ChessSquare[] => {
+    const validMoves: ChessSquare[] = [];
+    const [file, rank] = [square.charAt(0), parseInt(square.charAt(1))];
+    const fileIndex = file.charCodeAt(0) - "a".charCodeAt(0);
+
+    // Based on piece type, calculate possible moves
+    switch (piece.type) {
+      case "p": {
+        // Pawns can move 1 or 2 squares forward
+        const direction = piece.color === "w" ? 1 : -1;
+        const startingRank = piece.color === "w" ? 2 : 7;
+
+        // One square forward
+        const oneForward = `${file}${rank + direction}` as ChessSquare;
+        if (
+          rank + direction >= 1 &&
+          rank + direction <= 8 &&
+          !boardState[oneForward]
+        ) {
+          validMoves.push(oneForward);
+
+          // Two squares forward from starting position
+          if (rank === startingRank) {
+            const twoForward = `${file}${rank + 2 * direction}` as ChessSquare;
+            if (!boardState[twoForward]) {
+              validMoves.push(twoForward);
+            }
+          }
+        }
+        break;
+      }
+
+      case "r": {
+        // Rooks move horizontally and vertically
+        // Horizontal moves (same rank)
+        for (let f = 0; f < 8; f++) {
+          const newFile = String.fromCharCode("a".charCodeAt(0) + f);
+          if (newFile !== file) {
+            const newSquare = `${newFile}${rank}` as ChessSquare;
+            if (!boardState[newSquare]) {
+              validMoves.push(newSquare);
+            }
+          }
+        }
+
+        // Vertical moves (same file)
+        for (let r = 1; r <= 8; r++) {
+          if (r !== rank) {
+            const newSquare = `${file}${r}` as ChessSquare;
+            if (!boardState[newSquare]) {
+              validMoves.push(newSquare);
+            }
+          }
+        }
+        break;
+      }
+
+      case "n": {
+        // Knights move in L-shape: 2 squares in one direction, 1 square perpendicular
+        const knightMoves = [
+          { fileOffset: 1, rankOffset: 2 },
+          { fileOffset: 2, rankOffset: 1 },
+          { fileOffset: 2, rankOffset: -1 },
+          { fileOffset: 1, rankOffset: -2 },
+          { fileOffset: -1, rankOffset: -2 },
+          { fileOffset: -2, rankOffset: -1 },
+          { fileOffset: -2, rankOffset: 1 },
+          { fileOffset: -1, rankOffset: 2 },
+        ];
+
+        for (const move of knightMoves) {
+          const newFileIndex = fileIndex + move.fileOffset;
+          const newRank = rank + move.rankOffset;
+
+          if (
+            newFileIndex >= 0 &&
+            newFileIndex < 8 &&
+            newRank >= 1 &&
+            newRank <= 8
+          ) {
+            const newFile = String.fromCharCode(
+              "a".charCodeAt(0) + newFileIndex
+            );
+            const newSquare = `${newFile}${newRank}` as ChessSquare;
+
+            if (!boardState[newSquare]) {
+              validMoves.push(newSquare);
+            }
+          }
+        }
+        break;
+      }
+
+      case "b": {
+        // Bishops move diagonally
+        for (let offset = 1; offset <= 7; offset++) {
+          // Check all four diagonal directions
+          const directions = [
+            { fileOffset: offset, rankOffset: offset },
+            { fileOffset: offset, rankOffset: -offset },
+            { fileOffset: -offset, rankOffset: offset },
+            { fileOffset: -offset, rankOffset: -offset },
+          ];
+
+          for (const dir of directions) {
+            const newFileIndex = fileIndex + dir.fileOffset;
+            const newRank = rank + dir.rankOffset;
+
+            if (
+              newFileIndex >= 0 &&
+              newFileIndex < 8 &&
+              newRank >= 1 &&
+              newRank <= 8
+            ) {
+              const newFile = String.fromCharCode(
+                "a".charCodeAt(0) + newFileIndex
+              );
+              const newSquare = `${newFile}${newRank}` as ChessSquare;
+
+              if (!boardState[newSquare]) {
+                validMoves.push(newSquare);
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      case "q": {
+        // Queen (combines rook and bishop moves)
+        // Horizontal & vertical moves (rook-like)
+        for (let f = 0; f < 8; f++) {
+          const newFile = String.fromCharCode("a".charCodeAt(0) + f);
+          if (newFile !== file) {
+            const newSquare = `${newFile}${rank}` as ChessSquare;
+            if (!boardState[newSquare]) {
+              validMoves.push(newSquare);
+            }
+          }
+        }
+
+        for (let r = 1; r <= 8; r++) {
+          if (r !== rank) {
+            const newSquare = `${file}${r}` as ChessSquare;
+            if (!boardState[newSquare]) {
+              validMoves.push(newSquare);
+            }
+          }
+        }
+
+        // Diagonal moves (bishop-like)
+        for (let offset = 1; offset <= 7; offset++) {
+          const directions = [
+            { fileOffset: offset, rankOffset: offset },
+            { fileOffset: offset, rankOffset: -offset },
+            { fileOffset: -offset, rankOffset: offset },
+            { fileOffset: -offset, rankOffset: -offset },
+          ];
+
+          for (const dir of directions) {
+            const newFileIndex = fileIndex + dir.fileOffset;
+            const newRank = rank + dir.rankOffset;
+
+            if (
+              newFileIndex >= 0 &&
+              newFileIndex < 8 &&
+              newRank >= 1 &&
+              newRank <= 8
+            ) {
+              const newFile = String.fromCharCode(
+                "a".charCodeAt(0) + newFileIndex
+              );
+              const newSquare = `${newFile}${newRank}` as ChessSquare;
+
+              if (!boardState[newSquare]) {
+                validMoves.push(newSquare);
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      case "k": {
+        // Kings move one square in any direction
+        const kingMoves = [
+          { fileOffset: 0, rankOffset: 1 }, // Up
+          { fileOffset: 1, rankOffset: 1 }, // Up-Right
+          { fileOffset: 1, rankOffset: 0 }, // Right
+          { fileOffset: 1, rankOffset: -1 }, // Down-Right
+          { fileOffset: 0, rankOffset: -1 }, // Down
+          { fileOffset: -1, rankOffset: -1 }, // Down-Left
+          { fileOffset: -1, rankOffset: 0 }, // Left
+          { fileOffset: -1, rankOffset: 1 }, // Up-Left
+        ];
+
+        for (const move of kingMoves) {
+          const newFileIndex = fileIndex + move.fileOffset;
+          const newRank = rank + move.rankOffset;
+
+          if (
+            newFileIndex >= 0 &&
+            newFileIndex < 8 &&
+            newRank >= 1 &&
+            newRank <= 8
+          ) {
+            const newFile = String.fromCharCode(
+              "a".charCodeAt(0) + newFileIndex
+            );
+            const newSquare = `${newFile}${newRank}` as ChessSquare;
+
+            if (!boardState[newSquare]) {
+              validMoves.push(newSquare);
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    return validMoves;
   };
 
   // Render the chessboard
