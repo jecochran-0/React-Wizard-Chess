@@ -304,7 +304,7 @@ const spellIdMapping: Record<string, string> = {
   "ember-crown": "emberCrown",
   "arcane-anchor": "arcaneArmor", // Note: using arcaneArmor for arcane-anchor
   "mistform-knight": "mistformKnight",
-  "chrono-recall": "timeWarp", // Note: using timeWarp for chrono-recall
+  "chrono-recall": "chronoRecall",
   "cursed-glyph": "cursedGlyph",
   "kings-gambit": "kingsGambit",
   "dark-conversion": "darkConversion",

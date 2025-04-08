@@ -44,11 +44,11 @@ const spells: Spell[] = [
     mustTargetOwnPiece: true,
   },
   {
-    id: "timeWarp",
+    id: "chronoRecall",
     name: "Chrono Recall",
     description: "Return a piece to its position from 2 turns ago.",
     manaCost: 3,
-    targetType: "from-to",
+    targetType: "single",
     mustTargetOwnPiece: true,
   },
   {

@@ -62,6 +62,8 @@ export class SpellEngine {
         return this.castShadowStrike(targets as SingleTarget);
       case "arcaneArmor":
         return this.castArcaneArmor(targets as SingleTarget);
+      case "chronoRecall":
+        return this.castChronoRecall(targets as SingleTarget);
       default:
         console.error(`Implementation for spell ${spellId} not found`);
         return false;
@@ -610,5 +612,64 @@ export class SpellEngine {
     return (
       (fileDiff === 1 && rankDiff === 2) || (fileDiff === 2 && rankDiff === 1)
     );
+  }
+
+  // Chrono Recall: Return a piece to position 2 turns ago
+  private castChronoRecall(target: SingleTarget): boolean {
+    console.log(`Attempting to cast Chrono Recall on ${target}`);
+
+    // Get the piece at the target square
+    const piece = this.gameManager.getPieceAt(target);
+
+    // Must target a piece owned by the current player
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    if (!piece || piece.color !== currentPlayer) {
+      console.error("Target must be a piece owned by the current player");
+      return false;
+    }
+
+    // Log the piece's position history
+    console.log(`Piece position history:`, piece.prevPositions || "None");
+
+    // Check if the piece has move history (needs at least one previous position)
+    if (!piece.prevPositions || piece.prevPositions.length < 2) {
+      console.error("Piece doesn't have enough move history");
+      return false;
+    }
+
+    // Get the position from most recent previous position (index length-2)
+    const destination = piece.prevPositions[piece.prevPositions.length - 3];
+    console.log(
+      `Attempting to recall piece to previous position: ${destination}`
+    );
+
+    // Destination must be empty
+    if (this.gameManager.getPieceAt(destination)) {
+      console.error("Cannot recall to occupied square");
+      return false;
+    }
+
+    // Check if the move would result in a king in check
+    const tempBoard = new Chess(this.gameManager.getFEN());
+    tempBoard.remove(target);
+    tempBoard.put(
+      { type: piece.type as PieceSymbol, color: piece.color },
+      destination
+    );
+    if (tempBoard.isCheck()) {
+      console.error("Cannot recall as it would result in check");
+      return false;
+    }
+
+    // Move the piece to the historical position and end the turn
+    if (!this.gameManager.movePieceDirectly(target, destination, true)) {
+      console.error(`Failed to recall piece from ${target} to ${destination}`);
+      return false;
+    }
+
+    // Log the successful cast
+    console.log(`Successfully recalled piece from ${target} to ${destination}`);
+
+    return true;
   }
 }

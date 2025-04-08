@@ -71,20 +71,25 @@ class GameManager {
     const newCustomBoardState: CustomBoardState = {};
     const board = this.chess.board();
 
-    // Create a map to track pieces by their effects
+    // Create a map to track pieces by their effects and position history
     const effectsMap = new Map<string, Effect[]>();
+    const positionHistoryMap = new Map<string, string[]>();
 
-    // Store all effects from the current board state
+    // Store all effects and position history from the current board state
     for (const square in this.customBoardState) {
       const piece = this.customBoardState[square];
-      if (piece && piece.effects.length > 0) {
-        // Store by square initially
-        effectsMap.set(square, [...piece.effects]);
+      if (piece) {
+        if (piece.effects.length > 0) {
+          // Store effects by square
+          effectsMap.set(square, [...piece.effects]);
+        }
 
-        // For ember crown pieces, also log details
-        if (piece.effects.some((effect) => effect.source === "emberCrown")) {
+        // Store position history by square
+        if (piece.prevPositions && piece.prevPositions.length > 0) {
+          positionHistoryMap.set(square, [...piece.prevPositions]);
           console.log(
-            `Tracking emberCrown piece at ${square} with ${piece.effects.length} effects`
+            `Saving position history for ${square}:`,
+            piece.prevPositions
           );
         }
       }
@@ -98,16 +103,40 @@ class GameManager {
           const square = this.coordsToSquare(file, rank);
           const existingPiece = this.customBoardState[square];
 
-          // Check if this is a moved piece that had effects
+          // Check if this is a moved piece that had effects or position history
           let pieceEffects: Effect[] = [];
+          let positionHistory: string[] = [];
 
-          // First try to get effects from the same square
+          // First try to get effects and history from the same square
           if (effectsMap.has(square)) {
             pieceEffects = effectsMap.get(square) || [];
           }
-          // If no effects found but this is the only piece of this type+color, try to find matching effects
-          else if (existingPiece?.effects.length > 0) {
-            pieceEffects = existingPiece.effects;
+
+          if (positionHistoryMap.has(square)) {
+            positionHistory = positionHistoryMap.get(square) || [];
+            console.log(
+              `Found position history for piece at ${square}:`,
+              positionHistory
+            );
+          }
+
+          // If no effects or history found but piece exists, preserve what it had
+          if (existingPiece) {
+            if (!pieceEffects.length && existingPiece.effects.length > 0) {
+              pieceEffects = existingPiece.effects;
+            }
+
+            if (
+              !positionHistory.length &&
+              existingPiece.prevPositions &&
+              existingPiece.prevPositions.length > 0
+            ) {
+              positionHistory = existingPiece.prevPositions;
+              console.log(
+                `Preserving existing position history for piece at ${square}:`,
+                positionHistory
+              );
+            }
           }
 
           // Create the updated piece state
@@ -117,12 +146,15 @@ class GameManager {
             square: square as Square,
             effects: pieceEffects,
             hasMoved: existingPiece?.hasMoved || false,
+            prevPositions:
+              positionHistory.length > 0 ? positionHistory : undefined,
           };
 
-          // Log if we've successfully preserved an ember crown effect
-          if (pieceEffects.some((effect) => effect.source === "emberCrown")) {
+          // Log preserved position history
+          if (positionHistory.length > 0) {
             console.log(
-              `Preserved emberCrown effect on piece at ${square} during sync`
+              `Successfully preserved position history for piece at ${square}:`,
+              positionHistory
             );
           }
         }
@@ -260,6 +292,30 @@ class GameManager {
         // Update hasMoved flag
         if (this.customBoardState[to]) {
           this.customBoardState[to].hasMoved = true;
+
+          // Track position history for Chrono Recall spell
+          // Get the full position history from the original piece
+          let positionHistory = [];
+          if (pieceBeforeMove && pieceBeforeMove.prevPositions) {
+            // Copy the existing history from the piece at the original position
+            positionHistory = [...pieceBeforeMove.prevPositions];
+          }
+
+          // If there was no history or it wasn't properly transferred, initialize with the from position
+          if (positionHistory.length === 0) {
+            positionHistory.push(from);
+          }
+
+          // Add the new position
+          positionHistory.push(to);
+
+          // Set the full history on the piece at the new position
+          this.customBoardState[to].prevPositions = positionHistory;
+
+          console.log(
+            `Updated full position history for piece at ${to}:`,
+            this.customBoardState[to].prevPositions
+          );
         }
 
         // Log the move
@@ -958,6 +1014,13 @@ class GameManager {
 
       // Update custom board state
       const updatedPiece = { ...piece, square: to as Square, hasMoved: true };
+
+      // Track position history for Chrono Recall spell
+      if (!updatedPiece.prevPositions) {
+        updatedPiece.prevPositions = [from];
+      }
+      updatedPiece.prevPositions.push(to);
+
       delete this.customBoardState[from];
       this.customBoardState[to] = updatedPiece;
 

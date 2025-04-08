@@ -10,7 +10,7 @@ const spellIdToFileMap: Record<string, string> = {
   arcaneArmor: "Arcane_Anchor.png",
   frostShield: "Arcane_Anchor.png",
   shadowStrike: "Veil_Of_Shadows.png",
-  timeWarp: "Chrono_Recall.png",
+  chronoRecall: "Chrono_Recall.png",
   mistformKnight: "Mistform_Knight.png",
   kingsGambit: "Kings_Gambit.png",
   darkConversion: "Dark_Conversion.png",

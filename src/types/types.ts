@@ -7,6 +7,7 @@ export interface PieceMeta {
   square: Square;
   effects: Effect[];
   hasMoved?: boolean;
+  prevPositions?: Square[]; // Track previous positions for Chrono Recall spell
 }
 
 // Spell system types

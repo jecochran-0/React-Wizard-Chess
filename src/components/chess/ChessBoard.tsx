@@ -3,7 +3,7 @@ import { Square as ChessSquare } from "chess.js";
 import { useChess } from "../../context/ChessContext";
 import Square from "./Square";
 import { getSpellById } from "../../utils/spells";
-import { SpellId, SpellTargetType, Effect } from "../../types/types";
+import { SpellTargetType, Effect } from "../../types/types";
 import Popup from "../ui/Popup";
 
 // Define a type for chess piece that matches the board state structure
@@ -12,6 +12,7 @@ interface ChessPiece {
   color: string;
   effects?: Effect[];
   hasMoved?: boolean;
+  prevPositions?: string[]; // Historical positions for Chrono Recall
 }
 
 // Interface for from-to type spell targets
@@ -78,9 +79,9 @@ const ChessBoard: React.FC = () => {
   }, [selectedSpell, currentPlayer, boardState]);
 
   // Find valid targets for a spell
-  const findValidTargetsForSpell = (spellId: SpellId) => {
+  const findValidTargetsForSpell = (spellId: string): ChessSquare[] => {
     const spell = getSpellById(spellId);
-    if (!spell) return;
+    if (!spell) return [];
 
     const validSquares: ChessSquare[] = [];
     console.log(
@@ -176,6 +177,56 @@ const ChessBoard: React.FC = () => {
         }
         break;
 
+      case "chronoRecall":
+        console.log("Finding valid targets for Chrono Recall");
+        console.log("Current player:", currentPlayer);
+        console.log("BoardState type:", typeof boardState);
+
+        // Log all pieces owned by the current player for debugging
+        console.log("All pieces owned by current player:");
+        let piecesWithHistory = 0;
+
+        // Find pieces owned by the current player that have move history
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          const piece = boardState[squareKey];
+
+          // Must have a piece owned by the current player
+          if (piece && piece.color === currentPlayer) {
+            // Log the piece details
+            console.log(`Piece at ${squareKey}:`, {
+              type: piece.type,
+              color: piece.color,
+              effects: piece.effects?.length || 0,
+              prevPositions: piece.prevPositions || "No history",
+              hasMoved: piece.hasMoved,
+              fullPiece: piece,
+            });
+
+            // Log the piece's position history
+            console.log(
+              `Piece at ${squareKey} position history:`,
+              piece.prevPositions || "No history"
+            );
+
+            // Check if the piece has move history (prevPositions is used in GameManager)
+            if (piece.prevPositions && piece.prevPositions.length >= 2) {
+              piecesWithHistory++;
+              console.log(
+                `Piece at ${squareKey} has sufficient move history for Chrono Recall: ${JSON.stringify(
+                  piece.prevPositions
+                )}`
+              );
+              validSquares.push(squareKey);
+            }
+          }
+        }
+
+        console.log(
+          `Found ${piecesWithHistory} pieces with sufficient history out of ${validSquares.length} valid targets`
+        );
+        break;
+
       default:
         // Default behavior for other spells - allow targeting any square with pieces
         for (const square in boardState) {
@@ -188,6 +239,7 @@ const ChessBoard: React.FC = () => {
     }
 
     setValidTargets(validSquares);
+    return validSquares;
   };
 
   // Helper function to check if a target is a FromToTarget

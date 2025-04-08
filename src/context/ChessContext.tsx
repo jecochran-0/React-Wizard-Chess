@@ -145,8 +145,40 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     // Update current player
     setCurrentPlayer(gameManager.getCurrentPlayer());
 
+    // Add debugging to check board state before updating
+    const newBoardState = gameManager.getBoardState() as Record<
+      Square,
+      PieceMeta
+    >;
+    console.log("Board state from GameManager:", newBoardState);
+
+    // Log a few specific pieces to check if they have position history
+    for (const square in newBoardState) {
+      const piece = newBoardState[square];
+      if (piece && piece.prevPositions) {
+        console.log(
+          `GameManager: Piece at ${square} has position history:`,
+          piece.prevPositions
+        );
+      }
+    }
+
     // Update board state
-    setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+    setBoardState(newBoardState);
+
+    // Log the React state after update (will be visible in next render)
+    setTimeout(() => {
+      console.log("Board state in React after update:");
+      for (const square in boardState) {
+        const piece = boardState[square];
+        if (piece && piece.prevPositions) {
+          console.log(
+            `React: Piece at ${square} has position history:`,
+            piece.prevPositions
+          );
+        }
+      }
+    }, 0);
 
     // Update player mana
     setPlayerMana(gameManager.getPlayerMana());

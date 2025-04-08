@@ -218,107 +218,451 @@ Remove all pieces with mistClone effect on turn end.
 
 Implementation:
 
-ts
-Copy
-Edit
-function castChronoRecall(square: Square) {
-const piece = customBoardState[square];
-const prev = piece.prevPositions?.at(-3);
-if (!prev || customBoardState[prev]) return false;
-customBoardState[prev] = piece;
-delete customBoardState[square];
-} 7. Cursed Glyph (5 Mana)
-Trap square. Delay transformation.
+```typescript
+private castChronoRecall(target: Square): boolean {
+  // Get the piece at the target square
+  const piece = this.gameManager.getPieceAt(target);
+
+  // Must target a piece owned by the current player
+  const currentPlayer = this.gameManager.getCurrentPlayer();
+  if (!piece || piece.color !== currentPlayer) {
+    console.error("Target must be a piece owned by the current player");
+    return false;
+  }
+
+  // Check if the piece has move history (exists for at least 2 turns)
+  if (!piece.prevPositions || piece.prevPositions.length < 3) {
+    console.error("Piece doesn't have enough move history");
+    return false;
+  }
+
+  // Get the position from 2 moves ago
+  const destination = piece.prevPositions[piece.prevPositions.length - 3];
+
+  // Destination must be empty
+  if (this.gameManager.getPieceAt(destination)) {
+    console.error("Cannot recall to occupied square");
+    return false;
+  }
+
+  // Check if the move would result in a king in check
+  const tempBoard = new Chess(this.gameManager.getFEN());
+  tempBoard.remove(target);
+  tempBoard.put({ type: piece.type, color: piece.color }, destination);
+  if (tempBoard.isCheck()) {
+    console.error("Cannot recall as it would result in check");
+    return false;
+  }
+
+  // Move the piece to the historical position and end the turn
+  return this.gameManager.movePieceDirectly(target, destination, true);
+}
+```
+
+7. Cursed Glyph (5 Mana)
+   Trap square. Delay transformation.
 
 Implementation:
 
-ts
-Copy
-Edit
-glyphs[square] = { turnsLeft: 1 };
+```typescript
+private castCursedGlyph(target: Square): boolean {
+  // Verify target square is empty
+  if (this.gameManager.getPieceAt(target)) {
+    console.error("Target square must be empty");
+    return false;
+  }
 
-function checkGlyphTrigger(square) {
-if (glyphs[square]) {
-glyphs[square].triggered = true;
+  // Create a glyph effect that will trap the square
+  const glyphEffect = this.createEffect("glyph", 2, "cursedGlyph", {
+    triggered: false, // Will be set to true when a piece moves onto the square
+    transformToPawn: true,
+    removeOnExpire: true,
+  });
+
+  // Add the effect to the global game state with the target square
+  this.gameManager.addGlyphToSquare(target, glyphEffect);
+
+  console.log(`Cursed Glyph placed on ${target}`);
+  return true;
 }
+
+// Must also implement hooks in the move validation and execution:
+private checkForGlyphs(to: Square): void {
+  const glyph = this.gameManager.getGlyphAt(to);
+  if (glyph && glyph.source === "cursedGlyph") {
+    // Mark the glyph as triggered
+    glyph.modifiers.triggered = true;
+
+    console.log(`Cursed Glyph at ${to} has been triggered!`);
+  }
 }
 
-// On end of next turn
-if (glyphs[square]?.triggered) {
-customBoardState[square].piece = customBoardState[square].piece[0] + 'P';
-} 8. King’s Gambit (2 Mana)
-Move King twice in one turn.
+// In processEndOfTurnEffects():
+private processGlyphEffects(): void {
+  for (const square in this.gameManager.getGlyphs()) {
+    const glyph = this.gameManager.getGlyphAt(square as Square);
+    if (!glyph || glyph.source !== "cursedGlyph" || !glyph.modifiers.triggered) continue;
 
-Implementation: Track a kingDoubleMove flag. Temporarily allow two legal king moves using chess.js.move().
+    if (glyph.duration <= 0) {
+      // Transform the piece on this square to a pawn
+      const piece = this.gameManager.getPieceAt(square as Square);
+      if (piece && piece.type !== "p") {
+        this.gameManager.transformPiece(square as Square, "p", "cursedGlyph");
+        console.log(`Piece at ${square} transformed into a Pawn by Cursed Glyph!`);
+      }
+
+      // Remove the glyph
+      this.gameManager.removeGlyph(square as Square);
+    }
+  }
+}
+```
+
+8. King's Gambit (2 Mana)
+   Move King twice in one turn.
+
+Implementation:
+
+```typescript
+private castKingsGambit(): boolean {
+  // Check that the current player's king isn't in check
+  const tempBoard = new Chess(this.gameManager.getFEN());
+  if (tempBoard.isCheck()) {
+    console.error("Cannot cast King's Gambit while in check");
+    return false;
+  }
+
+  // Create an effect that allows the king to move a second time
+  const effect = this.createEffect("modifier", 1, "kingsGambit", {
+    allowSecondKingMove: true,
+    removeOnExpire: true,
+  });
+
+  // Add the effect to the global game state
+  this.gameManager.addGlobalEffect(effect);
+
+  // Update the UI to indicate that the player can move the king again
+  console.log("King's Gambit cast - the king can move twice this turn");
+  return true;
+}
+```
 
 9. Dark Conversion (5 Mana)
    Sacrifice 3 pawns → summon Knight/Bishop.
 
 Implementation:
 
-ts
-Copy
-Edit
-function castDarkConversion(pawnSquares: Square[], pieceType: 'N' | 'B', summonSquare: Square) {
-if (pawnSquares.length !== 3) return false;
-pawnSquares.forEach(sq => delete customBoardState[sq]);
-customBoardState[summonSquare] = { piece: currentPlayer + pieceType };
-} 10. Spirit Link (5 Mana)
-Link a major piece with pawns.
+```typescript
+private castDarkConversion(targets: MultiTarget, newPieceType: "n" | "b"): boolean {
+  // Verify we have exactly 3 pawn targets
+  if (targets.length !== 3) {
+    console.error("Dark Conversion requires exactly 3 pawn targets");
+    return false;
+  }
 
-ts
-Copy
-Edit
-linkedGroups.push({
-primary: 'c4',
-backups: ['a2', 'a3', 'a4'],
-turnsLeft: 3
-});
+  const currentPlayer = this.gameManager.getCurrentPlayer();
+  const summonSquare = targets[0]; // First selected square will be the summoning location
 
-function onCapture(square) {
-if (isLinked(square)) {
-const group = getLinkGroup(square);
-group.backups.forEach(sq => delete customBoardState[sq]);
-teleportToNewLocation(group.primary, group.backups);
-removeLink(group);
+  // Check all targets are pawns owned by the current player
+  for (let i = 0; i < 3; i++) {
+    const piece = this.gameManager.getPieceAt(targets[i]);
+    if (!piece || piece.color !== currentPlayer || piece.type !== "p") {
+      console.error("All targets must be pawns owned by the current player");
+      return false;
+    }
+  }
+
+  // Check that the summon square is empty
+  if (this.gameManager.getPieceAt(summonSquare)) {
+    console.error("Summoning square must be empty");
+    return false;
+  }
+
+  // Remove the three pawns
+  for (let i = 0; i < 3; i++) {
+    this.gameManager.removePiece(targets[i]);
+  }
+
+  // Add the new piece at the summon square
+  this.gameManager.addPiece(
+    summonSquare,
+    newPieceType as PieceSymbol,
+    currentPlayer as "w" | "b",
+    []
+  );
+
+  console.log(`Successfully sacrificed 3 pawns to summon a ${newPieceType === "n" ? "Knight" : "Bishop"}`);
+  return true;
 }
-} 11. Second Wind (8 Mana)
-Move two pieces (no capture or check)
+```
 
-Allow customMove() from-to, validate destination is empty, and move only.
+10. Spirit Link (5 Mana)
+    Link a major piece with pawns.
+
+Implementation:
+
+```typescript
+private castSpiritLink(primary: Square, backups: Square[]): boolean {
+  // Verify primary piece is a major piece (queen, rook, bishop, knight)
+  const primaryPiece = this.gameManager.getPieceAt(primary);
+  const currentPlayer = this.gameManager.getCurrentPlayer();
+
+  if (!primaryPiece || primaryPiece.color !== currentPlayer) {
+    console.error("Primary piece must be owned by the current player");
+    return false;
+  }
+
+  if (primaryPiece.type === "p" || primaryPiece.type === "k") {
+    console.error("Primary piece must be a major piece (queen, rook, bishop, knight)");
+    return false;
+  }
+
+  // Verify backup pieces are pawns owned by the current player
+  for (const square of backups) {
+    const piece = this.gameManager.getPieceAt(square);
+    if (!piece || piece.color !== currentPlayer || piece.type !== "p") {
+      console.error("All backup pieces must be pawns owned by the current player");
+      return false;
+    }
+  }
+
+  // Create the spirit link effect
+  const linkEffect = this.createEffect("link", 3, "spiritLink", {
+    primarySquare: primary,
+    backupSquares: backups,
+    removeOnExpire: true,
+  });
+
+  // Add the effect to the primary piece
+  this.gameManager.addEffect(primary, linkEffect);
+
+  // Add visual effects to linked pieces
+  const visualEffect = this.createEffect("visual", 3, "spiritLink", {
+    isLinked: true,
+    isPrimary: false,
+    removeOnExpire: true,
+  });
+
+  for (const square of backups) {
+    this.gameManager.addEffect(square, visualEffect);
+  }
+
+  console.log(`Spirit Link established between ${primary} and ${backups.join(", ")}`);
+  return true;
+}
+
+// Must also implement a hook in the capture logic:
+private handleCapture(square: Square): void {
+  const piece = this.gameManager.getPieceAt(square);
+  if (!piece) return;
+
+  // Check if this piece has a spirit link effect
+  const linkEffect = piece.effects.find(e => e.source === "spiritLink");
+  if (linkEffect && linkEffect.modifiers) {
+    // If the primary piece is captured, teleport it to the first backup
+    const backupSquare = linkEffect.modifiers.backupSquares[0];
+
+    // Remove the backup pawn
+    this.gameManager.removePiece(backupSquare);
+
+    // Move the primary piece to the backup location
+    this.gameManager.movePieceDirectly(square, backupSquare, false);
+
+    // Remove the spirit link effect
+    this.gameManager.removeEffect(square, linkEffect.id);
+
+    console.log(`Spirit Link triggered! ${piece.type} teleported to ${backupSquare}`);
+  }
+}
+```
+
+11. Second Wind (8 Mana)
+    Move two pieces (no capture or check)
+
+Implementation:
+
+```typescript
+private castSecondWind(): boolean {
+  // Create an effect that allows for a second piece move
+  const effect = this.createEffect("modifier", 1, "secondWind", {
+    allowSecondMove: true,
+    removeOnExpire: true,
+  });
+
+  // Add the effect to the global game state
+  this.gameManager.addGlobalEffect(effect);
+
+  console.log("Second Wind cast - you can move another piece this turn");
+  return true;
+}
+
+// Implementation will also require tracking in the ChessBoard component:
+// After a piece move, if secondWind effect is active, don't end turn
+// and allow another piece to be moved.
+```
 
 12. Pressure Field (3 Mana)
     Prevent ending adjacent to Rooks
 
-During enemy move validation, check if destSquare is adjacent to any Rook square. If so, invalidate move.
+Implementation:
+
+```typescript
+private castPressureField(): boolean {
+  // Create a global effect that prevents pieces from ending adjacent to rooks
+  const effect = this.createEffect("field", 2, "pressureField", {
+    preventAdjacentToRook: true,
+    removeOnExpire: true,
+  });
+
+  // Add the effect to the global game state
+  this.gameManager.addGlobalEffect(effect);
+
+  console.log("Pressure Field cast - pieces cannot end adjacent to Rooks for 2 turns");
+  return true;
+}
+
+// Must also implement a check in the move validation logic:
+private isValidMove(from: Square, to: Square): boolean {
+  // ... normal move validation ...
+
+  // If pressure field is active, check if destination is adjacent to any rook
+  const pressureFieldEffect = this.gameManager.getGlobalEffects()
+    .find(e => e.source === "pressureField" && e.modifiers?.preventAdjacentToRook);
+
+  if (pressureFieldEffect) {
+    const isAdjacentToRook = this.isSquareAdjacentToRook(to);
+    if (isAdjacentToRook) {
+      console.error("Cannot move adjacent to a Rook while Pressure Field is active");
+      return false;
+    }
+  }
+
+  return true;
+}
+
+private isSquareAdjacentToRook(square: Square): boolean {
+  const adjacentSquares = this.getAdjacentSquares(square);
+
+  for (const adjSquare of adjacentSquares) {
+    const piece = this.gameManager.getPieceAt(adjSquare);
+    if (piece && piece.type === "r") {
+      return true;
+    }
+  }
+
+  return false;
+}
+```
 
 13. Nullfield (5 Mana)
     Remove any spell effect.
 
-Clear all buffs and effects from selected piece/square.
+Implementation:
+
+```typescript
+private castNullfield(target: Square): boolean {
+  const piece = this.gameManager.getPieceAt(target);
+
+  if (!piece) {
+    console.error("Target square must contain a piece");
+    return false;
+  }
+
+  // Check if the piece has any effects
+  if (!piece.effects || piece.effects.length === 0) {
+    console.error("Target piece doesn't have any effects to remove");
+    return false;
+  }
+
+  // Remove all spell effects from the piece
+  piece.effects = [];
+
+  console.log(`Successfully removed all spell effects from ${target}`);
+  return true;
+}
+```
 
 14. Veil of Shadows (4 Mana)
     Hide board from enemy
 
-On enemy turn, render empty squares unless seenBefore.
+Implementation:
+
+```typescript
+private castVeilOfShadows(): boolean {
+  // Create a global effect that hides the board from the opponent
+  const effect = this.createEffect("vision", 1, "veilOfShadows", {
+    hideBoard: true,
+    removeOnExpire: true,
+  });
+
+  // Add the effect to the global game state
+  this.gameManager.addGlobalEffect(effect);
+
+  console.log("Veil of Shadows cast - the opponent's vision will be obscured on their next turn");
+  return true;
+}
+
+// Implementation will also require updates to the rendering logic in Square.tsx:
+// If veilOfShadows is active and it's the opponent's turn, hide pieces unless they've been seen
+```
 
 15. Raise the Bonewalker (6 Mana)
     Summon pawn → auto-promote in 6 turns.
 
-ts
-Copy
-Edit
-bonewalkers[square] = 6;
+Implementation:
 
-function tickBonewalkers() {
-for (const sq in bonewalkers) {
-bonewalkers[sq]--;
-if (bonewalkers[sq] <= 0) {
-customBoardState[sq].piece = currentPlayer + 'R';
-delete bonewalkers[sq];
+```typescript
+private castRaiseBonewalker(target: Square): boolean {
+  // Verify target square is empty
+  if (this.gameManager.getPieceAt(target)) {
+    console.error("Target square must be empty");
+    return false;
+  }
+
+  const currentPlayer = this.gameManager.getCurrentPlayer();
+
+  // Create a bonewalker effect that will transform the pawn to a rook after 6 turns
+  const bonewalkerEffect = this.createEffect("transform", 6, "bonewalker", {
+    finalType: "r", // Will become a rook
+    removeOnExpire: false, // Don't remove the piece when the effect expires
+  });
+
+  // Add a pawn piece with the bonewalker effect
+  this.gameManager.addPiece(
+    target,
+    "p" as PieceSymbol,
+    currentPlayer as "w" | "b",
+    [bonewalkerEffect]
+  );
+
+  // Add visual effect to make the pawn look like a bonewalker
+  const visualEffect = this.createEffect("visual", 999, "bonewalker", {
+    visualType: "bonewalker",
+    removeOnExpire: false,
+  });
+
+  this.gameManager.addEffect(target, visualEffect);
+
+  console.log(`Bonewalker summoned at ${target} - will transform to a Rook in 6 turns`);
+  return true;
 }
+
+// Add this in processEndOfTurnEffects():
+private processBonewalkerEffects(): void {
+  for (const square in this.gameManager.getBoardState()) {
+    const piece = this.gameManager.getPieceAt(square as Square);
+    if (!piece) continue;
+
+    const bonewalkerEffect = piece.effects.find(e => e.source === "bonewalker" && e.duration === 0);
+    if (bonewalkerEffect) {
+      // Transform the pawn to a rook
+      this.gameManager.transformPiece(square as Square, "r", "bonewalker");
+      console.log(`Bonewalker at ${square} transformed into a Rook!`);
+    }
+  }
 }
-}
+```
+
 📦 Final Notes
 GameManager keeps state clean and routes logic.
 
