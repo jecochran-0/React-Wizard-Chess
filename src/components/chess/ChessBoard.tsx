@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Square as ChessSquare } from "chess.js";
+import { Square } from "chess.js";
 import { useChess } from "../../context/ChessContext";
-import Square from "./Square";
+import SquareComponent from "./Square";
 import { getSpellById } from "../../utils/spells";
 import { SpellTargetType, Effect } from "../../types/types";
+import PieceTypeSelector from "./PieceTypeSelector";
 
 // Define a type for chess piece that matches the board state structure
 interface ChessPiece {
@@ -16,8 +17,8 @@ interface ChessPiece {
 
 // Interface for from-to type spell targets
 interface FromToTarget {
-  from: ChessSquare;
-  to: ChessSquare;
+  from: Square;
+  to: Square;
 }
 
 // Type for tracking targeting mode
@@ -36,11 +37,11 @@ const ChessBoard: React.FC = () => {
   } = useChess();
 
   // State for spell targeting
-  const [spellTargets, setSpellTargets] = useState<
-    ChessSquare[] | FromToTarget[]
-  >([]);
+  const [spellTargets, setSpellTargets] = useState<Square[] | FromToTarget[]>(
+    []
+  );
   const [targetingMode, setTargetingMode] = useState<TargetingMode>(null);
-  const [validTargets, setValidTargets] = useState<ChessSquare[]>([]);
+  const [validTargets, setValidTargets] = useState<Square[]>([]);
 
   // Replace popup with a message indicator
   const [statusMessage, setStatusMessage] = useState<string>("");
@@ -48,7 +49,13 @@ const ChessBoard: React.FC = () => {
 
   // Get the position of the king that is in check (if any)
   // Using a state variable to track if the king is in check or not
-  const [kingInCheck, setKingInCheck] = useState<ChessSquare | null>(null);
+  const [kingInCheck, setKingInCheck] = useState<Square | null>(null);
+
+  // Add state for Dark Conversion piece selection
+  const [showPieceTypeSelector, setShowPieceTypeSelector] = useState(false);
+  const [darkConversionTargets, setDarkConversionTargets] = useState<Square[]>(
+    []
+  );
 
   // Show a status message with automatic timeout
   const showStatusMessage = (message: string, duration = 3000) => {
@@ -89,14 +96,35 @@ const ChessBoard: React.FC = () => {
   }, [selectedSpell, currentPlayer, boardState]);
 
   // Find valid targets for a spell
-  const findValidTargetsForSpell = (spellId: string): ChessSquare[] => {
+  const findValidTargetsForSpell = (spellId: string): Square[] => {
     const spell = getSpellById(spellId);
     if (!spell) return [];
 
-    const validSquares: ChessSquare[] = [];
+    const validSquares: Square[] = [];
     console.log(
       `Finding valid targets for ${spellId}, spellTargets length: ${spellTargets.length}`
     );
+
+    // Special case for Dark Conversion - only show pawns owned by current player
+    if (spellId === "darkConversion") {
+      console.log("Finding pawns for Dark Conversion");
+
+      // For Dark Conversion, we're only targeting our own pawns
+      for (const square in boardState) {
+        const squareKey = square as Square;
+        const piece = boardState[squareKey];
+
+        // Check if the square has a pawn owned by the current player
+        if (piece && piece.color === currentPlayer && piece.type === "p") {
+          // Allow only pawns owned by the current player
+          validSquares.push(squareKey);
+        }
+      }
+
+      console.log(`Found ${validSquares.length} pawns as valid targets`);
+      setValidTargets(validSquares);
+      return validSquares;
+    }
 
     // Check for spells that must target empty squares (like Cursed Glyph)
     if (spell.mustTargetEmptySquare) {
@@ -107,7 +135,7 @@ const ChessBoard: React.FC = () => {
 
       for (const file of files) {
         for (const rank of ranks) {
-          const squareKey = `${file}${rank}` as ChessSquare;
+          const squareKey = `${file}${rank}` as Square;
           // Check if the square is empty (no piece in boardState)
           if (!boardState[squareKey]) {
             // Only empty squares are valid
@@ -127,7 +155,7 @@ const ChessBoard: React.FC = () => {
       case "kingsGambit": {
         // Find the king owned by the current player
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           const piece = boardState[squareKey];
           if (piece && piece.color === currentPlayer && piece.type === "k") {
             validSquares.push(squareKey);
@@ -141,7 +169,7 @@ const ChessBoard: React.FC = () => {
       case "emberCrown": {
         // Find pawns owned by the current player
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           const piece = boardState[squareKey];
           if (piece && piece.color === currentPlayer && piece.type === "p") {
             validSquares.push(squareKey);
@@ -156,7 +184,7 @@ const ChessBoard: React.FC = () => {
         if (spellTargets.length === 0) {
           console.log("Finding knights for Mistform Knight spell");
           for (const square in boardState) {
-            const squareKey = square as ChessSquare;
+            const squareKey = square as Square;
             const piece = boardState[squareKey];
             if (piece && piece.color === currentPlayer && piece.type === "n") {
               validSquares.push(squareKey);
@@ -170,7 +198,7 @@ const ChessBoard: React.FC = () => {
       case "arcaneArmor": {
         // Find any pieces owned by the current player
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           const piece = boardState[squareKey];
           if (piece && piece.color === currentPlayer) {
             validSquares.push(squareKey);
@@ -183,7 +211,7 @@ const ChessBoard: React.FC = () => {
         // Only find first targets here - second targets are handled in handleSpellTargeting
         console.log("Finding initial targets for Astral Swap");
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           const piece = boardState[squareKey];
           if (piece && piece.color === currentPlayer) {
             // Allow any owned piece as first target
@@ -199,7 +227,7 @@ const ChessBoard: React.FC = () => {
         if (spellTargets.length === 0) {
           console.log("Finding initial piece selection for Phantom Step");
           for (const square in boardState) {
-            const squareKey = square as ChessSquare;
+            const squareKey = square as Square;
             const piece = boardState[squareKey];
             if (piece && piece.color === currentPlayer) {
               validSquares.push(squareKey);
@@ -214,7 +242,7 @@ const ChessBoard: React.FC = () => {
       case "shadowStrike": {
         // Default to finding all valid targets based on spell requirements
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           const piece = boardState[squareKey];
 
           // For spells targeting friendly pieces
@@ -243,7 +271,7 @@ const ChessBoard: React.FC = () => {
 
         // Find pieces owned by the current player that have move history
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           const piece = boardState[squareKey];
 
           // Must have a piece owned by the current player
@@ -285,7 +313,7 @@ const ChessBoard: React.FC = () => {
       default: {
         // Default behavior for other spells - allow targeting any square with pieces
         for (const square in boardState) {
-          const squareKey = square as ChessSquare;
+          const squareKey = square as Square;
           if (boardState[squareKey]) {
             validSquares.push(squareKey);
           }
@@ -309,7 +337,7 @@ const ChessBoard: React.FC = () => {
   };
 
   // Handle square click
-  const handleSquareClick = (square: ChessSquare) => {
+  const handleSquareClick = (square: Square) => {
     // If a spell is selected, handle spell targeting
     if (selectedSpell) {
       handleSpellTargeting(square);
@@ -432,8 +460,49 @@ const ChessBoard: React.FC = () => {
     }
   };
 
+  // Handle piece type selection for Dark Conversion
+  const handlePieceTypeSelect = (pieceType: "n" | "b") => {
+    if (
+      selectedSpell === "darkConversion" &&
+      darkConversionTargets.length === 3
+    ) {
+      const targetMessage = `Selected ${
+        pieceType === "n" ? "Knight" : "Bishop"
+      } for Dark Conversion`;
+      console.log(targetMessage);
+
+      // Need to select a summoning location from the three pawn squares
+      const pawnSquares = [...darkConversionTargets];
+      const summonLocation = pawnSquares[0]; // Using first pawn square as summon location
+
+      console.log(`Using ${summonLocation} as summoning location`);
+
+      // Pass the targets with the piece type for the Dark Conversion spell
+      const success = castSpell(selectedSpell, pawnSquares, pieceType);
+
+      if (success) {
+        setDarkConversionTargets([]);
+        setShowPieceTypeSelector(false);
+        resetUI();
+      }
+    }
+  };
+
+  // Handle cancellation of piece type selection
+  const handlePieceTypeSelectorCancel = () => {
+    setShowPieceTypeSelector(false);
+
+    // Reset Dark Conversion targets
+    setDarkConversionTargets([]);
+
+    // Restore all valid pawn targets by re-running the target finder
+    findValidTargetsForSpell("darkConversion");
+
+    console.log("Dark Conversion selection canceled - targets reset");
+  };
+
   // Handle spell targeting
-  const handleSpellTargeting = (square: ChessSquare) => {
+  const handleSpellTargeting = (square: Square) => {
     if (!selectedSpell) return;
 
     const spell = getSpellById(selectedSpell);
@@ -441,6 +510,37 @@ const ChessBoard: React.FC = () => {
 
     // Log the targeting action for debugging
     console.log(`Targeting with spell ${selectedSpell}, clicked ${square}`);
+
+    // Special case for Dark Conversion
+    if (selectedSpell === "darkConversion") {
+      console.log(`Processing Dark Conversion targeting, clicked ${square}`);
+
+      // Check if this square is a valid target
+      const isValidTarget = validTargets.includes(square);
+      if (!isValidTarget) {
+        console.log(`${square} is not a valid target for Dark Conversion`);
+        return;
+      }
+
+      // Add the pawn to the targets
+      const updatedTargets = [...darkConversionTargets, square];
+      setDarkConversionTargets(updatedTargets);
+      console.log(
+        `Added pawn at ${square} to Dark Conversion targets (${updatedTargets.length}/3)`
+      );
+
+      // Update valid targets to exclude the one we just selected
+      const newValidTargets = validTargets.filter((sq) => sq !== square);
+      setValidTargets(newValidTargets);
+
+      // If we have all three pawns selected, open the piece selector immediately
+      if (updatedTargets.length === 3) {
+        console.log("All three pawns selected, opening piece selector");
+        setShowPieceTypeSelector(true);
+      }
+
+      return;
+    }
 
     // Special case for Cursed Glyph
     if (selectedSpell === "cursedGlyph") {
@@ -478,7 +578,7 @@ const ChessBoard: React.FC = () => {
     }
 
     let success: boolean;
-    let updatedTargets: ChessSquare[];
+    let updatedTargets: Square[];
     let fromToTarget: FromToTarget;
 
     // Logic based on the spell's targeting mode
@@ -520,7 +620,7 @@ const ChessBoard: React.FC = () => {
           if (!firstPiece) return;
 
           // Calculate valid second targets based on the first selection
-          const validSecondTargets: ChessSquare[] = [];
+          const validSecondTargets: Square[] = [];
           const firstPieceIsPawn = firstPiece.type === "p";
           const firstPieceOnBackRow =
             (firstPiece.color === "w" && square[1] === "1") ||
@@ -533,7 +633,7 @@ const ChessBoard: React.FC = () => {
 
           // Find valid second targets
           for (const sqKey in boardState) {
-            const squareKey = sqKey as ChessSquare;
+            const squareKey = sqKey as Square;
             const piece = boardState[squareKey];
 
             if (
@@ -593,8 +693,8 @@ const ChessBoard: React.FC = () => {
         }
         // For the second selection of Astral Swap or other multi-target spells
         else {
-          // Cast as ChessSquare[] to handle the multi-target case correctly
-          updatedTargets = [...(spellTargets as ChessSquare[]), square];
+          // Cast as Square[] to handle the multi-target case correctly
+          updatedTargets = [...(spellTargets as Square[]), square];
           setSpellTargets(updatedTargets);
 
           // If we have the required number of targets, cast the spell
@@ -667,7 +767,7 @@ const ChessBoard: React.FC = () => {
           }
         } else if (spellTargets.length === 1) {
           // Second click - select destination
-          const fromSquare = spellTargets[0] as ChessSquare;
+          const fromSquare = spellTargets[0] as Square;
           const toSquare = square;
 
           console.log(
@@ -697,11 +797,11 @@ const ChessBoard: React.FC = () => {
   // Helper function to get valid moves for Phantom Step
   // This finds moves that follow the piece's movement pattern but ignores pieces in the way
   const getPhantomStepMoves = (
-    square: ChessSquare,
+    square: Square,
     piece: { type: string; color: string },
     boardState: Record<string, ChessPiece | undefined>
-  ): ChessSquare[] => {
-    const validMoves: ChessSquare[] = [];
+  ): Square[] => {
+    const validMoves: Square[] = [];
     const [file, rank] = [square.charAt(0), parseInt(square.charAt(1))];
     const fileIndex = file.charCodeAt(0) - "a".charCodeAt(0);
 
@@ -713,7 +813,7 @@ const ChessBoard: React.FC = () => {
         const startingRank = piece.color === "w" ? 2 : 7;
 
         // One square forward
-        const oneForward = `${file}${rank + direction}` as ChessSquare;
+        const oneForward = `${file}${rank + direction}` as Square;
         if (
           rank + direction >= 1 &&
           rank + direction <= 8 &&
@@ -723,7 +823,7 @@ const ChessBoard: React.FC = () => {
 
           // Two squares forward from starting position
           if (rank === startingRank) {
-            const twoForward = `${file}${rank + 2 * direction}` as ChessSquare;
+            const twoForward = `${file}${rank + 2 * direction}` as Square;
             if (!boardState[twoForward]) {
               validMoves.push(twoForward);
             }
@@ -738,7 +838,7 @@ const ChessBoard: React.FC = () => {
         for (let f = 0; f < 8; f++) {
           const newFile = String.fromCharCode("a".charCodeAt(0) + f);
           if (newFile !== file) {
-            const newSquare = `${newFile}${rank}` as ChessSquare;
+            const newSquare = `${newFile}${rank}` as Square;
             if (!boardState[newSquare]) {
               validMoves.push(newSquare);
             }
@@ -748,7 +848,7 @@ const ChessBoard: React.FC = () => {
         // Vertical moves (same file)
         for (let r = 1; r <= 8; r++) {
           if (r !== rank) {
-            const newSquare = `${file}${r}` as ChessSquare;
+            const newSquare = `${file}${r}` as Square;
             if (!boardState[newSquare]) {
               validMoves.push(newSquare);
             }
@@ -783,7 +883,7 @@ const ChessBoard: React.FC = () => {
             const newFile = String.fromCharCode(
               "a".charCodeAt(0) + newFileIndex
             );
-            const newSquare = `${newFile}${newRank}` as ChessSquare;
+            const newSquare = `${newFile}${newRank}` as Square;
 
             if (!boardState[newSquare]) {
               validMoves.push(newSquare);
@@ -817,7 +917,7 @@ const ChessBoard: React.FC = () => {
               const newFile = String.fromCharCode(
                 "a".charCodeAt(0) + newFileIndex
               );
-              const newSquare = `${newFile}${newRank}` as ChessSquare;
+              const newSquare = `${newFile}${newRank}` as Square;
 
               if (!boardState[newSquare]) {
                 validMoves.push(newSquare);
@@ -834,7 +934,7 @@ const ChessBoard: React.FC = () => {
         for (let f = 0; f < 8; f++) {
           const newFile = String.fromCharCode("a".charCodeAt(0) + f);
           if (newFile !== file) {
-            const newSquare = `${newFile}${rank}` as ChessSquare;
+            const newSquare = `${newFile}${rank}` as Square;
             if (!boardState[newSquare]) {
               validMoves.push(newSquare);
             }
@@ -843,7 +943,7 @@ const ChessBoard: React.FC = () => {
 
         for (let r = 1; r <= 8; r++) {
           if (r !== rank) {
-            const newSquare = `${file}${r}` as ChessSquare;
+            const newSquare = `${file}${r}` as Square;
             if (!boardState[newSquare]) {
               validMoves.push(newSquare);
             }
@@ -872,7 +972,7 @@ const ChessBoard: React.FC = () => {
               const newFile = String.fromCharCode(
                 "a".charCodeAt(0) + newFileIndex
               );
-              const newSquare = `${newFile}${newRank}` as ChessSquare;
+              const newSquare = `${newFile}${newRank}` as Square;
 
               if (!boardState[newSquare]) {
                 validMoves.push(newSquare);
@@ -909,7 +1009,7 @@ const ChessBoard: React.FC = () => {
             const newFile = String.fromCharCode(
               "a".charCodeAt(0) + newFileIndex
             );
-            const newSquare = `${newFile}${newRank}` as ChessSquare;
+            const newSquare = `${newFile}${newRank}` as Square;
 
             if (!boardState[newSquare]) {
               validMoves.push(newSquare);
@@ -925,10 +1025,10 @@ const ChessBoard: React.FC = () => {
 
   // Helper function to get valid moves for Mistform Knight
   const getMistformKnightMoves = (
-    square: ChessSquare,
+    square: Square,
     boardState: Record<string, ChessPiece | undefined>
-  ): ChessSquare[] => {
-    const validMoves: ChessSquare[] = [];
+  ): Square[] => {
+    const validMoves: Square[] = [];
     const [file, rank] = [square.charAt(0), parseInt(square.charAt(1))];
     const fileIndex = file.charCodeAt(0) - "a".charCodeAt(0);
 
@@ -955,7 +1055,7 @@ const ChessBoard: React.FC = () => {
         newRank <= 8
       ) {
         const newFile = String.fromCharCode("a".charCodeAt(0) + newFileIndex);
-        const newSquare = `${newFile}${newRank}` as ChessSquare;
+        const newSquare = `${newFile}${newRank}` as Square;
 
         // For Mistform Knight, the target square must be empty
         if (!boardState[newSquare]) {
@@ -976,7 +1076,7 @@ const ChessBoard: React.FC = () => {
     for (const rank of ranks) {
       const row = [];
       for (const file of files) {
-        const square = `${file}${rank}` as ChessSquare;
+        const square = `${file}${rank}` as Square;
         const piece = boardState[square];
         const isLight = (file.charCodeAt(0) - 97 + rank) % 2 === 0;
         const isSelected = selectedPiece === square;
@@ -996,7 +1096,7 @@ const ChessBoard: React.FC = () => {
         const isValidSpellTarget = validTargets.includes(square);
 
         row.push(
-          <Square
+          <SquareComponent
             key={square}
             square={square}
             piece={piece}
@@ -1065,6 +1165,13 @@ const ChessBoard: React.FC = () => {
     );
   };
 
+  // Add helper function to reset UI state
+  const resetUI = () => {
+    setSpellTargets([]);
+    setTargetingMode(null);
+    setValidTargets([]);
+  };
+
   return (
     <div className="chess-board-container">
       {renderTargetingInstructions()}
@@ -1089,6 +1196,13 @@ const ChessBoard: React.FC = () => {
       )}
 
       <div className="chess-board">{renderBoard()}</div>
+
+      {/* Piece Type Selector Dialog for Dark Conversion */}
+      <PieceTypeSelector
+        isOpen={showPieceTypeSelector}
+        onSelect={handlePieceTypeSelect}
+        onCancel={handlePieceTypeSelectorCancel}
+      />
     </div>
   );
 };

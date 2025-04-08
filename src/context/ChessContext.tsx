@@ -37,7 +37,8 @@ export interface ChessContextType {
   makeMove: (from: Square, to: Square) => boolean;
   castSpell: (
     spellId: SpellId,
-    targets: Square | Square[] | { from: Square; to: Square }
+    targets: Square | Square[] | { from: Square; to: Square },
+    pieceType?: "n" | "b"
   ) => boolean;
   endTurn: () => void;
 
@@ -271,8 +272,34 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   // Cast a spell
   const castSpell = (
     spellId: SpellId,
-    targets: Square | Square[] | { from: Square; to: Square }
+    targets: Square | Square[] | { from: Square; to: Square },
+    pieceType?: "n" | "b"
   ): boolean => {
+    // If this is a Dark Conversion spell with a pieceType, we need to handle it specially
+    if (spellId === "darkConversion" && pieceType && Array.isArray(targets)) {
+      // For Dark Conversion, we need to include the piece type in the first target
+      const targetInfo = [...targets];
+
+      // This will be handled by the SpellEngine.castDarkConversion method
+      console.log(`Casting Dark Conversion with piece type: ${pieceType}`);
+      const result = gameManager.castSpell(spellId, targetInfo, pieceType);
+
+      if (result) {
+        // Update UI state after spell cast
+        setCurrentPlayer(gameManager.getCurrentPlayer());
+        setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+        setPlayerMana(gameManager.getPlayerMana());
+        setGameLog(gameManager.getGameLog());
+        setBoardGlyphs(gameManager.getGlyphs());
+
+        // Clear spell selection
+        setSelectedSpell(null);
+      }
+
+      return result;
+    }
+
+    // Standard spell casting for all other spells
     const result = gameManager.castSpell(spellId, targets);
 
     if (result) {

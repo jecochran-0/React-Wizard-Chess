@@ -756,7 +756,11 @@ class GameManager {
   }
 
   // Cast a spell
-  castSpell(spellId: SpellId, targets: SpellTargetData): boolean {
+  castSpell(
+    spellId: SpellId,
+    targets: SpellTargetData,
+    pieceType?: "n" | "b"
+  ): boolean {
     const currentPlayer = this.getCurrentPlayer();
     const spellCost = this.spellEngine.getSpellCost(spellId);
 
@@ -765,6 +769,29 @@ class GameManager {
       return false;
     }
 
+    // Special handling for Dark Conversion with pieceType
+    if (spellId === "darkConversion" && pieceType && Array.isArray(targets)) {
+      console.log(`Casting Dark Conversion with piece type: ${pieceType}`);
+      const success = this.spellEngine.castSpell(spellId, targets, pieceType);
+
+      if (success) {
+        // Deduct mana cost
+        this.currentPlayerMana[currentPlayer] -= spellCost;
+
+        // Log the spell cast
+        const targetDesc = targets.join(", ");
+        this.logSpellCast(
+          spellId,
+          `${targetDesc} (${pieceType === "n" ? "Knight" : "Bishop"})`
+        );
+
+        return true;
+      }
+
+      return false;
+    }
+
+    // Regular spell handling
     // Attempt to cast the spell
     const success = this.spellEngine.castSpell(spellId, targets);
 

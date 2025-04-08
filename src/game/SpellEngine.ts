@@ -20,7 +20,11 @@ export class SpellEngine {
   /**
    * Cast a spell with the given targets
    */
-  castSpell(spellId: string, targetInfo: FromToTarget | SingleTarget): boolean {
+  castSpell(
+    spellId: string,
+    targetInfo: FromToTarget | SingleTarget | Square[],
+    pieceType?: "n" | "b"
+  ): boolean {
     console.log(`Casting spell ${spellId} with targets:`, targetInfo);
 
     try {
@@ -98,6 +102,13 @@ export class SpellEngine {
         case "chronoRecall":
           if (targetInfo) {
             success = this.castChronoRecall(targetInfo as SingleTarget);
+          }
+          break;
+        case "darkConversion":
+          if (Array.isArray(targetInfo) && targetInfo.length === 3) {
+            // Use the provided pieceType or default to Knight
+            const pieceTypeToUse = pieceType || "n";
+            success = this.castDarkConversion(targetInfo, pieceTypeToUse);
           }
           break;
         default:
@@ -820,5 +831,80 @@ export class SpellEngine {
     );
 
     return kingPiece ? kingPiece.square : null;
+  }
+
+  /**
+   * Implements the Dark Conversion spell
+   * Sacrifices 3 pawns to summon a Knight or Bishop
+   */
+  private castDarkConversion(
+    targets: Square[],
+    newPieceType: "n" | "b" = "n" // Default to Knight if not specified
+  ): boolean {
+    console.log(
+      `Attempting to cast Dark Conversion with piece type: ${
+        newPieceType === "n" ? "Knight" : "Bishop"
+      }`
+    );
+    console.log(
+      `Attempting to cast Dark Conversion on squares: ${targets.join(", ")}`
+    );
+
+    // Verify we have exactly 3 pawn targets
+    if (targets.length !== 3) {
+      console.error("Dark Conversion requires exactly 3 pawn targets");
+      return false;
+    }
+
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    const summonSquare = targets[0]; // First selected square will be the summoning location
+
+    // Check all targets are pawns owned by the current player
+    for (let i = 0; i < 3; i++) {
+      const piece = this.gameManager.getPieceAt(targets[i]);
+      if (!piece || piece.color !== currentPlayer || piece.type !== "p") {
+        console.error("All targets must be pawns owned by the current player");
+        return false;
+      }
+    }
+
+    // Create a temporary board to verify the operation won't result in check
+    const tempBoard = new Chess(this.gameManager.getFEN());
+
+    // Remove the three pawns
+    for (let i = 0; i < 3; i++) {
+      tempBoard.remove(targets[i]);
+    }
+
+    // Add the new piece at the summon square
+    tempBoard.put(
+      { type: newPieceType, color: currentPlayer as "w" | "b" },
+      summonSquare
+    );
+
+    // Check if the operation would result in check
+    if (tempBoard.isCheck()) {
+      console.error("This move would result in check, cannot sacrifice pawns");
+      return false;
+    }
+
+    // Remove the three pawns from the actual board
+    for (let i = 0; i < 3; i++) {
+      this.gameManager.removePiece(targets[i]);
+    }
+
+    // Add the new piece at the summon square
+    this.gameManager.addPiece(
+      summonSquare,
+      newPieceType as PieceSymbol,
+      currentPlayer as "w" | "b"
+    );
+
+    console.log(
+      `Successfully sacrificed 3 pawns to summon a ${
+        newPieceType === "n" ? "Knight" : "Bishop"
+      }`
+    );
+    return true;
   }
 }
