@@ -168,6 +168,11 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
 
   // End the current turn
   const endTurn = () => {
+    // Important: Track who ended their turn before calling endTurn
+    const playerEndingTurn = gameManager.getCurrentPlayer();
+    console.log(`Player ${playerEndingTurn} is ending their turn`);
+
+    // Call endTurn on the game manager
     gameManager.endTurn();
 
     // Update UI state after ending turn

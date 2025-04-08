@@ -70,39 +70,43 @@ const Square: React.FC<SquareProps> = ({
   if (piece) {
     // Determine if piece has effects, especially Ember Crown
     const hasEffects = piece.effects && piece.effects.length > 0;
-    const hasEmberCrown = piece.effects?.some(
+
+    // Check for both the main emberCrown effect and the visual effect
+    const hasEmberCrownEffect = piece.effects?.some(
       (effect) => effect.source === "emberCrown"
     );
 
-    // Enhanced logging for debugging
-    if (hasEmberCrown) {
-      const effectDetails = piece.effects.find(
-        (e) => e.source === "emberCrown"
-      );
-      console.log(
-        `EMBER CROWN: Square ${square} has piece type=${piece.type}, color=${piece.color}, duration=${effectDetails?.duration}`
-      );
-      console.log(`Effects:`, piece.effects);
+    // Find the main effect (the one that expires) for debugging
+    const mainEmberEffect = piece.effects?.find(
+      (effect) =>
+        effect.source === "emberCrown" && !effect.id.includes("emberVisual")
+    );
+
+    if (hasEmberCrownEffect) {
+      // Log detailed effect information
+      console.log(`EMBER CROWN at ${square}:`, {
+        type: piece.type,
+        mainEffectTurns: mainEmberEffect?.duration || "N/A",
+        effectCount: piece.effects.length,
+        allEffects: piece.effects.map(
+          (e) => `${e.id.substring(0, 10)}... (${e.duration})`
+        ),
+      });
     }
 
     // Get the piece color for the image path
     const pieceColor = piece.color === "w" ? "White" : "Black";
 
-    // Determine the piece type - CRITICAL: for ember crown pieces,
-    // we force the type to be a Queen regardless of the actual piece type
+    // Determine the piece type
     const displayType = piece.type.toUpperCase();
     let pieceImage;
 
-    // HIGHEST PRIORITY: If this piece has an ember crown effect,
-    // ALWAYS use the ember queen image
-    if (hasEmberCrown) {
-      // We use the ember queen image regardless of what the actual piece type might be
+    // If this piece has an ember crown effect, ALWAYS use the ember queen image
+    if (hasEmberCrownEffect) {
       pieceImage =
         piece.color === "w"
           ? "/assets/Chess_Sprites/W_Ember_Q.png"
           : "/assets/Chess_Sprites/B_Ember_Queen.png";
-
-      console.log(`Using EMBER QUEEN image for piece at ${square}`);
     } else {
       // Standard image based on piece type
       pieceImage = `/assets/Chess_Sprites/${pieceColor}_${displayType}.png`;
@@ -110,10 +114,15 @@ const Square: React.FC<SquareProps> = ({
 
     // Apply visual effects based on active effects
     let filterStyle = "none";
-    if (hasEmberCrown) {
-      // Apply a fiery glow effect for ember queens
-      filterStyle =
-        "drop-shadow(0 0 6px #ef4444) drop-shadow(0 0 10px #f97316)";
+    if (hasEmberCrownEffect) {
+      // Visual indicator for remaining turns
+      const turnsLeft = mainEmberEffect?.duration || 0;
+
+      // Apply a fiery glow effect for ember queens, with intensity based on remaining turns
+      const intensity = Math.max(0.5, turnsLeft / 3); // Scale with remaining turns
+      filterStyle = `drop-shadow(0 0 ${
+        6 * intensity
+      }px #ef4444) drop-shadow(0 0 ${10 * intensity}px #f97316)`;
     } else if (hasEffects) {
       // Generic effect for other spells
       filterStyle = "drop-shadow(0 0 4px #a855f7)";
@@ -133,7 +142,33 @@ const Square: React.FC<SquareProps> = ({
         />
 
         {/* Add a pulsing flame effect for Ember Crown */}
-        {hasEmberCrown && <div className="ember-crown-effect" />}
+        {hasEmberCrownEffect && (
+          <div className="ember-crown-effect">
+            {/* Add turn counter */}
+            {mainEmberEffect && mainEmberEffect.duration > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "-15px",
+                  right: "-10px",
+                  backgroundColor: "#ef4444",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "20px",
+                  height: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  border: "2px solid #7f1d1d",
+                }}
+              >
+                {mainEmberEffect.duration}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }

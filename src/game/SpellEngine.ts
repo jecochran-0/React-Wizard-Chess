@@ -51,6 +51,8 @@ export class SpellEngine {
         return false;
       case "emberCrown":
         return this.castEmberCrown(targets as SingleTarget);
+      case "arcaneAnchor":
+        return this.castArcaneAnchor(targets as SingleTarget);
       case "frostShield":
         return this.castFrostShield(targets as SingleTarget);
       case "shadowStrike":
@@ -327,27 +329,37 @@ export class SpellEngine {
     }
 
     // Perform the transformation in the actual board
+    // This adds the main transformation effect with duration=3 and removeOnExpire=true
     const success = this.gameManager.transformPiece(target, "q", "emberCrown");
 
     if (success) {
       console.log(
-        `Successfully transformed pawn at ${target} to an Ember Queen with temporary effect`
+        `Successfully transformed pawn at ${target} to an Ember Queen with 3-turn duration`
       );
 
-      // Add a special marker for ember queens that helps us track them visually
-      const emberEffect: Effect = {
+      // Add a second, visual-only effect that helps with rendering but doesn't affect game logic
+      // This effect has a longer duration and won't cause piece removal
+      const visualEffect: Effect = {
         id: `emberVisual-${Date.now()}`,
         type: "transform", // Using transform as the base type to match existing effect types
-        duration: 999, // Very long duration as this is just for visual tracking
-        source: "emberCrown",
+        duration: 999, // Long duration as this is just for visual tracking
+        source: "emberCrown", // Same source to associate with the main effect
         modifiers: {
           visualType: "emberQueen",
-          // This ensures the piece always renders as an ember queen even after moving
+          // This is just a visual marker, not a gameplay effect
+          removeOnExpire: false, // Critical: this effect should NEVER remove the piece
         },
       };
 
-      // Add the visual effect to help with tracking
-      this.gameManager.addEffect(target, emberEffect);
+      // Log the number of effects on the piece for debugging
+      const updatedPiece = this.gameManager.getPieceAt(target);
+      console.log(
+        `Ember Queen at ${target} now has ${updatedPiece?.effects.length} effects:`,
+        updatedPiece?.effects.map((e) => `${e.id} (${e.duration} turns)`)
+      );
+
+      // Add the visual effect to help with rendering
+      this.gameManager.addEffect(target, visualEffect);
     }
 
     return success;
@@ -402,6 +414,39 @@ export class SpellEngine {
 
     // Add the effect to the piece
     this.gameManager.addEffect(target, effect);
+
+    return true;
+  }
+
+  // Arcane Anchor: Make a piece immune to capture but prevents it from moving
+  private castArcaneAnchor(target: SingleTarget): boolean {
+    console.log(`Attempting to cast Arcane Anchor on ${target}`);
+
+    // Get the piece at the target square
+    const piece = this.gameManager.getPieceAt(target);
+
+    // Validate the target piece
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    if (!piece || piece.color !== currentPlayer) {
+      console.error(
+        "Arcane Anchor must target a piece owned by the current player"
+      );
+      return false;
+    }
+
+    // Create the anchor effect - lasts for one turn (until the opponent's turn ends)
+    const anchorEffect = this.createEffect("shield", 2, "arcaneAnchor", {
+      preventCapture: true, // Cannot be captured
+      preventMovement: true, // Cannot move
+    });
+
+    // Add the effect to the piece
+    this.gameManager.addEffect(target, anchorEffect);
+
+    // Log the successful cast
+    console.log(
+      `Successfully cast Arcane Anchor on ${target}. Piece cannot be captured or moved for 1 turn.`
+    );
 
     return true;
   }

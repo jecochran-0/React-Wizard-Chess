@@ -151,6 +151,9 @@ class GameManager {
   // Make a chess move
   makeMove(from: Square, to: Square): boolean {
     try {
+      // Get the player making the move
+      const currentPlayer = this.getCurrentPlayer();
+
       // Store piece effects before move since they might be lost during the move
       const pieceBeforeMove = this.customBoardState[from];
       const pieceEffects = pieceBeforeMove?.effects || [];
@@ -194,11 +197,108 @@ class GameManager {
         this.logMove(from, to);
 
         // Add mana after a successful move
-        const currentPlayer = this.getCurrentPlayer();
         this.currentPlayerMana[currentPlayer] = Math.min(
           this.currentPlayerMana[currentPlayer] + 1,
           10
         );
+
+        // IMPORTANT: Count this move as a turn completion for the current player
+        // This is critical for effects like Ember Crown that should count down based on player turns
+        // Find ember crown effects owned by this player and decrement them
+        let effectsUpdated = false;
+
+        // Process effects on all pieces belonging to the current player
+        for (const square in this.customBoardState) {
+          const piece = this.customBoardState[square];
+          if (piece && piece.color === currentPlayer) {
+            // Find ember crown effects
+            const emberEffects = piece.effects.filter(
+              (effect) =>
+                effect.source === "emberCrown" &&
+                !effect.id.includes("emberVisual")
+            );
+
+            if (emberEffects.length > 0) {
+              // Update all ember crown effects for this player's pieces
+              piece.effects = piece.effects.map((effect) => {
+                if (
+                  effect.source === "emberCrown" &&
+                  !effect.id.includes("emberVisual")
+                ) {
+                  effectsUpdated = true;
+                  const newDuration = effect.duration - 1;
+                  console.log(
+                    `Decremented Ember Crown effect on ${square} from ${effect.duration} to ${newDuration}`
+                  );
+                  return { ...effect, duration: newDuration };
+                }
+                return effect;
+              });
+
+              // Also update the global effects list
+              this.effects = this.effects.map((effect) => {
+                if (emberEffects.some((e) => e.id === effect.id)) {
+                  return (
+                    piece.effects.find((e) => e.id === effect.id) || effect
+                  );
+                }
+                return effect;
+              });
+            }
+          }
+        }
+
+        // After updating effects, check if any ember queens have expired
+        if (effectsUpdated) {
+          // Find expired effects that should remove pieces
+          const squaresToRemove: Square[] = [];
+
+          for (const square in this.customBoardState) {
+            const piece = this.customBoardState[square];
+            if (piece && piece.color === currentPlayer) {
+              const expiredEffects = piece.effects.filter(
+                (effect) =>
+                  effect.duration <= 0 &&
+                  (effect.source === "emberCrown" ||
+                    effect.modifiers?.removeOnExpire) &&
+                  !effect.id.includes("emberVisual")
+              );
+
+              if (expiredEffects.length > 0) {
+                console.log(
+                  `Found piece at ${square} with expired ember crown effect`
+                );
+                squaresToRemove.push(square as Square);
+
+                // Log the expiration
+                const pieceName = this.getPieceTypeName(
+                  piece.type as PieceSymbol
+                );
+                const color = piece.color === "w" ? "White" : "Black";
+                this.gameLog.push(
+                  `${color}'s ${pieceName} at ${square} expired from emberCrown effect and was removed`
+                );
+              }
+
+              // Remove expired effects from the piece
+              piece.effects = piece.effects.filter(
+                (effect) =>
+                  effect.duration > 0 || effect.id.includes("emberVisual")
+              );
+            }
+          }
+
+          // Remove expired ember queens
+          squaresToRemove.forEach((square) => {
+            console.log(`Removing expired ember queen at ${square}`);
+            this.removePiece(square);
+          });
+
+          // Update the global effects list
+          this.effects = this.effects.filter(
+            (effect) => effect.duration > 0 || effect.id.includes("emberVisual")
+          );
+        }
 
         return true;
       }
@@ -317,84 +417,128 @@ class GameManager {
     const squaresToRemovePieces: Square[] = [];
 
     // Debug the active effects to ensure they're being tracked properly
+    console.log(`Processing ${this.effects.length} effects at end of turn`);
+
+    // Get the previous player (who just ended their turn)
+    const currentPlayer = this.getCurrentPlayer();
+    const previousPlayer = currentPlayer === "w" ? "b" : "w";
+
     console.log(
-      "Processing end of turn effects, current effects:",
-      this.effects.length
+      `Current player: ${currentPlayer}, Previous player: ${previousPlayer}`
     );
 
-    // Log all active effects before processing
-    this.effects.forEach((effect) => {
-      console.log(
-        `Effect ${effect.id} from ${effect.source} has ${effect.duration} turns remaining, removeOnExpire=${effect.modifiers?.removeOnExpire}`
-      );
-    });
+    // Process all effects
+    // Create a new array with updated durations
+    const updatedEffects = this.effects.map((effect) => {
+      // Only decrement duration for effects that aren't visual markers
+      // and ONLY for the previous player's pieces (the one who just ended their turn)
+      if (!effect.id.includes("emberVisual")) {
+        // Get all pieces that have this effect
+        let effectOnPrevPlayerPiece = false;
 
-    // Process all effects first
-    this.effects = this.effects
-      .map((effect) => {
-        const newDuration = effect.duration - 1;
-        console.log(
-          `Effect ${effect.id} from ${effect.source} has ${newDuration} turns remaining after decrement`
-        );
-        return { ...effect, duration: newDuration };
-      })
-      .filter((effect) => {
-        const keepEffect = effect.duration > 0;
-
-        // If the effect is expiring and should remove the piece
-        if (
-          !keepEffect &&
-          (effect.modifiers?.removeOnExpire || effect.source === "emberCrown")
-        ) {
-          console.log(
-            `Effect ${effect.id} from ${effect.source} is expiring and will remove its piece`
-          );
-          // Find the square this effect is on
-          for (const square in this.customBoardState) {
-            const piece = this.customBoardState[square];
-            if (piece.effects.some((e) => e.id === effect.id)) {
-              squaresToRemovePieces.push(square as Square);
-
-              // Log the expiration
-              const pieceName = this.getPieceTypeName(
-                piece.type as PieceSymbol
-              );
-              const color = piece.color === "w" ? "White" : "Black";
-              this.gameLog.push(
-                `${color}'s ${pieceName} at ${square} expired from ${effect.source} effect and was removed`
-              );
-              console.log(
-                `Found piece with expiring effect at ${square}, marking for removal`
-              );
-              break;
-            }
-          }
-        }
-
-        // Also update the effects list in the corresponding piece
+        // Check if this effect is on a piece owned by the previous player
         for (const square in this.customBoardState) {
           const piece = this.customBoardState[square];
-          if (piece.effects.some((e) => e.id === effect.id)) {
-            if (!keepEffect) {
-              // Remove expired effects from pieces
-              piece.effects = piece.effects.filter((e) => e.id !== effect.id);
-              console.log(
-                `Removed expired effect ${effect.id} from piece at ${square}`
-              );
-            } else {
-              // Update duration for effects that are kept
-              piece.effects = piece.effects.map((e) =>
-                e.id === effect.id ? { ...e, duration: effect.duration } : e
-              );
-            }
+          if (
+            piece &&
+            piece.color === previousPlayer &&
+            piece.effects.some((e) => e.id === effect.id)
+          ) {
+            effectOnPrevPlayerPiece = true;
+            break;
           }
         }
 
-        return keepEffect;
-      });
+        // Only decrement for the previous player's pieces
+        if (effectOnPrevPlayerPiece) {
+          const newDuration = effect.duration - 1;
+          console.log(
+            `Decremented effect ${effect.id} from ${effect.source} from ${effect.duration} to ${newDuration} turns`
+          );
+          return { ...effect, duration: newDuration };
+        }
+      }
 
-    // Remove pieces for expired effects
-    console.log(`Removing pieces at squares:`, squaresToRemovePieces);
+      // Otherwise keep the original duration
+      return effect;
+    });
+
+    // Get all effects that have expired
+    const expiredEffects = updatedEffects.filter(
+      (effect) =>
+        effect.duration <= 0 &&
+        (effect.modifiers?.removeOnExpire || effect.source === "emberCrown") &&
+        !effect.id.includes("emberVisual")
+    );
+
+    // Log all expired effects
+    expiredEffects.forEach((effect) => {
+      console.log(
+        `Effect ${effect.id} from ${effect.source} has expired and will remove its piece`
+      );
+
+      // Find which square this effect is on
+      for (const square in this.customBoardState) {
+        const piece = this.customBoardState[square];
+        if (piece && piece.effects.some((e) => e.id === effect.id)) {
+          squaresToRemovePieces.push(square as Square);
+
+          // Log the expiration in the game log
+          const pieceName = this.getPieceTypeName(piece.type as PieceSymbol);
+          const color = piece.color === "w" ? "White" : "Black";
+          this.gameLog.push(
+            `${color}'s ${pieceName} at ${square} expired from ${effect.source} effect and was removed`
+          );
+
+          console.log(
+            `Found piece with expired effect at ${square}, marking for removal`
+          );
+          break;
+        }
+      }
+    });
+
+    // Update all piece effects
+    for (const square in this.customBoardState) {
+      const piece = this.customBoardState[square];
+      if (piece) {
+        // Get all effects for this piece
+        const pieceEffects = piece.effects.map((pieceEffect) => {
+          // Find the updated effect in our processed list
+          const updatedEffect = updatedEffects.find(
+            (e) => e.id === pieceEffect.id
+          );
+          return updatedEffect || pieceEffect;
+        });
+
+        // Remove any expired effects
+        piece.effects = pieceEffects.filter(
+          (e) => e.duration > 0 || e.id.includes("emberVisual")
+        );
+
+        // If this piece has ember crown effects, log them
+        if (piece.effects.some((e) => e.source === "emberCrown")) {
+          const emberEffect = piece.effects.find(
+            (e) => e.source === "emberCrown" && !e.id.includes("emberVisual")
+          );
+          if (emberEffect) {
+            console.log(
+              `Ember Crown at ${square} now has ${emberEffect.duration} turns remaining`
+            );
+          }
+        }
+      }
+    }
+
+    // Update the global effects list
+    this.effects = updatedEffects.filter(
+      (effect) => effect.duration > 0 || effect.id.includes("emberVisual")
+    );
+
+    // Remove pieces that had expired effects
+    console.log(
+      `Removing ${squaresToRemovePieces.length} pieces with expired effects`
+    );
     squaresToRemovePieces.forEach((square) => {
       this.removePiece(square);
     });
@@ -717,8 +861,10 @@ class GameManager {
     }
   }
 
-  // Process end of turn effects
+  // End the current turn and process turn-end effects
   endTurn(): void {
+    console.log("Processing end of turn...");
+
     // Process active effects
     this.processEndOfTurnEffects();
 
@@ -747,6 +893,45 @@ class GameManager {
     this.gameLog.push(
       `${currentPlayer === "w" ? "White" : "Black"} ended their turn`
     );
+
+    console.log("Turn ended. New player:", newPlayer);
+  }
+
+  // The root issue: effects need to be decremented on each player's turn,
+  // but a regular move from one player to another doesn't count as
+  // a full "end turn" for that piece's effect duration.
+  //
+  // Let's modify endTurn to track which player ended their turn, so effects
+  // only decrement for the player who cast them
+  endPlayerTurn(player: Color): void {
+    // Track turn count for each player
+    console.log(`Player ${player} ended their turn`);
+
+    // Process effects for this player's pieces only
+    this.processPlayerEffects(player);
+
+    // Then call the regular endTurn method
+    this.endTurn();
+  }
+
+  // Process effects for a specific player's pieces
+  private processPlayerEffects(player: Color): void {
+    // Decrement durations for effects on pieces owned by the specified player
+    for (const square in this.customBoardState) {
+      const piece = this.customBoardState[square];
+      if (piece && piece.color === player) {
+        piece.effects.forEach((effect) => {
+          if (
+            effect.source === "emberCrown" &&
+            !effect.id.includes("emberVisual")
+          ) {
+            console.log(
+              `Processing ${player}'s ember crown effect: current duration = ${effect.duration}`
+            );
+          }
+        });
+      }
+    }
   }
 }
 
