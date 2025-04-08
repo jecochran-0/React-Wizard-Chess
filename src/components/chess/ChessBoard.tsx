@@ -6,6 +6,14 @@ import { getSpellById } from "../../utils/spells";
 import { SpellId, SpellTargetType, Effect } from "../../types/types";
 import Popup from "../ui/Popup";
 
+// Define a type for chess piece that matches the board state structure
+interface ChessPiece {
+  type: string;
+  color: string;
+  effects?: Effect[];
+  hasMoved?: boolean;
+}
+
 // Interface for from-to type spell targets
 interface FromToTarget {
   from: ChessSquare;
@@ -87,6 +95,20 @@ const ChessBoard: React.FC = () => {
           const piece = boardState[squareKey];
           if (piece && piece.color === currentPlayer && piece.type === "p") {
             validSquares.push(squareKey);
+          }
+        }
+        break;
+
+      case "mistformKnight":
+        // Find knights owned by the current player
+        if (spellTargets.length === 0) {
+          console.log("Finding knights for Mistform Knight spell");
+          for (const square in boardState) {
+            const squareKey = square as ChessSquare;
+            const piece = boardState[squareKey];
+            if (piece && piece.color === currentPlayer && piece.type === "n") {
+              validSquares.push(squareKey);
+            }
           }
         }
         break;
@@ -444,6 +466,21 @@ const ChessBoard: React.FC = () => {
               `Found ${possibleMoves.length} valid moves for Phantom Step following piece pattern`
             );
             setValidTargets(possibleMoves);
+          } else if (selectedSpell === "mistformKnight") {
+            const piece = boardState[square];
+            if (!piece || piece.type !== "n") return;
+
+            console.log(
+              `Finding valid Mistform Knight destinations for knight at ${square}`
+            );
+
+            // Get knight moves
+            const knightMoves = getMistformKnightMoves(square, boardState);
+
+            console.log(
+              `Found ${knightMoves.length} valid moves for Mistform Knight`
+            );
+            setValidTargets(knightMoves);
           } else {
             // For other from-to spells, use the standard valid target finding
             findValidTargetsForSpell(selectedSpell);
@@ -482,7 +519,7 @@ const ChessBoard: React.FC = () => {
   const getPhantomStepMoves = (
     square: ChessSquare,
     piece: { type: string; color: string },
-    boardState: Record<string, any>
+    boardState: Record<string, ChessPiece | undefined>
   ): ChessSquare[] => {
     const validMoves: ChessSquare[] = [];
     const [file, rank] = [square.charAt(0), parseInt(square.charAt(1))];
@@ -700,6 +737,50 @@ const ChessBoard: React.FC = () => {
           }
         }
         break;
+      }
+    }
+
+    return validMoves;
+  };
+
+  // Helper function to get valid moves for Mistform Knight
+  const getMistformKnightMoves = (
+    square: ChessSquare,
+    boardState: Record<string, ChessPiece | undefined>
+  ): ChessSquare[] => {
+    const validMoves: ChessSquare[] = [];
+    const [file, rank] = [square.charAt(0), parseInt(square.charAt(1))];
+    const fileIndex = file.charCodeAt(0) - "a".charCodeAt(0);
+
+    // Knights move in L-shape: 2 squares in one direction, 1 square perpendicular
+    const knightMoves = [
+      { fileOffset: 1, rankOffset: 2 },
+      { fileOffset: 2, rankOffset: 1 },
+      { fileOffset: 2, rankOffset: -1 },
+      { fileOffset: 1, rankOffset: -2 },
+      { fileOffset: -1, rankOffset: -2 },
+      { fileOffset: -2, rankOffset: -1 },
+      { fileOffset: -2, rankOffset: 1 },
+      { fileOffset: -1, rankOffset: 2 },
+    ];
+
+    for (const move of knightMoves) {
+      const newFileIndex = fileIndex + move.fileOffset;
+      const newRank = rank + move.rankOffset;
+
+      if (
+        newFileIndex >= 0 &&
+        newFileIndex < 8 &&
+        newRank >= 1 &&
+        newRank <= 8
+      ) {
+        const newFile = String.fromCharCode("a".charCodeAt(0) + newFileIndex);
+        const newSquare = `${newFile}${newRank}` as ChessSquare;
+
+        // For Mistform Knight, the target square must be empty
+        if (!boardState[newSquare]) {
+          validMoves.push(newSquare);
+        }
       }
     }
 

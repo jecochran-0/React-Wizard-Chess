@@ -284,7 +284,9 @@ class GameManager {
               (effect) =>
                 (effect.source === "emberCrown" ||
                   effect.source === "arcaneArmor" ||
-                  effect.source === "arcaneAnchor") &&
+                  effect.source === "arcaneAnchor" ||
+                  (effect.source === "mistformKnight" &&
+                    effect.modifiers?.isMistformClone)) &&
                 !effect.id.includes("emberVisual")
             );
 
@@ -294,14 +296,26 @@ class GameManager {
                 if (
                   (effect.source === "emberCrown" ||
                     effect.source === "arcaneArmor" ||
-                    effect.source === "arcaneAnchor") &&
+                    effect.source === "arcaneAnchor" ||
+                    (effect.source === "mistformKnight" &&
+                      effect.modifiers?.isMistformClone)) &&
                   !effect.id.includes("emberVisual")
                 ) {
                   effectsUpdated = true;
                   const newDuration = effect.duration - 1;
-                  console.log(
-                    `Decremented ${effect.source} effect on ${square} from ${effect.duration} to ${newDuration}`
-                  );
+                  // Add special logging for Mistform Knight clones to debug their countdown
+                  if (
+                    effect.source === "mistformKnight" &&
+                    effect.modifiers?.isMistformClone
+                  ) {
+                    console.log(
+                      `Decremented Mistform Knight clone effect from ${effect.duration} to ${newDuration} turns remaining`
+                    );
+                  } else {
+                    console.log(
+                      `Decremented effect ${effect.id} from ${effect.source} from ${effect.duration} to ${newDuration} turns`
+                    );
+                  }
                   return { ...effect, duration: newDuration };
                 }
                 return effect;
@@ -334,7 +348,8 @@ class GameManager {
                   (effect.source === "emberCrown" ||
                     effect.source === "arcaneArmor" ||
                     effect.source === "arcaneAnchor" ||
-                    effect.modifiers?.removeOnExpire) &&
+                    (effect.source === "mistformKnight" &&
+                      effect.modifiers?.isMistformClone)) &&
                   !effect.id.includes("emberVisual")
               );
 
@@ -383,6 +398,38 @@ class GameManager {
           this.effects = this.effects.filter(
             (effect) => effect.duration > 0 || effect.id.includes("emberVisual")
           );
+        }
+
+        // If this piece has ember crown effects, log them
+        if (
+          pieceBeforeMove &&
+          pieceBeforeMove.effects.some((e) => e.source === "emberCrown")
+        ) {
+          const emberEffect = pieceBeforeMove.effects.find(
+            (e) => e.source === "emberCrown" && !e.id.includes("emberVisual")
+          );
+          if (emberEffect) {
+            console.log(
+              `Ember Crown at ${from} now has ${emberEffect.duration} turns remaining`
+            );
+          }
+        }
+
+        // If this piece is a Mistform Knight clone, log the remaining duration
+        if (
+          pieceBeforeMove &&
+          pieceBeforeMove.effects.some(
+            (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+          )
+        ) {
+          const mistformEffect = pieceBeforeMove.effects.find(
+            (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+          );
+          if (mistformEffect) {
+            console.log(
+              `Mistform Knight clone at ${from} has ${mistformEffect.duration} turns remaining`
+            );
+          }
         }
 
         return true;
@@ -537,9 +584,19 @@ class GameManager {
         // Only decrement for the previous player's pieces
         if (effectOnPrevPlayerPiece) {
           const newDuration = effect.duration - 1;
-          console.log(
-            `Decremented effect ${effect.id} from ${effect.source} from ${effect.duration} to ${newDuration} turns`
-          );
+          // Add special logging for Mistform Knight clones to debug their countdown
+          if (
+            effect.source === "mistformKnight" &&
+            effect.modifiers?.isMistformClone
+          ) {
+            console.log(
+              `Decremented Mistform Knight clone effect from ${effect.duration} to ${newDuration} turns remaining`
+            );
+          } else {
+            console.log(
+              `Decremented effect ${effect.id} from ${effect.source} from ${effect.duration} to ${newDuration} turns`
+            );
+          }
           return { ...effect, duration: newDuration };
         }
       }
@@ -555,7 +612,9 @@ class GameManager {
         (effect.modifiers?.removeOnExpire ||
           effect.source === "emberCrown" ||
           effect.source === "arcaneArmor" ||
-          effect.source === "arcaneAnchor") &&
+          effect.source === "arcaneAnchor" ||
+          (effect.source === "mistformKnight" &&
+            effect.modifiers?.isMistformClone)) &&
         !effect.id.includes("emberVisual")
     );
 
@@ -574,9 +633,23 @@ class GameManager {
           // Log the expiration in the game log
           const pieceName = this.getPieceTypeName(piece.type as PieceSymbol);
           const color = piece.color === "w" ? "White" : "Black";
-          this.gameLog.push(
-            `${color}'s ${pieceName} at ${square} expired from ${effect.source} effect and was removed`
-          );
+
+          // Special log for mistform clones
+          if (
+            effect.source === "mistformKnight" &&
+            effect.modifiers?.isMistformClone
+          ) {
+            this.gameLog.push(
+              `${color}'s Mistform Knight clone at ${square} expired and vanished`
+            );
+            console.log(
+              `Mistform Knight clone at ${square} expired and will be removed`
+            );
+          } else {
+            this.gameLog.push(
+              `${color}'s ${pieceName} at ${square} expired from ${effect.source} effect and was removed`
+            );
+          }
 
           console.log(
             `Found piece with expired effect at ${square}, marking for removal`
@@ -612,6 +685,22 @@ class GameManager {
           if (emberEffect) {
             console.log(
               `Ember Crown at ${square} now has ${emberEffect.duration} turns remaining`
+            );
+          }
+        }
+
+        // If this piece is a Mistform Knight clone, log the remaining duration
+        if (
+          piece.effects.some(
+            (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+          )
+        ) {
+          const mistformEffect = piece.effects.find(
+            (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+          );
+          if (mistformEffect) {
+            console.log(
+              `Mistform Knight clone at ${square} has ${mistformEffect.duration} turns remaining`
             );
           }
         }
@@ -921,6 +1010,46 @@ class GameManager {
   // Method to update player spells after initialization
   updatePlayerSpells(newSpells: PlayerSpells): void {
     this.playerSpells = newSpells;
+  }
+
+  // Add a new piece to the board
+  addPiece(
+    square: Square,
+    pieceType: PieceSymbol,
+    pieceColor: "w" | "b",
+    effects: Effect[] = []
+  ): boolean {
+    try {
+      // Check if the square is already occupied
+      if (this.customBoardState[square]) {
+        console.error(`Cannot add piece: Square ${square} is already occupied`);
+        return false;
+      }
+
+      // Add the piece to the chess.js board
+      this.chess.put({ type: pieceType, color: pieceColor }, square);
+
+      // Add the piece to the custom board state
+      this.customBoardState[square] = {
+        type: pieceType,
+        color: pieceColor,
+        square: square as Square,
+        effects: [...effects],
+        hasMoved: false,
+      };
+
+      // Log the addition
+      this.gameLog.push(
+        `Added ${
+          pieceColor === "w" ? "White" : "Black"
+        } ${this.getPieceTypeName(pieceType)} at ${square}`
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error adding piece:", error);
+      return false;
+    }
   }
 
   // Transform a piece from one type to another (for spells like Ember Crown)

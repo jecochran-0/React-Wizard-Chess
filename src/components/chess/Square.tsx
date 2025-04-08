@@ -40,6 +40,16 @@ const getPieceImage = (piece: PieceMeta): string => {
       : "/assets/Chess_Sprites/B_Ember_Queen.png";
   }
 
+  // If this piece is a Mistform Knight clone, use the special mist knight image
+  if (
+    piece.effects?.some(
+      (effect) =>
+        effect.source === "mistformKnight" && effect.modifiers?.isMistformClone
+    )
+  ) {
+    return `/assets/Chess_Effects/Mist_K.png`;
+  }
+
   // Standard image based on piece type
   return `/assets/Chess_Sprites/${pieceColor}_${piece.type.toUpperCase()}.png`;
 };
@@ -107,6 +117,12 @@ const Square: React.FC<SquareProps> = ({
     (effect) => effect.source === "arcaneArmor"
   );
 
+  // Check for Mistform Knight clone effect
+  const hasMistformCloneEffect = piece?.effects?.some(
+    (effect) =>
+      effect.source === "mistformKnight" && effect.modifiers?.isMistformClone
+  );
+
   // Log when we detect an Arcane Armor effect for debugging
   if (hasArcaneArmorEffect) {
     console.log(`Arcane Armor effect detected on ${square}`, {
@@ -114,6 +130,21 @@ const Square: React.FC<SquareProps> = ({
       color: piece?.color,
       effects: piece?.effects
         ?.filter((e) => e.source === "arcaneArmor")
+        .map((e) => ({
+          id: e.id,
+          duration: e.duration,
+          modifiers: e.modifiers,
+        })),
+    });
+  }
+
+  // Log when we detect a Mistform Knight clone for debugging
+  if (hasMistformCloneEffect) {
+    console.log(`Mistform Knight clone detected on ${square}`, {
+      piece: piece?.type,
+      color: piece?.color,
+      effects: piece?.effects
+        ?.filter((e) => e.source === "mistformKnight")
         .map((e) => ({
           id: e.id,
           duration: e.duration,
@@ -134,7 +165,8 @@ const Square: React.FC<SquareProps> = ({
   );
 
   // Check if the piece has any effects
-  const hasEffects = hasEmberCrownEffect || hasArcaneArmorEffect;
+  const hasEffects =
+    hasEmberCrownEffect || hasArcaneArmorEffect || hasMistformCloneEffect;
 
   // Prepare piece element if there is a piece
   let pieceElement = null;
@@ -158,6 +190,9 @@ const Square: React.FC<SquareProps> = ({
       filterStyle = `drop-shadow(0 0 ${
         6 * intensity
       }px #ef4444) drop-shadow(0 0 ${10 * intensity}px #f97316)`;
+    } else if (hasMistformCloneEffect) {
+      // Apply a misty blue glow effect for mistform clones
+      filterStyle = `drop-shadow(0 0 8px #818cf8) brightness(1.2)`;
     } else if (hasEffects && !hasArcaneArmorEffect) {
       // Generic effect for other spells
       filterStyle = "drop-shadow(0 0 4px #a855f7)";
@@ -183,6 +218,9 @@ const Square: React.FC<SquareProps> = ({
 
         {/* Add light blue glow effect for Arcane Armor */}
         {hasArcaneArmorEffect && <div className="arcane-anchor-glow" />}
+
+        {/* Add misty effect for Mistform Knight clones */}
+        {hasMistformCloneEffect && <div className="mistform-clone-effect" />}
 
         {/* Add ember queen icon for ember crown pieces */}
         {hasEmberCrownEffect && (

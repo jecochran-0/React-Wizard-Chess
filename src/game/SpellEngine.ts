@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getSpellById } from "../utils/spells";
 import { Effect, EffectModifiers, EffectType, SpellId } from "../types/types";
-import { Chess, Square } from "chess.js";
+import { Chess, Square, PieceSymbol } from "chess.js";
 import GameManager from "./GameManager";
 
 // Define specialized target types
@@ -41,6 +41,15 @@ export class SpellEngine {
           "to" in targets
         ) {
           return this.castPhantomStep(targets.from, targets.to);
+        }
+        return false;
+      case "mistformKnight":
+        if (
+          typeof targets === "object" &&
+          "from" in targets &&
+          "to" in targets
+        ) {
+          return this.castMistformKnight(targets.from, targets.to);
         }
         return false;
       case "emberCrown":
@@ -476,5 +485,130 @@ export class SpellEngine {
     );
 
     return true;
+  }
+
+  // Mistform Knight: Move a knight and create a clone that disappears after one turn
+  private castMistformKnight(from: Square, to: Square): boolean {
+    console.log(`Attempting Mistform Knight from ${from} to ${to}`);
+
+    // Get the piece at the source
+    const piece = this.gameManager.getPieceAt(from);
+
+    // Source must have a knight piece owned by the current player
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    if (!piece || piece.color !== currentPlayer) {
+      console.error("Source must have a piece owned by the current player");
+      return false;
+    }
+
+    // Check that the piece is a knight
+    if (piece.type !== "n") {
+      console.error("Mistform Knight spell can only be cast on knight pieces");
+      return false;
+    }
+
+    // Destination must be empty (no captures allowed)
+    const destPiece = this.gameManager.getPieceAt(to);
+    if (destPiece) {
+      console.error(
+        `Destination square ${to} already has a piece: ${destPiece.type} ${destPiece.color}`
+      );
+      return false;
+    }
+
+    // Validate that the move follows the knight's movement pattern
+    if (!this.isValidMistformKnightMove(from, to)) {
+      console.error(
+        "Invalid mistform knight move - doesn't follow knight's movement pattern"
+      );
+      return false;
+    }
+
+    // Check if the move would result in a king in check
+    const tempBoard = new Chess(this.gameManager.getFEN());
+
+    // Get the piece object as it is in chess.js format
+    const chessPiece = tempBoard.get(from);
+
+    if (!chessPiece) {
+      console.error("Failed to get chess.js piece for Mistform Knight");
+      return false;
+    }
+
+    // Temporarily remove the piece
+    tempBoard.remove(from);
+
+    // Place it at the destination
+    tempBoard.put({ type: chessPiece.type, color: chessPiece.color }, to);
+
+    // Check if the king is in check after the move
+    if (tempBoard.isCheck()) {
+      console.error("Cannot make this move as it would result in check");
+      return false;
+    }
+
+    try {
+      // 1. Create a clone effect for the cloned knight
+      const cloneEffect = this.createEffect(
+        "transform",
+        1, // Will disappear after 1 turns
+        "mistformKnight",
+        {
+          isMistformClone: true,
+          removeOnExpire: true,
+          preventCapture: false, // Clone can be captured
+        }
+      );
+
+      // 2. Move the original piece to the destination
+      if (!this.gameManager.movePieceDirectly(from, to, true)) {
+        console.error("Failed to move knight during Mistform Knight spell");
+        return false;
+      }
+
+      // 3. Now add a new piece at the original position
+      const addSuccess = this.gameManager.addPiece(
+        from,
+        "n" as PieceSymbol,
+        piece.color as "w" | "b",
+        [cloneEffect]
+      );
+
+      if (!addSuccess) {
+        console.error("Failed to add clone piece at original position");
+        return false;
+      }
+
+      console.log(
+        `Successfully moved knight from ${from} to ${to} and created clone at ${from}`
+      );
+      return true;
+    } catch (error) {
+      console.error("Error creating mistform clone:", error);
+      return false;
+    }
+  }
+
+  // Helper method to validate mistform knight moves based on piece type
+  private isValidMistformKnightMove(from: Square, to: Square): boolean {
+    // Extract file and rank
+    const fromFile = from.charAt(0);
+    const fromRank = parseInt(from.charAt(1));
+    const toFile = to.charAt(0);
+    const toRank = parseInt(to.charAt(1));
+
+    // Calculate differences
+    const fileDiff = Math.abs(fromFile.charCodeAt(0) - toFile.charCodeAt(0));
+    const rankDiff = Math.abs(fromRank - toRank);
+
+    // Can't move to the same square
+    if (fileDiff === 0 && rankDiff === 0) {
+      return false;
+    }
+
+    // Knights move in an L shape: 2 squares in one direction and 1 in the other
+    return (
+      (fileDiff === 1 && rankDiff === 2) || (fileDiff === 2 && rankDiff === 1)
+    );
   }
 }
