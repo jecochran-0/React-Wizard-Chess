@@ -68,30 +68,45 @@ const Square: React.FC<SquareProps> = ({
   // If we have a piece, display it
   let pieceElement = null;
   if (piece) {
-    // Determine if piece has effects, especially Ember Crown
+    // Determine if piece has effects
     const hasEffects = piece.effects && piece.effects.length > 0;
 
-    // Check for both the main emberCrown effect and the visual effect
+    // Check for specific effects
     const hasEmberCrownEffect = piece.effects?.some(
       (effect) => effect.source === "emberCrown"
     );
 
-    // Find the main effect (the one that expires) for debugging
+    const hasArcaneAnchorEffect = piece.effects?.some(
+      (effect) => effect.source === "arcaneAnchor"
+    );
+
+    // Find the main ember crown effect (the one that expires) for debugging
     const mainEmberEffect = piece.effects?.find(
       (effect) =>
         effect.source === "emberCrown" && !effect.id.includes("emberVisual")
     );
 
-    if (hasEmberCrownEffect) {
-      // Log detailed effect information
-      console.log(`EMBER CROWN at ${square}:`, {
-        type: piece.type,
-        mainEffectTurns: mainEmberEffect?.duration || "N/A",
-        effectCount: piece.effects.length,
-        allEffects: piece.effects.map(
-          (e) => `${e.id.substring(0, 10)}... (${e.duration})`
-        ),
-      });
+    // Log effect details for debugging
+    if (hasEffects) {
+      if (hasEmberCrownEffect) {
+        console.log(`EMBER CROWN at ${square}:`, {
+          type: piece.type,
+          mainEffectTurns: mainEmberEffect?.duration || "N/A",
+          effectCount: piece.effects.length,
+          allEffects: piece.effects.map(
+            (e) => `${e.id.substring(0, 10)}... (${e.duration})`
+          ),
+        });
+      }
+
+      if (hasArcaneAnchorEffect) {
+        console.log(`ARCANE ANCHOR at ${square}:`, {
+          type: piece.type,
+          effects: piece.effects
+            .filter((e) => e.source === "arcaneAnchor")
+            .map((e) => `${e.id.substring(0, 10)}... (${e.duration})`),
+        });
+      }
     }
 
     // Get the piece color for the image path
@@ -123,6 +138,10 @@ const Square: React.FC<SquareProps> = ({
       filterStyle = `drop-shadow(0 0 ${
         6 * intensity
       }px #ef4444) drop-shadow(0 0 ${10 * intensity}px #f97316)`;
+    } else if (hasArcaneAnchorEffect) {
+      // Blue shield glow for anchored pieces
+      filterStyle =
+        "drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 12px #2563eb)";
     } else if (hasEffects) {
       // Generic effect for other spells
       filterStyle = "drop-shadow(0 0 4px #a855f7)";
@@ -167,6 +186,34 @@ const Square: React.FC<SquareProps> = ({
                 {mainEmberEffect.duration}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Add arcane shield effect for Arcane Anchor */}
+        {hasArcaneAnchorEffect && (
+          <div className="arcane-anchor-effect">
+            {/* Add an anchor icon or shield indicator */}
+            <div
+              style={{
+                position: "absolute",
+                top: "-12px",
+                right: "-12px",
+                backgroundColor: "#3b82f6",
+                color: "white",
+                borderRadius: "50%",
+                width: "24px",
+                height: "24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "16px",
+                fontWeight: "bold",
+                border: "2px solid #1e40af",
+                boxShadow: "0 0 8px #3b82f6",
+              }}
+            >
+              ⚓
+            </div>
           </div>
         )}
       </div>

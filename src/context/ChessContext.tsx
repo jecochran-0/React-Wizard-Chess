@@ -88,13 +88,57 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   // Update legal moves when a piece is selected
   useEffect(() => {
     if (selectedPiece) {
+      // First check if the selected piece has a preventMovement effect (Arcane Anchor)
+      const selectedPieceMeta = boardState[selectedPiece];
+      if (selectedPieceMeta && selectedPieceMeta.effects) {
+        const hasPreventMovementEffect = selectedPieceMeta.effects.some(
+          (effect: { modifiers?: { preventMovement?: boolean } }) =>
+            effect.modifiers?.preventMovement === true
+        );
+
+        if (hasPreventMovementEffect) {
+          console.log(
+            `Piece at ${selectedPiece} cannot move due to Arcane Anchor effect`
+          );
+          setLegalMoves([]);
+          return;
+        }
+      }
+
       const chess = new Chess(gameManager.getFEN());
       const moves = chess.moves({ square: selectedPiece, verbose: true });
-      setLegalMoves(moves.map((move) => move.to as Square));
+
+      // Filter out moves that would capture pieces protected by any effect
+      const filteredMoves = moves.filter((move) => {
+        // Check if this move is a capture
+        if (move.captured) {
+          const targetSquare = move.to as Square;
+          // Get the target piece from our custom board state
+          const targetPiece = boardState[targetSquare];
+
+          // If the piece has any effects with preventCapture, filter it out
+          if (targetPiece && targetPiece.effects) {
+            const isProtected = targetPiece.effects.some(
+              (effect: { modifiers?: { preventCapture?: boolean } }) =>
+                effect.modifiers?.preventCapture === true
+            );
+
+            if (isProtected) {
+              console.log(
+                `Filtering out protected piece at ${targetSquare} from legal moves`
+              );
+              return false;
+            }
+          }
+        }
+        return true;
+      });
+
+      setLegalMoves(filteredMoves.map((move) => move.to as Square));
     } else {
       setLegalMoves([]);
     }
-  }, [selectedPiece, gameManager]);
+  }, [selectedPiece, gameManager, boardState]);
 
   // Update game state after moves
   useEffect(() => {

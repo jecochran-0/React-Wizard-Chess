@@ -154,8 +154,68 @@ class GameManager {
       // Get the player making the move
       const currentPlayer = this.getCurrentPlayer();
 
-      // Store piece effects before move since they might be lost during the move
+      // First check if the piece is anchored and cannot move
       const pieceBeforeMove = this.customBoardState[from];
+      if (
+        pieceBeforeMove &&
+        this.hasPieceEffect(pieceBeforeMove, "preventMovement")
+      ) {
+        console.log(`Cannot move piece at ${from} due to Arcane Anchor effect`);
+        return false;
+      }
+
+      // Add detailed logging for debugging the issue with Arcane Anchor
+      const targetPiece = this.customBoardState[to];
+      if (targetPiece) {
+        console.log(`Target piece at ${to}:`, {
+          color: targetPiece.color,
+          type: targetPiece.type,
+          effectCount: targetPiece.effects.length,
+          effects: targetPiece.effects.map(
+            (e) =>
+              `${e.source} (${e.duration}) [${Object.keys(
+                e.modifiers || {}
+              ).join(",")}]`
+          ),
+        });
+
+        // Check each effect explicitly
+        targetPiece.effects.forEach((effect) => {
+          if (effect.modifiers?.preventCapture) {
+            console.log(
+              `Found preventCapture effect on ${to}: ${effect.source}, duration: ${effect.duration}`
+            );
+          }
+        });
+      }
+
+      // Check if the target square has a piece that's protected from capture
+      if (targetPiece) {
+        // Check for Arcane Anchor effect specifically
+        const hasAnchorProtection = targetPiece.effects.some(
+          (effect) =>
+            effect.source === "arcaneAnchor" &&
+            effect.modifiers?.preventCapture === true &&
+            effect.duration > 0
+        );
+
+        if (hasAnchorProtection) {
+          console.log(
+            `Cannot capture piece at ${to} as it's protected by Arcane Anchor effect`
+          );
+          return false;
+        }
+
+        // Check any other protection effects
+        if (this.isPieceProtectedFromCapture(to)) {
+          console.log(
+            `Cannot capture piece at ${to} as it's protected by an effect`
+          );
+          return false;
+        }
+      }
+
+      // Store piece effects before move since they might be lost during the move
       const pieceEffects = pieceBeforeMove?.effects || [];
       const hasEmberCrown = pieceEffects.some(
         (effect) => effect.source === "emberCrown"
@@ -164,6 +224,15 @@ class GameManager {
       console.log(
         `Moving piece from ${from} to ${to}, has emberCrown effect: ${hasEmberCrown}`
       );
+
+      // Check if the move is legal according to chess rules
+      const legalMoves = this.chess.moves({ square: from, verbose: true });
+      const isLegalMove = legalMoves.some((move) => move.to === to);
+
+      if (!isLegalMove) {
+        console.log(`Move from ${from} to ${to} is not legal`);
+        return false;
+      }
 
       // Make the move in chess.js
       const move = this.chess.move({ from, to, promotion: "q" });
@@ -204,31 +273,34 @@ class GameManager {
 
         // IMPORTANT: Count this move as a turn completion for the current player
         // This is critical for effects like Ember Crown that should count down based on player turns
-        // Find ember crown effects owned by this player and decrement them
         let effectsUpdated = false;
 
         // Process effects on all pieces belonging to the current player
         for (const square in this.customBoardState) {
           const piece = this.customBoardState[square];
           if (piece && piece.color === currentPlayer) {
-            // Find ember crown effects
-            const emberEffects = piece.effects.filter(
+            // Find all effects that should be decremented (both Ember Crown and Arcane Armor/Anchor)
+            const effectsToUpdate = piece.effects.filter(
               (effect) =>
-                effect.source === "emberCrown" &&
+                (effect.source === "emberCrown" ||
+                  effect.source === "arcaneArmor" ||
+                  effect.source === "arcaneAnchor") &&
                 !effect.id.includes("emberVisual")
             );
 
-            if (emberEffects.length > 0) {
-              // Update all ember crown effects for this player's pieces
+            if (effectsToUpdate.length > 0) {
+              // Update all effects for this player's pieces
               piece.effects = piece.effects.map((effect) => {
                 if (
-                  effect.source === "emberCrown" &&
+                  (effect.source === "emberCrown" ||
+                    effect.source === "arcaneArmor" ||
+                    effect.source === "arcaneAnchor") &&
                   !effect.id.includes("emberVisual")
                 ) {
                   effectsUpdated = true;
                   const newDuration = effect.duration - 1;
                   console.log(
-                    `Decremented Ember Crown effect on ${square} from ${effect.duration} to ${newDuration}`
+                    `Decremented ${effect.source} effect on ${square} from ${effect.duration} to ${newDuration}`
                   );
                   return { ...effect, duration: newDuration };
                 }
@@ -237,7 +309,7 @@ class GameManager {
 
               // Also update the global effects list
               this.effects = this.effects.map((effect) => {
-                if (emberEffects.some((e) => e.id === effect.id)) {
+                if (effectsToUpdate.some((e) => e.id === effect.id)) {
                   return (
                     piece.effects.find((e) => e.id === effect.id) || effect
                   );
@@ -248,7 +320,7 @@ class GameManager {
           }
         }
 
-        // After updating effects, check if any ember queens have expired
+        // After updating effects, check if any pieces have expired effects
         if (effectsUpdated) {
           // Find expired effects that should remove pieces
           const squaresToRemove: Square[] = [];
@@ -260,24 +332,37 @@ class GameManager {
                 (effect) =>
                   effect.duration <= 0 &&
                   (effect.source === "emberCrown" ||
+                    effect.source === "arcaneArmor" ||
+                    effect.source === "arcaneAnchor" ||
                     effect.modifiers?.removeOnExpire) &&
                   !effect.id.includes("emberVisual")
               );
 
               if (expiredEffects.length > 0) {
                 console.log(
-                  `Found piece at ${square} with expired ember crown effect`
+                  `Found piece at ${square} with expired effect(s): ${expiredEffects
+                    .map((e) => e.source)
+                    .join(", ")}`
                 );
-                squaresToRemove.push(square as Square);
 
-                // Log the expiration
-                const pieceName = this.getPieceTypeName(
-                  piece.type as PieceSymbol
+                // Only add to removal list if the effect has removeOnExpire
+                const shouldRemovePiece = expiredEffects.some(
+                  (e) =>
+                    e.source === "emberCrown" || e.modifiers?.removeOnExpire
                 );
-                const color = piece.color === "w" ? "White" : "Black";
-                this.gameLog.push(
-                  `${color}'s ${pieceName} at ${square} expired from emberCrown effect and was removed`
-                );
+
+                if (shouldRemovePiece) {
+                  squaresToRemove.push(square as Square);
+
+                  // Log the expiration
+                  const pieceName = this.getPieceTypeName(
+                    piece.type as PieceSymbol
+                  );
+                  const color = piece.color === "w" ? "White" : "Black";
+                  this.gameLog.push(
+                    `${color}'s ${pieceName} at ${square} expired from effect and was removed`
+                  );
+                }
               }
 
               // Remove expired effects from the piece
@@ -467,7 +552,10 @@ class GameManager {
     const expiredEffects = updatedEffects.filter(
       (effect) =>
         effect.duration <= 0 &&
-        (effect.modifiers?.removeOnExpire || effect.source === "emberCrown") &&
+        (effect.modifiers?.removeOnExpire ||
+          effect.source === "emberCrown" ||
+          effect.source === "arcaneArmor" ||
+          effect.source === "arcaneAnchor") &&
         !effect.id.includes("emberVisual")
     );
 
@@ -596,11 +684,59 @@ class GameManager {
   // Check if a move is legal
   isMoveLegal(from: Square, to: Square): boolean {
     try {
+      // First check if the piece has any effects that prevent movement
+      const piece = this.customBoardState[from];
+      if (piece && this.hasPieceEffect(piece, "preventMovement")) {
+        console.log(`Piece at ${from} cannot move due to Arcane Anchor effect`);
+        return false;
+      }
+
+      // Then check standard move legality
       const moves = this.chess.moves({ square: from, verbose: true });
       return moves.some((move) => move.to === to);
-    } catch (_) {
+    } catch (error) {
+      console.error("Error checking move legality:", error);
       return false;
     }
+  }
+
+  // Check if a piece has a specific effect modifier
+  hasPieceEffect(piece: PieceMeta, effectProperty: string): boolean {
+    return piece.effects.some(
+      (effect) => effect.modifiers && effect.modifiers[effectProperty] === true
+    );
+  }
+
+  // Check if a piece is protected from capture
+  isPieceProtectedFromCapture(square: Square): boolean {
+    const piece = this.customBoardState[square];
+    if (!piece) return false;
+
+    // First check specifically for Arcane Anchor
+    const hasArcaneAnchorProtection = piece.effects.some(
+      (effect) =>
+        effect.source === "arcaneAnchor" &&
+        effect.modifiers?.preventCapture === true &&
+        effect.duration > 0
+    );
+
+    if (hasArcaneAnchorProtection) {
+      console.log(`Piece at ${square} is protected by Arcane Anchor`);
+      return true;
+    }
+
+    // Then check for any other protection effects
+    const hasOtherProtection = piece.effects.some(
+      (effect) =>
+        effect.modifiers?.preventCapture === true && effect.duration > 0
+    );
+
+    if (hasOtherProtection) {
+      console.log(`Piece at ${square} is protected by another effect`);
+      return true;
+    }
+
+    return false;
   }
 
   // Get the current FEN string

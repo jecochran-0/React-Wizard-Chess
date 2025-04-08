@@ -1,12 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { getSpellById } from "../utils/spells";
-import {
-  Effect,
-  EffectModifiers,
-  EffectType,
-  SpellId,
-  SpellTargetType,
-} from "../types/types";
+import { Effect, EffectModifiers, EffectType, SpellId } from "../types/types";
 import { Chess, Square } from "chess.js";
 import GameManager from "./GameManager";
 
@@ -407,9 +401,17 @@ export class SpellEngine {
       return false;
     }
 
-    // Create a buff effect on the piece
-    const effect = this.createEffect("buff", 5, "arcaneArmor", {
+    // Create a buff effect on the piece - increased to 3 turns to ensure it lasts through opponent's turn
+    const effect = this.createEffect("buff", 2, "arcaneArmor", {
       defensiveBonus: true,
+      preventCapture: true, // Cannot be captured
+      preventMovement: true, // Cannot move (like Arcane Anchor)
+    });
+
+    console.log("Created Arcane Armor effect:", {
+      id: effect.id,
+      duration: effect.duration,
+      modifiers: effect.modifiers,
     });
 
     // Add the effect to the piece
@@ -434,18 +436,43 @@ export class SpellEngine {
       return false;
     }
 
-    // Create the anchor effect - lasts for one turn (until the opponent's turn ends)
+    // Remove any existing Arcane Anchor effects on this piece
+    if (piece.effects) {
+      piece.effects = piece.effects.filter(
+        (effect) => effect.source !== "arcaneAnchor"
+      );
+    }
+
+    // Create the anchor effect - increased to 2 turns to ensure it lasts through opponent's turn
     const anchorEffect = this.createEffect("shield", 2, "arcaneAnchor", {
       preventCapture: true, // Cannot be captured
       preventMovement: true, // Cannot move
     });
 
+    console.log("Created Arcane Anchor effect:", {
+      id: anchorEffect.id,
+      duration: anchorEffect.duration,
+      modifiers: anchorEffect.modifiers,
+    });
+
     // Add the effect to the piece
     this.gameManager.addEffect(target, anchorEffect);
 
+    // Verify the effect was added correctly
+    const updatedPiece = this.gameManager.getPieceAt(target);
+    console.log("Piece after adding effect:", {
+      square: target,
+      effectCount: updatedPiece?.effects.length || 0,
+      hasAnchorEffect:
+        updatedPiece?.effects.some(
+          (e) =>
+            e.source === "arcaneAnchor" && e.modifiers?.preventCapture === true
+        ) || false,
+    });
+
     // Log the successful cast
     console.log(
-      `Successfully cast Arcane Anchor on ${target}. Piece cannot be captured or moved for 1 turn.`
+      `Successfully cast Arcane Anchor on ${target}. Piece cannot be captured or moved for 3 turns.`
     );
 
     return true;

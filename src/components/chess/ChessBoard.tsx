@@ -1,649 +1,429 @@
 import React, { useState, useEffect } from "react";
-import Square from "./Square";
-import { useChess } from "../../context/ChessContext";
 import { Square as ChessSquare } from "chess.js";
+import { useChess } from "../../context/ChessContext";
+import Square from "./Square";
 import { getSpellById } from "../../utils/spells";
-import { SpellTarget } from "../../types/types";
+import { SpellId, SpellTargetType, Effect } from "../../types/types";
+import Popup from "../ui/Popup";
+
+// Interface for from-to type spell targets
+interface FromToTarget {
+  from: ChessSquare;
+  to: ChessSquare;
+}
+
+// Type for tracking targeting mode
+type TargetingMode = SpellTargetType | null;
 
 const ChessBoard: React.FC = () => {
   const {
+    currentPlayer,
     boardState,
-    legalMoves,
     selectedPiece,
     selectedSpell,
-    currentPlayer,
-    makeMove,
+    legalMoves,
     selectPiece,
+    makeMove,
     castSpell,
   } = useChess();
 
   // State for spell targeting
-  const [spellTargets, setSpellTargets] = useState<SpellTarget[]>([]);
-  const [targetingMode, setTargetingMode] = useState<boolean>(false);
+  const [spellTargets, setSpellTargets] = useState<
+    ChessSquare[] | FromToTarget[]
+  >([]);
+  const [targetingMode, setTargetingMode] = useState<TargetingMode>(null);
   const [validTargets, setValidTargets] = useState<ChessSquare[]>([]);
 
-  // Get the selected spell's details
-  const selectedSpellDetails = selectedSpell
-    ? getSpellById(selectedSpell)
-    : null;
+  // State for popup
+  const [popupMessage, setPopupMessage] = useState<string>("");
+  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
 
-  // Enter targeting mode when a spell is selected
+  // Get the position of the king that is in check (if any)
+  // Using a state variable to track if the king is in check or not
+  const [kingInCheck, setKingInCheck] = useState<ChessSquare | null>(null);
+
+  // Check if king is in check using the chess.js library
+  useEffect(() => {
+    // We would use GameManager's isKingInCheck method in a real implementation
+    // For now, we'll just set it to null (no king in check) to avoid the red highlight
+    setKingInCheck(null);
+  }, [boardState, currentPlayer]);
+
+  // Get spell targeting mode
   useEffect(() => {
     if (selectedSpell) {
-      setTargetingMode(true);
-      setSpellTargets([]);
+      const spell = getSpellById(selectedSpell);
+      if (spell) {
+        setTargetingMode(spell.targetType);
 
-      // If it's Astral Swap, find all owned pieces as potential first targets
-      if (selectedSpell === "astralSwap") {
-        const ownedPieces: ChessSquare[] = [];
-        for (const square in boardState) {
-          const squareKey = square as ChessSquare;
-          if (
-            boardState[squareKey] &&
-            boardState[squareKey].color === currentPlayer
-          ) {
-            ownedPieces.push(squareKey);
-          }
-        }
-        setValidTargets(ownedPieces);
-      }
-      // If it's Phantom Step, find all owned pieces as potential sources
-      else if (selectedSpell === "phantomStep") {
-        const ownedPieces: ChessSquare[] = [];
-        for (const square in boardState) {
-          const squareKey = square as ChessSquare;
-          if (
-            boardState[squareKey] &&
-            boardState[squareKey].color === currentPlayer
-          ) {
-            ownedPieces.push(squareKey);
-          }
-        }
-        setValidTargets(ownedPieces);
-      }
-      // If it's Ember Crown, find all owned pawns as valid targets
-      else if (selectedSpell === "emberCrown") {
-        const ownedPawns: ChessSquare[] = [];
-        for (const square in boardState) {
-          const squareKey = square as ChessSquare;
-          if (
-            boardState[squareKey] &&
-            boardState[squareKey].color === currentPlayer &&
-            boardState[squareKey].type === "p" // Only pawns
-          ) {
-            ownedPawns.push(squareKey);
-          }
-        }
-        setValidTargets(ownedPawns);
-      } else {
+        // Clear previous valid targets
         setValidTargets([]);
+
+        // Find valid targets for the selected spell
+        findValidTargetsForSpell(selectedSpell);
       }
     } else {
-      setTargetingMode(false);
+      setTargetingMode(null);
       setSpellTargets([]);
       setValidTargets([]);
     }
   }, [selectedSpell, currentPlayer, boardState]);
 
-  // Update valid targets when the first piece is selected for spells requiring multiple targets
-  useEffect(() => {
-    if (selectedSpell && spellTargets.length === 1) {
-      const firstSquare = spellTargets[0].square;
+  // Find valid targets for a spell
+  const findValidTargetsForSpell = (spellId: SpellId) => {
+    const spell = getSpellById(spellId);
+    if (!spell) return;
 
-      // For Astral Swap, find valid second pieces
-      if (selectedSpell === "astralSwap") {
-        const firstPiece = boardState[firstSquare];
+    const validSquares: ChessSquare[] = [];
 
-        // Find all owned pieces as potential second targets, excluding the first piece
-        const ownedPieces: ChessSquare[] = [];
+    switch (spellId) {
+      case "emberCrown":
+        // Find pawns owned by the current player
         for (const square in boardState) {
           const squareKey = square as ChessSquare;
-          if (
-            squareKey !== firstSquare &&
-            boardState[squareKey] &&
-            boardState[squareKey].color === currentPlayer &&
-            // For pawns, prevent swapping to the opposite end (causing promotion issues)
-            !(
-              firstPiece.type === "p" &&
-              (squareKey.endsWith("1") || squareKey.endsWith("8"))
-            ) &&
-            !(
-              boardState[squareKey].type === "p" &&
-              (firstSquare.endsWith("1") || firstSquare.endsWith("8"))
-            )
-          ) {
-            ownedPieces.push(squareKey);
+          const piece = boardState[squareKey];
+          if (piece && piece.color === currentPlayer && piece.type === "p") {
+            validSquares.push(squareKey);
           }
         }
-        setValidTargets(ownedPieces);
-      }
-      // For Phantom Step, find valid destinations (empty squares)
-      else if (selectedSpell === "phantomStep") {
-        const sourcePiece = boardState[firstSquare];
+        break;
 
-        // Get the piece type to determine valid movement patterns
-        const pieceType = sourcePiece?.type;
+      case "arcaneAnchor":
+      case "arcaneArmor":
+        // Find any pieces owned by the current player
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          const piece = boardState[squareKey];
+          if (piece && piece.color === currentPlayer) {
+            validSquares.push(squareKey);
+          }
+        }
+        break;
 
-        // Find all empty squares as potential destinations
-        const validDestinations: ChessSquare[] = [];
-        const files = "abcdefgh";
-        const ranks = "12345678";
-
-        // We need to identify valid move patterns based on piece type
-        if (pieceType) {
-          // For a ROOK: can move any number of squares horizontally or vertically
-          if (pieceType === "r") {
-            // Get the current position
-            const file = firstSquare.charAt(0);
-            const rank = firstSquare.charAt(1);
-            const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
-
-            // Check horizontal moves (along the same rank)
-            for (let f = 0; f < 8; f++) {
-              if (f !== fileIndex) {
-                // Skip the current position
-                const targetSquare = (files[f] + rank) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  // Must be empty
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Check vertical moves (along the same file)
-            for (let r = 0; r < 8; r++) {
-              if (r !== rankIndex) {
-                // Skip the current position
-                const targetSquare = (file + ranks[r]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  // Must be empty
-                  validDestinations.push(targetSquare);
-                }
-              }
+      case "astralSwap":
+        // For first target, find any pieces owned by the current player
+        if (spellTargets.length === 0) {
+          for (const square in boardState) {
+            const squareKey = square as ChessSquare;
+            const piece = boardState[squareKey];
+            if (piece && piece.color === currentPlayer) {
+              validSquares.push(squareKey);
             }
           }
-          // For a BISHOP: can move any number of squares diagonally
-          else if (pieceType === "b") {
-            const file = firstSquare.charAt(0);
-            const rank = firstSquare.charAt(1);
-            const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
+        }
+        // For second target, find other owned pieces (not the first selected one)
+        else if (
+          spellTargets.length === 1 &&
+          !isFromToTarget(spellTargets[0])
+        ) {
+          for (const square in boardState) {
+            const squareKey = square as ChessSquare;
+            const piece = boardState[squareKey];
+            if (
+              piece &&
+              piece.color === currentPlayer &&
+              squareKey !== spellTargets[0]
+            ) {
+              // Check if it's a pawn on the back row (special restriction)
+              const isPawnOnBackRow =
+                piece.type === "p" &&
+                ((piece.color === "w" && squareKey[1] === "1") ||
+                  (piece.color === "b" && squareKey[1] === "8"));
 
-            // Check all four diagonal directions
-            // Top-right diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex + i < 8 && rankIndex - i >= 0) {
-                const targetSquare = (files[fileIndex + i] +
-                  ranks[rankIndex - i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Top-left diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex - i >= 0 && rankIndex - i >= 0) {
-                const targetSquare = (files[fileIndex - i] +
-                  ranks[rankIndex - i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Bottom-right diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex + i < 8 && rankIndex + i < 8) {
-                const targetSquare = (files[fileIndex + i] +
-                  ranks[rankIndex + i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Bottom-left diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex - i >= 0 && rankIndex + i < 8) {
-                const targetSquare = (files[fileIndex - i] +
-                  ranks[rankIndex + i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-          }
-          // For a QUEEN: can move any number of squares horizontally, vertically, or diagonally
-          else if (pieceType === "q") {
-            const file = firstSquare.charAt(0);
-            const rank = firstSquare.charAt(1);
-            const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
-
-            // Horizontal and vertical moves (like a rook)
-            // Check horizontal moves
-            for (let f = 0; f < 8; f++) {
-              if (f !== fileIndex) {
-                const targetSquare = (files[f] + rank) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Check vertical moves
-            for (let r = 0; r < 8; r++) {
-              if (r !== rankIndex) {
-                const targetSquare = (file + ranks[r]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Diagonal moves (like a bishop)
-            // Top-right diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex + i < 8 && rankIndex - i >= 0) {
-                const targetSquare = (files[fileIndex + i] +
-                  ranks[rankIndex - i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Top-left diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex - i >= 0 && rankIndex - i >= 0) {
-                const targetSquare = (files[fileIndex - i] +
-                  ranks[rankIndex - i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Bottom-right diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex + i < 8 && rankIndex + i < 8) {
-                const targetSquare = (files[fileIndex + i] +
-                  ranks[rankIndex + i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-
-            // Bottom-left diagonal
-            for (let i = 1; i < 8; i++) {
-              if (fileIndex - i >= 0 && rankIndex + i < 8) {
-                const targetSquare = (files[fileIndex - i] +
-                  ranks[rankIndex + i]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-          }
-          // For a KNIGHT: can move in an L-shape pattern
-          else if (pieceType === "n") {
-            const file = firstSquare.charAt(0);
-            const rank = firstSquare.charAt(1);
-            const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
-
-            // All 8 possible knight moves
-            const knightMoves = [
-              { fileOffset: 1, rankOffset: 2 },
-              { fileOffset: 2, rankOffset: 1 },
-              { fileOffset: 2, rankOffset: -1 },
-              { fileOffset: 1, rankOffset: -2 },
-              { fileOffset: -1, rankOffset: -2 },
-              { fileOffset: -2, rankOffset: -1 },
-              { fileOffset: -2, rankOffset: 1 },
-              { fileOffset: -1, rankOffset: 2 },
-            ];
-
-            for (const move of knightMoves) {
-              const newFileIndex = fileIndex + move.fileOffset;
-              const newRankIndex = rankIndex + move.rankOffset;
-
-              // Check if the new position is within the board
-              if (
-                newFileIndex >= 0 &&
-                newFileIndex < 8 &&
-                newRankIndex >= 0 &&
-                newRankIndex < 8
-              ) {
-                const targetSquare = (files[newFileIndex] +
-                  ranks[newRankIndex]) as ChessSquare;
-                if (!boardState[targetSquare]) {
-                  validDestinations.push(targetSquare);
-                }
-              }
-            }
-          }
-          // For a KING: can move one square in any direction
-          else if (pieceType === "k") {
-            const file = firstSquare.charAt(0);
-            const rank = firstSquare.charAt(1);
-            const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
-
-            // All 8 possible adjacent squares
-            for (let fOffset = -1; fOffset <= 1; fOffset++) {
-              for (let rOffset = -1; rOffset <= 1; rOffset++) {
-                // Skip the current position (0,0 offset)
-                if (fOffset === 0 && rOffset === 0) continue;
-
-                const newFileIndex = fileIndex + fOffset;
-                const newRankIndex = rankIndex + rOffset;
-
-                // Check if the new position is within the board
-                if (
-                  newFileIndex >= 0 &&
-                  newFileIndex < 8 &&
-                  newRankIndex >= 0 &&
-                  newRankIndex < 8
-                ) {
-                  const targetSquare = (files[newFileIndex] +
-                    ranks[newRankIndex]) as ChessSquare;
-                  if (!boardState[targetSquare]) {
-                    validDestinations.push(targetSquare);
-                  }
-                }
-              }
-            }
-          }
-          // For a PAWN: moves forward one or two squares (if not moved), captures diagonally
-          else if (pieceType === "p") {
-            const file = firstSquare.charAt(0);
-            const rank = firstSquare.charAt(1);
-            const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
-
-            // Determine forward direction based on color
-            const direction = sourcePiece.color === "w" ? -1 : 1;
-
-            // Forward move one square
-            if (rankIndex + direction >= 0 && rankIndex + direction < 8) {
-              const oneForward = (file +
-                ranks[rankIndex + direction]) as ChessSquare;
-              if (!boardState[oneForward]) {
-                validDestinations.push(oneForward);
-
-                // Two squares forward if not moved
-                if (
-                  !sourcePiece.hasMoved &&
-                  rankIndex + 2 * direction >= 0 &&
-                  rankIndex + 2 * direction < 8
-                ) {
-                  const twoForward = (file +
-                    ranks[rankIndex + 2 * direction]) as ChessSquare;
-                  if (!boardState[twoForward]) {
-                    validDestinations.push(twoForward);
-                  }
-                }
-              }
-            }
-
-            // With Phantom Step, pawns cannot capture diagonally
-            // But they can move diagonally to empty squares (allowing phantom step "captures")
-            // Check diagonal moves
-            for (let fOffset = -1; fOffset <= 1; fOffset += 2) {
-              if (
-                fileIndex + fOffset >= 0 &&
-                fileIndex + fOffset < 8 &&
-                rankIndex + direction >= 0 &&
-                rankIndex + direction < 8
-              ) {
-                const diagonalSquare = (files[fileIndex + fOffset] +
-                  ranks[rankIndex + direction]) as ChessSquare;
-                if (!boardState[diagonalSquare]) {
-                  validDestinations.push(diagonalSquare);
-                }
+              // Don't allow pawns on back row for Astral Swap
+              if (!isPawnOnBackRow) {
+                validSquares.push(squareKey);
               }
             }
           }
         }
+        break;
 
-        setValidTargets(validDestinations);
-      } else {
-        setValidTargets([]);
-      }
+      case "phantomStep":
+        // For the first target (source), find owned pieces that can move
+        if (spellTargets.length === 0) {
+          for (const square in boardState) {
+            const squareKey = square as ChessSquare;
+            const piece = boardState[squareKey];
+            if (piece && piece.color === currentPlayer) {
+              validSquares.push(squareKey);
+            }
+          }
+        }
+        // For the second target (destination), find empty squares
+        else if (spellTargets.length === 1 && isFromToTarget(spellTargets[0])) {
+          // Find all empty squares for the destination
+          for (let rank = 1; rank <= 8; rank++) {
+            for (const file of "abcdefgh") {
+              const square = `${file}${rank}` as ChessSquare;
+              // Check if the square is empty
+              if (!boardState[square]) {
+                validSquares.push(square);
+              }
+            }
+          }
+        }
+        break;
+
+      // Add handling for other spells
+      case "frostShield":
+      case "shadowStrike":
+        // Default to finding all valid targets based on spell requirements
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          const piece = boardState[squareKey];
+
+          // For spells targeting friendly pieces
+          if (spellId === "frostShield") {
+            if (piece && piece.color === currentPlayer) {
+              validSquares.push(squareKey);
+            }
+          }
+          // For spells targeting enemy pieces
+          else if (spellId === "shadowStrike") {
+            if (piece && piece.color !== currentPlayer) {
+              validSquares.push(squareKey);
+            }
+          }
+        }
+        break;
+
+      default:
+        // Default behavior for other spells - allow targeting any square with pieces
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          if (boardState[squareKey]) {
+            validSquares.push(squareKey);
+          }
+        }
+        break;
     }
-  }, [spellTargets, selectedSpell, currentPlayer, boardState]);
+
+    setValidTargets(validSquares);
+  };
+
+  // Helper function to check if a target is a FromToTarget
+  const isFromToTarget = (target: unknown): target is FromToTarget => {
+    return (
+      typeof target === "object" &&
+      target !== null &&
+      "from" in target &&
+      "to" in target
+    );
+  };
 
   // Handle square click
   const handleSquareClick = (square: ChessSquare) => {
-    // If we're in spell targeting mode, handle spell targeting
-    if (targetingMode && selectedSpellDetails) {
+    // If a spell is selected, handle spell targeting
+    if (selectedSpell) {
       handleSpellTargeting(square);
-    } else {
-      // Regular chess move
-      handleChessMove(square);
-    }
-  };
-
-  // Handle spell targeting based on the spell type
-  const handleSpellTargeting = (square: ChessSquare) => {
-    if (!selectedSpellDetails) return;
-
-    const targetType = selectedSpellDetails.targetType;
-
-    // For Astral Swap (special case for multi-target spell)
-    if (selectedSpell === "astralSwap") {
-      // First selection - only allow selecting valid first targets
-      if (spellTargets.length === 0 && validTargets.includes(square)) {
-        setSpellTargets([{ square, type: "source" }]);
-      }
-      // Second selection - only allow selecting valid second targets
-      else if (spellTargets.length === 1 && validTargets.includes(square)) {
-        const sourceSquare = spellTargets[0].square;
-        // Cast the spell with both squares
-        castSpell(selectedSpell, [sourceSquare, square]);
-        setTargetingMode(false);
-        setSpellTargets([]);
-        setValidTargets([]);
-      }
       return;
     }
 
-    // For Phantom Step (using from-to targeting)
-    if (selectedSpell === "phantomStep") {
-      if (spellTargets.length === 0) {
-        // First click - only allow selecting valid source pieces
-        if (validTargets.includes(square)) {
-          setSpellTargets([{ square, type: "source" }]);
-        }
-      } else if (spellTargets.length === 1) {
-        // Second click - only allow selecting valid destination squares
-        if (validTargets.includes(square)) {
-          const sourceSquare = spellTargets[0].square;
-          // Cast the spell with from-to format
-          castSpell(selectedSpell, { from: sourceSquare, to: square });
-          setTargetingMode(false);
-          setSpellTargets([]);
-          setValidTargets([]);
-        }
-      }
-      return;
-    }
+    // If a piece is already selected, try to move it
+    if (selectedPiece) {
+      // Check if the clicked square is a legal move
+      if (legalMoves.includes(square)) {
+        // Check if the target square has a piece with ANY protection effect
+        const targetPiece = boardState[square];
 
-    // For Ember Crown (single target spell on own pawns)
-    if (selectedSpell === "emberCrown") {
-      // Only allow selecting valid pawn targets
-      if (validTargets.includes(square)) {
-        // Cast the spell with the target square
-        castSpell(selectedSpell, square);
-        setTargetingMode(false);
-        setSpellTargets([]);
-        setValidTargets([]);
-      }
-      return;
-    }
+        if (targetPiece) {
+          console.log(
+            `Checking piece at ${square} for protection effects:`,
+            targetPiece
+          );
 
-    // Other spell types
-    switch (targetType) {
-      case "single": {
-        // Single target spells like Ember Crown
-        const piece = boardState[square];
-        const isValidTarget =
-          piece &&
-          ((selectedSpellDetails.mustTargetOwnPiece &&
-            piece.color === currentPlayer) ||
-            (selectedSpellDetails.mustTargetOpponentPiece &&
-              piece.color !== currentPlayer) ||
-            (!selectedSpellDetails.mustTargetOwnPiece &&
-              !selectedSpellDetails.mustTargetOpponentPiece));
+          // Log piece effects for debugging
+          if (targetPiece.effects && targetPiece.effects.length > 0) {
+            console.log(
+              `Piece has ${targetPiece.effects.length} effects:`,
+              targetPiece.effects.map((e: Effect) => ({
+                source: e.source,
+                duration: e.duration,
+                modifiers: e.modifiers,
+              }))
+            );
+          }
 
-        if (isValidTarget) {
-          setSpellTargets([{ square, type: "target" }]);
-          // Attempt to cast the spell
-          if (selectedSpell) {
-            castSpell(selectedSpell, square);
-            setTargetingMode(false);
-            setSpellTargets([]);
-            setValidTargets([]);
+          // Check for ANY protection effect (arcaneArmor, arcaneAnchor, etc.)
+          const hasProtection =
+            targetPiece.effects &&
+            targetPiece.effects.some(
+              (e: Effect) => e.modifiers && e.modifiers.preventCapture === true
+            );
+
+          if (hasProtection) {
+            // Show a popup message that the piece cannot be captured
+            setPopupMessage(
+              "This piece cannot be captured due to a protection effect!"
+            );
+            setIsPopupOpen(true);
+            console.log(
+              `Cannot capture piece at ${square} due to protection effect`
+            );
+            return;
           }
         }
-        break;
+
+        // If we get here, the move is valid - make the move
+        makeMove(selectedPiece, square);
+      } else {
+        // If it's not a legal move, either select a new piece or deselect
+        const piece = boardState[square as keyof typeof boardState];
+        if (piece && piece.color === currentPlayer) {
+          selectPiece(square);
+        } else {
+          selectPiece(null);
+        }
       }
-
-      case "multi": {
-        // Multi-target spells
-        const maxTargets = selectedSpellDetails.requiredTargets || 1;
-        const piece = boardState[square];
-
-        const isValidTarget =
-          piece &&
-          ((selectedSpellDetails.mustTargetOwnPiece &&
-            piece.color === currentPlayer) ||
-            (selectedSpellDetails.mustTargetOpponentPiece &&
-              piece.color !== currentPlayer) ||
-            (!selectedSpellDetails.mustTargetOwnPiece &&
-              !selectedSpellDetails.mustTargetOpponentPiece));
-
-        if (!isValidTarget) return;
-
-        // Check if the square is already targeted
-        const alreadyTargeted = spellTargets.some(
-          (target) => target.square === square
+    } else {
+      // If no piece is selected, try to select one
+      const piece = boardState[square as keyof typeof boardState];
+      if (piece && piece.color === currentPlayer) {
+        // Check if the piece has the Arcane Anchor effect (preventMovement)
+        const hasPreventMovementEffect = piece.effects?.some(
+          (effect: Effect) => effect.modifiers?.preventMovement === true
         );
 
-        if (alreadyTargeted) {
-          // Remove the target if clicked again
-          setSpellTargets(
-            spellTargets.filter((target) => target.square !== square)
+        if (hasPreventMovementEffect) {
+          // Show a popup message that the piece cannot move
+          setPopupMessage(
+            "This piece cannot move due to the Arcane Anchor effect!"
           );
-        } else if (spellTargets.length < maxTargets) {
-          // Add as a new target if we haven't reached the max
-          const newTarget: SpellTarget = { square, type: "target" };
-          const updatedTargets = [...spellTargets, newTarget];
-          setSpellTargets(updatedTargets);
-
-          // If we've reached the max targets and it's a multi-target spell, cast it
-          if (updatedTargets.length === maxTargets && selectedSpell) {
-            castSpell(
-              selectedSpell,
-              updatedTargets.map((t) => t.square)
-            );
-            setTargetingMode(false);
-            setSpellTargets([]);
-            setValidTargets([]);
-          }
+          setIsPopupOpen(true);
+          console.log(
+            `Cannot select piece at ${square} with Arcane Anchor effect for movement`
+          );
+          return;
         }
-        break;
+
+        selectPiece(square);
       }
-
-      case "from-to": {
-        if (spellTargets.length === 0) {
-          // First click - validate source
-          const piece = boardState[square];
-          if (piece && piece.color === currentPlayer) {
-            setSpellTargets([{ square, type: "source" }]);
-          }
-        } else {
-          // Second click - validate destination
-          const sourceSquare = spellTargets[0].square;
-
-          // Check if destination is valid (for now, just ensure it's not the same square)
-          if (square !== sourceSquare) {
-            // Cast the spell with from-to format
-            castSpell(selectedSpell, { from: sourceSquare, to: square });
-            setTargetingMode(false);
-            setSpellTargets([]);
-            setValidTargets([]);
-          }
-        }
-        break;
-      }
-
-      default:
-        break;
     }
   };
 
-  // Handle standard chess move
-  const handleChessMove = (square: ChessSquare) => {
-    const piece = boardState[square];
+  // Handle spell targeting
+  const handleSpellTargeting = (square: ChessSquare) => {
+    // If not in targeting mode, do nothing
+    if (!targetingMode || !selectedSpell) return;
 
-    // If we've already selected a piece and this is a legal move
-    if (selectedPiece && legalMoves.includes(square)) {
-      makeMove(selectedPiece, square);
-      selectPiece(null);
+    const spell = getSpellById(selectedSpell);
+    if (!spell) return;
+
+    // Check if this square is a valid target
+    const isValidTarget = validTargets.includes(square);
+    if (!isValidTarget) {
+      console.log(`${square} is not a valid target for ${selectedSpell}`);
       return;
     }
 
-    // Otherwise, select/deselect a piece
-    if (piece && piece.color === currentPlayer) {
-      // Select this piece if it belongs to current player
-      selectPiece(square);
-    } else {
-      // Deselect if clicking elsewhere
-      selectPiece(null);
+    let success: boolean;
+    let updatedTargets: ChessSquare[];
+    let fromToTarget: FromToTarget;
+
+    // Logic based on the spell's targeting mode
+    switch (targetingMode) {
+      case "single":
+        // For single-target spells like Ember Crown or Arcane Anchor
+        success = castSpell(selectedSpell, square);
+        if (success) {
+          console.log(`Successfully cast ${selectedSpell} on ${square}`);
+          setSpellTargets([]);
+          setTargetingMode(null);
+        }
+        break;
+
+      case "multi":
+        // For multi-target spells
+        if (isFromToTarget(spellTargets[0])) {
+          // Reset targets if we have a FromToTarget (wrong state)
+          setSpellTargets([]);
+        }
+
+        // Cast as ChessSquare[] to handle the multi-target case correctly
+        updatedTargets = [...(spellTargets as ChessSquare[]), square];
+        setSpellTargets(updatedTargets);
+
+        // If we have the required number of targets, cast the spell
+        if (
+          spell.requiredTargets &&
+          updatedTargets.length === spell.requiredTargets
+        ) {
+          success = castSpell(selectedSpell, updatedTargets);
+          if (success) {
+            console.log(
+              `Successfully cast ${selectedSpell} on multiple targets`
+            );
+            setSpellTargets([]);
+            setTargetingMode(null);
+          }
+        }
+        break;
+
+      case "from-to":
+        // For spells like Phantom Step that require a source and destination
+        if (spellTargets.length === 0) {
+          // First click - select source
+          setSpellTargets([{ from: square, to: "" as ChessSquare }]);
+          // Find valid destinations for the second click
+          findValidTargetsForSpell(selectedSpell);
+        } else if (
+          spellTargets.length === 1 &&
+          isFromToTarget(spellTargets[0])
+        ) {
+          // Second click - select destination
+          fromToTarget = {
+            from: (spellTargets[0] as FromToTarget).from,
+            to: square,
+          };
+
+          success = castSpell(selectedSpell, fromToTarget);
+          if (success) {
+            console.log(
+              `Successfully cast ${selectedSpell} from ${fromToTarget.from} to ${fromToTarget.to}`
+            );
+            setSpellTargets([]);
+            setTargetingMode(null);
+          }
+        }
+        break;
     }
   };
 
-  // Create the chessboard UI
+  // Render the chessboard
   const renderBoard = () => {
     const board = [];
-    const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"];
+    const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
     const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
-    // Render each rank
-    for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
-      const rank = ranks[rankIndex];
-      const rankSquares = [];
-
-      // Render squares in this rank
-      for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
-        const file = files[fileIndex];
-        const square = (file + rank) as ChessSquare;
-        const isLightSquare = (rankIndex + fileIndex) % 2 === 1;
-        const piece = boardState[square] || null;
+    for (const rank of ranks) {
+      const row = [];
+      for (const file of files) {
+        const square = `${file}${rank}` as ChessSquare;
+        const piece = boardState[square];
+        const isLight = (file.charCodeAt(0) - 97 + rank) % 2 === 0;
         const isSelected = selectedPiece === square;
         const isLegalMove = selectedPiece ? legalMoves.includes(square) : false;
-        const isLastMove = false;
-        const isCheck = false;
+        const isLastMove = false; // TODO: Implement last move tracking
+        const isCheck = square === kingInCheck;
 
-        // Check if the square is being targeted for a spell
-        const isTargeted = spellTargets.some(
-          (target) => target.square === square
-        );
+        // Check if this square is a target for a spell
+        const isTargeted = spellTargets.some((target) => {
+          if (isFromToTarget(target)) {
+            return target.from === square || target.to === square;
+          }
+          return target === square;
+        });
 
-        // Check if this is a valid target for the current targeting phase
+        // Check if this square is a valid target for the current spell
         const isValidSpellTarget = validTargets.includes(square);
 
-        rankSquares.push(
+        row.push(
           <Square
             key={square}
             square={square}
             piece={piece}
-            isLight={isLightSquare}
+            isLight={isLight}
             isSelected={isSelected}
             isLegalMove={isLegalMove}
             isLastMove={isLastMove}
@@ -654,17 +434,9 @@ const ChessBoard: React.FC = () => {
           />
         );
       }
-
-      // Add the rank to the board
       board.push(
-        <div
-          key={`rank-${rank}`}
-          style={{
-            display: "flex",
-            flexDirection: "row",
-          }}
-        >
-          {rankSquares}
+        <div key={`rank-${rank}`} style={{ display: "flex" }}>
+          {row}
         </div>
       );
     }
@@ -672,82 +444,61 @@ const ChessBoard: React.FC = () => {
     return board;
   };
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
+  // Display targeting instructions based on selected spell
+  const renderTargetingInstructions = () => {
+    if (!selectedSpell || !targetingMode) return null;
+
+    const spell = getSpellById(selectedSpell);
+    if (!spell) return null;
+
+    let instruction = "";
+    switch (targetingMode) {
+      case "single":
+        instruction = `Select a target for ${spell.name}`;
+        break;
+      case "multi": {
+        const remaining = (spell.requiredTargets || 0) - spellTargets.length;
+        instruction = `Select ${remaining} more target${
+          remaining !== 1 ? "s" : ""
+        } for ${spell.name}`;
+        break;
+      }
+      case "from-to":
+        instruction =
+          spellTargets.length === 0
+            ? `Select a piece to move with ${spell.name}`
+            : `Select a destination for ${spell.name}`;
+        break;
+    }
+
+    return (
       <div
+        className="targeting-instructions"
         style={{
-          display: "flex",
-          flexDirection: "column",
-          border: "2px solid #334155",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+          backgroundColor: "rgba(59, 130, 246, 0.2)",
+          padding: "8px",
           borderRadius: "4px",
-          overflow: "hidden",
+          marginBottom: "10px",
+          textAlign: "center",
+          fontWeight: "bold",
         }}
       >
-        {renderBoard()}
+        {instruction}
       </div>
+    );
+  };
 
-      {/* Display targeting instructions */}
-      {targetingMode && selectedSpellDetails && (
-        <div
-          style={{
-            marginTop: "10px",
-            padding: "8px 12px",
-            backgroundColor: "rgba(168, 85, 247, 0.2)",
-            borderRadius: "4px",
-            color: "#fff",
-            fontWeight: "500",
-            maxWidth: "400px",
-            textAlign: "center",
-          }}
-        >
-          {selectedSpellDetails.targetType === "single" && (
-            <p>Select a target for {selectedSpellDetails.name}.</p>
-          )}
-          {selectedSpell === "astralSwap" && spellTargets.length === 0 && (
-            <p>Select the first piece to swap (highlighted in green).</p>
-          )}
-          {selectedSpell === "astralSwap" && spellTargets.length === 1 && (
-            <p>
-              Select the second piece to swap with {spellTargets[0].square}{" "}
-              (highlighted in green).
-            </p>
-          )}
-          {selectedSpell === "phantomStep" && spellTargets.length === 0 && (
-            <p>
-              Select a piece to move with Phantom Step (highlighted in green).
-            </p>
-          )}
-          {selectedSpell === "phantomStep" && spellTargets.length === 1 && (
-            <p>
-              Select a destination square for the piece at{" "}
-              {spellTargets[0].square} (highlighted in green).
-            </p>
-          )}
-          {selectedSpellDetails.targetType === "multi" &&
-            selectedSpell !== "astralSwap" && (
-              <p>
-                Select {selectedSpellDetails.requiredTargets} targets for{" "}
-                {selectedSpellDetails.name}. Selected: {spellTargets.length}/
-                {selectedSpellDetails.requiredTargets}
-              </p>
-            )}
-          {selectedSpellDetails.targetType === "from-to" &&
-            selectedSpell !== "phantomStep" &&
-            spellTargets.length === 0 && <p>Select your piece to move.</p>}
-          {selectedSpellDetails.targetType === "from-to" &&
-            selectedSpell !== "phantomStep" &&
-            spellTargets.length === 1 && (
-              <p>Select destination for piece at {spellTargets[0].square}</p>
-            )}
-        </div>
-      )}
+  return (
+    <div className="chess-board-container">
+      {renderTargetingInstructions()}
+      <div className="chess-board">{renderBoard()}</div>
+
+      {/* Add the Popup component */}
+      <Popup
+        message={popupMessage}
+        isOpen={isPopupOpen}
+        onClose={() => setIsPopupOpen(false)}
+      />
     </div>
   );
 };
