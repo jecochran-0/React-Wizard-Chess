@@ -75,6 +75,9 @@ const ChessBoard: React.FC = () => {
     if (!spell) return;
 
     const validSquares: ChessSquare[] = [];
+    console.log(
+      `Finding valid targets for ${spellId}, spellTargets length: ${spellTargets.length}`
+    );
 
     switch (spellId) {
       case "emberCrown":
@@ -101,40 +104,14 @@ const ChessBoard: React.FC = () => {
         break;
 
       case "astralSwap":
-        // For first target, find any pieces owned by the current player
-        if (spellTargets.length === 0) {
-          for (const square in boardState) {
-            const squareKey = square as ChessSquare;
-            const piece = boardState[squareKey];
-            if (piece && piece.color === currentPlayer) {
-              validSquares.push(squareKey);
-            }
-          }
-        }
-        // For second target, find other owned pieces (not the first selected one)
-        else if (
-          spellTargets.length === 1 &&
-          !isFromToTarget(spellTargets[0])
-        ) {
-          for (const square in boardState) {
-            const squareKey = square as ChessSquare;
-            const piece = boardState[squareKey];
-            if (
-              piece &&
-              piece.color === currentPlayer &&
-              squareKey !== spellTargets[0]
-            ) {
-              // Check if it's a pawn on the back row (special restriction)
-              const isPawnOnBackRow =
-                piece.type === "p" &&
-                ((piece.color === "w" && squareKey[1] === "1") ||
-                  (piece.color === "b" && squareKey[1] === "8"));
-
-              // Don't allow pawns on back row for Astral Swap
-              if (!isPawnOnBackRow) {
-                validSquares.push(squareKey);
-              }
-            }
+        // Only find first targets here - second targets are handled in handleSpellTargeting
+        console.log("Finding initial targets for Astral Swap");
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          const piece = boardState[squareKey];
+          if (piece && piece.color === currentPlayer) {
+            // Allow any owned piece as first target
+            validSquares.push(squareKey);
           }
         }
         break;
@@ -340,22 +317,109 @@ const ChessBoard: React.FC = () => {
           setSpellTargets([]);
         }
 
-        // Cast as ChessSquare[] to handle the multi-target case correctly
-        updatedTargets = [...(spellTargets as ChessSquare[]), square];
-        setSpellTargets(updatedTargets);
+        // For Astral Swap, handle the transition from first to second target specially
+        if (selectedSpell === "astralSwap" && spellTargets.length === 0) {
+          console.log("Selected first target for Astral Swap:", square);
 
-        // If we have the required number of targets, cast the spell
-        if (
-          spell.requiredTargets &&
-          updatedTargets.length === spell.requiredTargets
-        ) {
-          success = castSpell(selectedSpell, updatedTargets);
-          if (success) {
-            console.log(
-              `Successfully cast ${selectedSpell} on multiple targets`
-            );
-            setSpellTargets([]);
-            setTargetingMode(null);
+          // Set the first target
+          setSpellTargets([square]);
+
+          // Immediately calculate the valid second targets based on the first selection
+          const firstPiece = boardState[square];
+          if (!firstPiece) return;
+
+          // Calculate valid second targets based on the first selection
+          const validSecondTargets: ChessSquare[] = [];
+          const firstPieceIsPawn = firstPiece.type === "p";
+          const firstPieceOnBackRow =
+            (firstPiece.color === "w" && square[1] === "1") ||
+            (firstPiece.color === "b" && square[1] === "8");
+
+          console.log("First piece:", {
+            type: firstPiece.type,
+            backRow: firstPieceOnBackRow,
+          });
+
+          // Find valid second targets
+          for (const sqKey in boardState) {
+            const squareKey = sqKey as ChessSquare;
+            const piece = boardState[squareKey];
+
+            if (
+              piece &&
+              piece.color === currentPlayer &&
+              squareKey !== square
+            ) {
+              // Skip if already selected as first target
+              let isValidSecondTarget = true;
+
+              // Conditions that make a second target invalid:
+
+              // 1. If first piece is a pawn, don't allow targeting back row
+              if (firstPieceIsPawn) {
+                const isBackRow =
+                  (firstPiece.color === "w" && squareKey[1] === "1") ||
+                  (firstPiece.color === "b" && squareKey[1] === "8");
+
+                if (isBackRow) {
+                  console.log(
+                    `Excluding ${squareKey}: can't swap pawn to player's back row`
+                  );
+                  isValidSecondTarget = false;
+                }
+              }
+
+              // 2. If first piece is on back row, don't allow targeting pawns
+              if (firstPieceOnBackRow && piece.type === "p") {
+                console.log(
+                  `Excluding ${squareKey}: can't swap back row piece with pawn`
+                );
+                isValidSecondTarget = false;
+              }
+
+              // 3. Don't allow pawns on back row as second target
+              const isPawnOnBackRow =
+                piece.type === "p" &&
+                ((piece.color === "w" && squareKey[1] === "1") ||
+                  (piece.color === "b" && squareKey[1] === "8"));
+
+              if (isPawnOnBackRow) {
+                console.log(
+                  `Excluding ${squareKey}: can't swap with pawn already on back row`
+                );
+                isValidSecondTarget = false;
+              }
+
+              if (isValidSecondTarget) {
+                validSecondTargets.push(squareKey);
+              }
+            }
+          }
+
+          console.log("Valid second targets:", validSecondTargets);
+          setValidTargets(validSecondTargets);
+          return;
+        }
+        // For the second selection of Astral Swap or other multi-target spells
+        else {
+          // Cast as ChessSquare[] to handle the multi-target case correctly
+          updatedTargets = [...(spellTargets as ChessSquare[]), square];
+          setSpellTargets(updatedTargets);
+
+          // If we have the required number of targets, cast the spell
+          if (
+            spell.requiredTargets &&
+            updatedTargets.length === spell.requiredTargets
+          ) {
+            success = castSpell(selectedSpell, updatedTargets);
+            if (success) {
+              console.log(
+                `Successfully cast ${selectedSpell} on multiple targets`
+              );
+              setSpellTargets([]);
+              setTargetingMode(null);
+              setValidTargets([]);
+            }
           }
         }
         break;

@@ -2,7 +2,6 @@ import React from "react";
 import { Square as ChessSquare } from "chess.js";
 import { PieceMeta } from "../../types/types";
 import "./square.css"; // Import the CSS for animations
-import arcaneAnchorIcon from "/assets/Chess_Effects/arcaneAnchorIcon.png";
 
 export interface SquareProps {
   square: ChessSquare;
@@ -92,6 +91,15 @@ const Square: React.FC<SquareProps> = ({
   if (isValidTarget) {
     style.boxShadow = "inset 0 0 0 3px #10b981";
     style.backgroundColor = isLight ? "#ecfdf5" : "#064e3b";
+
+    // Debug log for valid targets
+    if (piece) {
+      console.log(
+        `Square ${square} is marked as valid target, has piece: ${piece.color} ${piece.type}`
+      );
+    } else {
+      console.log(`Square ${square} is marked as valid target, empty square`);
+    }
   }
 
   // Check for Arcane Anchor/Armor effect
@@ -210,7 +218,6 @@ const Square: React.FC<SquareProps> = ({
               width: "26px",
               height: "26px",
               borderRadius: "50%",
-
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -218,12 +225,11 @@ const Square: React.FC<SquareProps> = ({
               fontSize: "16px",
               color: "white",
               fontWeight: "bold",
-
               textShadow: "0 0 4px #3b82f6",
             }}
           >
             <img
-              src={arcaneAnchorIcon}
+              src="/assets/Chess_Effects/arcaneAnchorIcon.png"
               alt="Arcane Anchor Icon"
               style={{ width: "100%", height: "100%" }}
             />
