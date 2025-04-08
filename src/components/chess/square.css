@@ -102,32 +102,19 @@
   animation: anchorPulse 2.5s infinite reverse;
 }
 
-/* Add a glow around the square for anchored/armored pieces */
+/* Glow effect for anchored/armored pieces */
 .square:has(.arcane-anchor-glow) {
-  box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.7);
-  animation: pulse-anchor 2s infinite;
+  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.5);
 }
 
-@keyframes pulse-anchor {
-  0%,
-  100% {
-    box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.5);
-  }
-  50% {
-    box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.8);
-  }
-}
-
-/* Anchor badge animation */
 @keyframes anchor-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 6px 2px rgba(59, 130, 246, 0.6);
-    background-color: rgba(59, 130, 246, 0.3);
+  0% {
+    box-shadow: 0 0 5px #00ffff;
+    background-color: rgba(0, 255, 255, 0.1);
   }
-  50% {
-    box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.8);
-    background-color: rgba(59, 130, 246, 0.5);
+  100% {
+    box-shadow: 0 0 15px #00ffff, 0 0 20px #00ffff;
+    background-color: rgba(0, 255, 255, 0.3);
   }
 }
 
@@ -196,5 +183,92 @@
   }
   50% {
     box-shadow: inset 0 0 20px rgba(129, 140, 248, 0.8);
+  }
+}
+
+/* Animation for the cursed glyph effect */
+@keyframes pulse-glyph {
+  0% {
+    filter: drop-shadow(0 0 3px #a855f7);
+    transform: scale(0.95);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px #a855f7) drop-shadow(0 0 6px #ff00ff);
+    transform: scale(1.08);
+  }
+  100% {
+    filter: drop-shadow(0 0 3px #a855f7);
+    transform: scale(0.95);
+  }
+}
+
+.cursed-glyph {
+  animation: pulse-glyph 1.5s infinite ease-in-out;
+}
+
+/* Glow effect for cursed pieces */
+.square:has(.cursed-glyph-indicator) {
+  box-shadow: inset 0 0 15px rgba(255, 0, 255, 0.6);
+  animation: curse-aura 2s infinite;
+}
+
+@keyframes curse-aura {
+  0%,
+  100% {
+    box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.5);
+  }
+  50% {
+    box-shadow: inset 0 0 20px rgba(168, 85, 247, 0.8),
+      0 0 10px rgba(168, 85, 247, 0.4);
+  }
+}
+
+/* Cursed piece effect */
+.cursed-piece-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(168, 85, 247, 0.4) 0%,
+    rgba(139, 92, 246, 0.3) 70%,
+    transparent 100%
+  );
+  animation: curse-pulse 2s infinite;
+  z-index: -1;
+  box-shadow: 0 0 15px 5px rgba(168, 85, 247, 0.4);
+}
+
+@keyframes curse-pulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+    box-shadow: 0 0 15px 8px rgba(168, 85, 247, 0.6);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+}
+
+/* Square with glyph effects */
+.square:has(.cursed-glyph) {
+  box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.4);
+  animation: glyph-square-pulse 2s infinite alternate;
+}
+
+@keyframes glyph-square-pulse {
+  0% {
+    box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.3);
+  }
+  100% {
+    box-shadow: inset 0 0 20px rgba(168, 85, 247, 0.7);
   }
 }

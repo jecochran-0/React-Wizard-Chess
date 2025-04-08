@@ -88,6 +88,31 @@ const ChessBoard: React.FC = () => {
       `Finding valid targets for ${spellId}, spellTargets length: ${spellTargets.length}`
     );
 
+    // Check for spells that must target empty squares (like Cursed Glyph)
+    if (spell.mustTargetEmptySquare) {
+      console.log(`${spellId} must target empty squares`);
+      // Iterate through all squares on the board
+      const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+      const ranks = [1, 2, 3, 4, 5, 6, 7, 8];
+
+      for (const file of files) {
+        for (const rank of ranks) {
+          const squareKey = `${file}${rank}` as ChessSquare;
+          // Check if the square is empty (no piece in boardState)
+          if (!boardState[squareKey]) {
+            // Only empty squares are valid
+            validSquares.push(squareKey);
+          }
+        }
+      }
+
+      console.log(
+        `Found ${validSquares.length} empty squares as valid targets`
+      );
+      setValidTargets(validSquares);
+      return validSquares;
+    }
+
     switch (spellId) {
       case "emberCrown":
         // Find pawns owned by the current player
@@ -344,11 +369,41 @@ const ChessBoard: React.FC = () => {
 
   // Handle spell targeting
   const handleSpellTargeting = (square: ChessSquare) => {
-    // If not in targeting mode, do nothing
-    if (!targetingMode || !selectedSpell) return;
+    if (!selectedSpell) return;
 
     const spell = getSpellById(selectedSpell);
     if (!spell) return;
+
+    // Log the targeting action for debugging
+    console.log(`Targeting with spell ${selectedSpell}, clicked ${square}`);
+
+    // Special case for Cursed Glyph
+    if (selectedSpell === "cursedGlyph") {
+      console.log(`Casting Cursed Glyph on ${square}`);
+
+      // Check if the target is valid (empty square)
+      if (!boardState[square]) {
+        // Cast the spell on the empty square
+        const success = castSpell(selectedSpell, square);
+
+        if (success) {
+          console.log(`Successfully cast Cursed Glyph on ${square}`);
+          // The castSpell method in ChessContext will update the UI with the new glyph
+        } else {
+          console.log(`Failed to cast Cursed Glyph on ${square}`);
+          setPopupMessage("Failed to cast Cursed Glyph. Try another location.");
+          setIsPopupOpen(true);
+        }
+        return;
+      } else {
+        setPopupMessage("Cursed Glyph must be placed on an empty square.");
+        setIsPopupOpen(true);
+        return;
+      }
+    }
+
+    // If not in targeting mode, do nothing
+    if (!targetingMode) return;
 
     // Check if this square is a valid target
     const isValidTarget = validTargets.includes(square);

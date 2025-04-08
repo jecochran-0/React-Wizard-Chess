@@ -1,7 +1,11 @@
 import React from "react";
 import { Square as ChessSquare } from "chess.js";
 import { PieceMeta } from "../../types/types";
+import { useChess } from "../../context/ChessContext";
 import "./square.css"; // Import the CSS for animations
+
+// Import glyph image
+// import cursedGlyphIcon from "/assets/Chess_Effects/cursedGlyphIcon.png";
 
 export interface SquareProps {
   square: ChessSquare;
@@ -66,6 +70,21 @@ const Square: React.FC<SquareProps> = ({
   isValidTarget,
   onClick,
 }) => {
+  // Access the chess context
+  const { boardGlyphs } = useChess();
+
+  // Check if this square has a glyph with more detailed debugging
+  const squareHasGlyph = boardGlyphs && square in boardGlyphs;
+
+  // Debug logging for glyph detection
+  if (squareHasGlyph) {
+    console.log(`Square ${square} has a glyph:`, {
+      hasGlyph: squareHasGlyph,
+      glyphDetails: boardGlyphs?.[square],
+      glyphEffect: boardGlyphs?.[square]?.effect,
+    });
+  }
+
   // Square color determined by position
   const bgColor = isLight ? "#f0f9ff" : "#1e293b";
 
@@ -112,9 +131,19 @@ const Square: React.FC<SquareProps> = ({
     }
   }
 
+  // Check for Ember Crown effect
+  const hasEmberCrownEffect = piece?.effects?.some(
+    (effect) => effect.source === "emberCrown"
+  );
+
   // Check for Arcane Anchor/Armor effect
   const hasArcaneArmorEffect = piece?.effects?.some(
     (effect) => effect.source === "arcaneArmor"
+  );
+
+  // Check for Cursed Glyph effect on the piece (not the square)
+  const hasCursedGlyphEffect = piece?.effects?.some(
+    (effect) => effect.source === "cursedGlyph" && effect.modifiers?.visualCurse
   );
 
   // Check for Mistform Knight clone effect
@@ -122,6 +151,21 @@ const Square: React.FC<SquareProps> = ({
     (effect) =>
       effect.source === "mistformKnight" && effect.modifiers?.isMistformClone
   );
+
+  // Log when we detect a Cursed Glyph effect for debugging
+  if (hasCursedGlyphEffect) {
+    console.log(`Cursed Glyph effect detected on piece at ${square}`, {
+      piece: piece?.type,
+      color: piece?.color,
+      effects: piece?.effects
+        ?.filter((e) => e.source === "cursedGlyph")
+        .map((e) => ({
+          id: e.id,
+          duration: e.duration,
+          modifiers: e.modifiers,
+        })),
+    });
+  }
 
   // Log when we detect an Arcane Armor effect for debugging
   if (hasArcaneArmorEffect) {
@@ -152,11 +196,6 @@ const Square: React.FC<SquareProps> = ({
         })),
     });
   }
-
-  // Check for Ember Crown effect
-  const hasEmberCrownEffect = piece?.effects?.some(
-    (effect) => effect.source === "emberCrown"
-  );
 
   // Find the main ember crown effect (for duration)
   const mainEmberEffect = piece?.effects?.find(
@@ -193,6 +232,9 @@ const Square: React.FC<SquareProps> = ({
     } else if (hasMistformCloneEffect) {
       // Apply a misty blue glow effect for mistform clones
       filterStyle = `drop-shadow(0 0 8px #818cf8) brightness(1.2)`;
+    } else if (hasCursedGlyphEffect) {
+      // Apply a purple glow effect for cursed pieces
+      filterStyle = `drop-shadow(0 0 6px #a855f7) brightness(0.9)`;
     } else if (hasEffects && !hasArcaneArmorEffect) {
       // Generic effect for other spells
       filterStyle = "drop-shadow(0 0 4px #a855f7)";
@@ -221,6 +263,9 @@ const Square: React.FC<SquareProps> = ({
 
         {/* Add misty effect for Mistform Knight clones */}
         {hasMistformCloneEffect && <div className="mistform-clone-effect" />}
+
+        {/* Add purple curse effect for Cursed Glyph */}
+        {hasCursedGlyphEffect && <div className="cursed-piece-effect" />}
 
         {/* Add ember queen icon for ember crown pieces */}
         {hasEmberCrownEffect && (
@@ -273,13 +318,119 @@ const Square: React.FC<SquareProps> = ({
             />
           </div>
         )}
+
+        {/* Add cursed glyph icon for pieces afflicted with the curse */}
+        {hasCursedGlyphEffect && (
+          <div
+            style={{
+              position: "absolute",
+              top: "-8px",
+              right: hasArcaneArmorEffect ? "18px" : "-8px", // Offset if arcane armor is also present
+              width: "26px",
+              height: "26px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+              animation: "pulse-glyph 2s infinite ease-in-out",
+            }}
+          >
+            <img
+              src="/assets/Chess_Effects/cursedGlyphIcon.png"
+              alt="Cursed Glyph Icon"
+              style={{
+                width: "100%",
+                height: "100%",
+                filter: "drop-shadow(0 0 4px #a855f7)",
+              }}
+            />
+          </div>
+        )}
       </div>
     );
   }
 
+  const renderPieceEffects = () => {
+    // Check if piece has any effects
+    const pieceEffects = piece?.effects;
+    if (!pieceEffects || pieceEffects.length === 0) return null;
+
+    // Check for specific effects
+    const hasArcaneArmor = pieceEffects.some(
+      (effect) => effect.source === "arcaneArmor"
+    );
+    const hasCursedGlyph = pieceEffects.some(
+      (effect) => effect.source === "cursedGlyph"
+    );
+
+    console.log("Piece effects:", pieceEffects);
+    if (hasArcaneArmor) console.log("Piece has arcane armor!");
+    if (hasCursedGlyph) console.log("Piece has cursed glyph!");
+
+    return (
+      <>
+        {hasArcaneArmor && (
+          <div
+            className="arcane-anchor-glow"
+            style={{
+              position: "absolute",
+              width: "24px",
+              height: "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              border: "2px solid #00ffff",
+              backgroundColor: "rgba(0, 255, 255, 0.2)",
+              animation: "anchor-glow 1.5s alternate infinite",
+              zIndex: 2,
+              top: "-5px",
+              right: "-5px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "#00ffff",
+            }}
+          >
+            ⚓
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="square" style={style} onClick={onClick}>
       {pieceElement}
+
+      {/* Display Cursed Glyph image */}
+      {squareHasGlyph && (
+        <div
+          style={{
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: piece ? 0 : 1, // Place under pieces but above empty squares
+          }}
+          data-testid={`glyph-${square}`}
+          className="glyph-container"
+        >
+          <img
+            src="/assets/Chess_Effects/cursedGlyphIcon.png"
+            alt="Cursed Glyph"
+            className="cursed-glyph"
+            style={{
+              width: "85%",
+              height: "85%",
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 8px #a855f7)",
+            }}
+          />
+        </div>
+      )}
 
       {/* Legal move indicator (dot) */}
       {isLegalMove && !piece && (
@@ -290,6 +441,7 @@ const Square: React.FC<SquareProps> = ({
             borderRadius: "50%",
             backgroundColor: "#6366f1",
             opacity: 0.6,
+            zIndex: 2,
           }}
         />
       )}
@@ -322,6 +474,8 @@ const Square: React.FC<SquareProps> = ({
       >
         {square}
       </div>
+
+      {renderPieceEffects()}
     </div>
   );
 };

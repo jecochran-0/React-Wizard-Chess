@@ -55,7 +55,9 @@ export type EffectType =
   | "buff"
   | "debuff"
   | "teleport"
-  | "transform";
+  | "transform"
+  | "glyph"
+  | "visual";
 
 // Effect modifiers interface
 export interface EffectModifiers {

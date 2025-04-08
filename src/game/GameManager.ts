@@ -1,6 +1,7 @@
 import { Chess, Move, PieceSymbol, Square, Color } from "chess.js";
 import { PieceMeta, Effect, SpellId, PlayerSpells } from "../types/types";
 import { SpellEngine } from "./SpellEngine";
+import { v4 as uuidv4 } from "uuid";
 
 // Define specialized target types for the castSpell method
 type SingleTarget = Square;
@@ -13,6 +14,11 @@ interface CustomBoardState {
   [square: string]: PieceMeta;
 }
 
+// Define a structure to store glyph information
+interface GlyphInfo {
+  effect: Effect;
+}
+
 class GameManager {
   private chess: Chess;
   private customBoardState: CustomBoardState;
@@ -22,6 +28,7 @@ class GameManager {
   private currentPlayerMana: { w: number; b: number };
   private playerSpells: PlayerSpells;
   private gameLog: string[];
+  private glyphs: Record<string, GlyphInfo>;
 
   constructor(playerSpells: PlayerSpells) {
     this.chess = new Chess();
@@ -31,6 +38,7 @@ class GameManager {
     this.currentPlayerMana = { w: 5, b: 5 };
     this.playerSpells = playerSpells;
     this.gameLog = [];
+    this.glyphs = {}; // Initialize empty glyphs object
     this.spellEngine = new SpellEngine(this);
     this.syncCustomBoardFromChess();
   }
@@ -181,7 +189,7 @@ class GameManager {
   }
 
   // Make a chess move
-  makeMove(from: Square, to: Square): boolean {
+  makeMove(from: Square, to: Square, promotionPiece?: PieceSymbol): boolean {
     try {
       // Get the player making the move
       const currentPlayer = this.getCurrentPlayer();
@@ -253,6 +261,17 @@ class GameManager {
         (effect) => effect.source === "emberCrown"
       );
 
+      // Check for cursed glyph visual effect for debugging
+      const hasCursedGlyph = pieceEffects.some(
+        (effect) =>
+          effect.source === "cursedGlyph" && effect.modifiers?.visualCurse
+      );
+      if (hasCursedGlyph) {
+        console.log(
+          `Moving piece from ${from} to ${to} has cursed glyph visual effect`
+        );
+      }
+
       console.log(
         `Moving piece from ${from} to ${to}, has emberCrown effect: ${hasEmberCrown}`
       );
@@ -267,7 +286,7 @@ class GameManager {
       }
 
       // Make the move in chess.js
-      const move = this.chess.move({ from, to, promotion: "q" });
+      const move = this.chess.move({ from, to, promotion: promotionPiece });
 
       if (move) {
         // Record the move
@@ -305,6 +324,21 @@ class GameManager {
           if (hasEmberCrown) {
             console.log(`Preserved emberCrown effect on piece at ${to}`);
           }
+
+          // Debug log for cursed glyph
+          if (hasCursedGlyph) {
+            console.log(`Preserved cursed glyph effect on piece at ${to}`);
+            // Log all effects to verify they transferred correctly
+            console.log(
+              `Current effects on piece at ${to}:`,
+              this.customBoardState[to].effects.map(
+                (e) =>
+                  `${e.source} (${e.type}) [${
+                    e.modifiers ? Object.keys(e.modifiers).join(",") : "none"
+                  }]`
+              )
+            );
+          }
         }
 
         // Update hasMoved flag
@@ -313,10 +347,10 @@ class GameManager {
 
           // Track position history for Chrono Recall spell
           // Get the full position history from the original piece
-          let positionHistory = [];
+          let positionHistory: Square[] = [];
           if (pieceBeforeMove && pieceBeforeMove.prevPositions) {
             // Copy the existing history from the piece at the original position
-            positionHistory = [...pieceBeforeMove.prevPositions];
+            positionHistory = [...(pieceBeforeMove.prevPositions as Square[])];
           }
 
           // If there was no history or it wasn't properly transferred, initialize with the from position
@@ -339,6 +373,9 @@ class GameManager {
         // Log the move
         this.logMove(from, to);
 
+        // IMPORTANT: Now check if there's a glyph on the destination square AFTER the piece is moved there
+        this.checkForGlyphs(to);
+
         // Add mana after a successful move
         this.currentPlayerMana[currentPlayer] = Math.min(
           this.currentPlayerMana[currentPlayer] + 1,
@@ -353,7 +390,7 @@ class GameManager {
         for (const square in this.customBoardState) {
           const piece = this.customBoardState[square];
           if (piece && piece.color === currentPlayer) {
-            // Find all effects that should be decremented (both Ember Crown and Arcane Armor/Anchor)
+            // Find all effects that should be decremented (but NOT cursedGlyph - curse decrements on the piece owner's turn)
             const effectsToUpdate = piece.effects.filter(
               (effect) =>
                 (effect.source === "emberCrown" ||
@@ -407,6 +444,62 @@ class GameManager {
             }
           }
         }
+
+        // Process cursedGlyph effects separately - cursed effects decrement when the piece owner moves
+        let cursedEffectsUpdated = false;
+        for (const square in this.customBoardState) {
+          const piece = this.customBoardState[square];
+          // Only process cursor effects for the current player's pieces
+          if (piece && piece.color === currentPlayer) {
+            const cursedEffects = piece.effects.filter(
+              (effect) =>
+                effect.source === "cursedGlyph" &&
+                !effect.id.includes("emberVisual")
+            );
+
+            if (cursedEffects.length > 0) {
+              // Update cursed effects
+              piece.effects = piece.effects
+                .map((effect) => {
+                  if (
+                    effect.source === "cursedGlyph" &&
+                    !effect.id.includes("emberVisual")
+                  ) {
+                    cursedEffectsUpdated = true;
+                    const newDuration = effect.duration - 1;
+                    console.log(
+                      `Decremented Cursed Glyph effect from ${effect.duration} to ${newDuration} turns remaining`
+                    );
+
+                    // If the effect has expired, transform to pawn IMMEDIATELY
+                    if (newDuration <= 0) {
+                      console.log(
+                        `Cursed Glyph effect on piece at ${square} has expired, transforming to pawn immediately`
+                      );
+                      // Store effect ID since we'll remove it in the transformation
+                      const effectId = effect.id;
+
+                      // Apply the transformation immediately, don't wait
+                      this.transformPieceToPawn(
+                        square as Square,
+                        piece,
+                        effectId
+                      );
+
+                      // Return null so this effect gets filtered out later
+                      return null;
+                    }
+                    return { ...effect, duration: newDuration };
+                  }
+                  return effect;
+                })
+                .filter(Boolean); // Remove any null effects after transformation
+            }
+          }
+        }
+
+        // Consider either type of effect update for the rest of the processing
+        effectsUpdated = effectsUpdated || cursedEffectsUpdated;
 
         // After updating effects, check if any pieces have expired effects
         if (effectsUpdated) {
@@ -506,11 +599,46 @@ class GameManager {
           }
         }
 
+        // Print a summary of all active effects after the move
+        this.logActiveEffectsSummary();
+
+        // After the move is made and the board is updated
+        // Check if destination square has a glyph effect
+        const glyphEffect = this.glyphs[to];
+        if (glyphEffect) {
+          console.log(`Piece stepped on glyph at ${to}:`, glyphEffect);
+
+          // Apply effect to the piece that stepped on the glyph
+          const piece = this.customBoardState[to];
+          if (piece) {
+            console.log(`Applying glyph effect to piece at ${to}:`, piece);
+
+            // If this is a cursed glyph that transforms pieces to pawns
+            if (
+              glyphEffect.type === "cursedGlyph" &&
+              glyphEffect.modifiers?.transformToPawn
+            ) {
+              console.log(
+                `Immediate transformation triggered for piece at ${to}`
+              );
+              // Transform piece to pawn immediately
+              piece.type = "p";
+              piece.hasMoved = true;
+
+              // Remove the glyph from the board
+              delete this.glyphs[to];
+
+              // Update UI
+              this.onboardUpdate();
+            }
+          }
+        }
+
         return true;
       }
       return false;
     } catch (error) {
-      console.error("Invalid move:", error);
+      console.error("Error making move:", error);
       return false;
     }
   }
@@ -619,188 +747,319 @@ class GameManager {
 
   // Process end of turn effects
   private processEndOfTurnEffects(): void {
-    // Track squares with effects that need to be removed
-    const squaresToRemovePieces: Square[] = [];
+    console.log("Processing end of turn effects...");
 
-    // Debug the active effects to ensure they're being tracked properly
-    console.log(`Processing ${this.effects.length} effects at end of turn`);
-
-    // Get the previous player (who just ended their turn)
-    const currentPlayer = this.getCurrentPlayer();
-    const previousPlayer = currentPlayer === "w" ? "b" : "w";
-
-    console.log(
-      `Current player: ${currentPlayer}, Previous player: ${previousPlayer}`
-    );
-
-    // Process all effects
-    // Create a new array with updated durations
-    const updatedEffects = this.effects.map((effect) => {
-      // Only decrement duration for effects that aren't visual markers
-      // and ONLY for the previous player's pieces (the one who just ended their turn)
-      if (!effect.id.includes("emberVisual")) {
-        // Get all pieces that have this effect
-        let effectOnPrevPlayerPiece = false;
-
-        // Check if this effect is on a piece owned by the previous player
-        for (const square in this.customBoardState) {
-          const piece = this.customBoardState[square];
-          if (
-            piece &&
-            piece.color === previousPlayer &&
-            piece.effects.some((e) => e.id === effect.id)
-          ) {
-            effectOnPrevPlayerPiece = true;
-            break;
-          }
-        }
-
-        // Only decrement for the previous player's pieces
-        if (effectOnPrevPlayerPiece) {
-          const newDuration = effect.duration - 1;
-          // Add special logging for Mistform Knight clones to debug their countdown
-          if (
-            effect.source === "mistformKnight" &&
-            effect.modifiers?.isMistformClone
-          ) {
-            console.log(
-              `Decremented Mistform Knight clone effect from ${effect.duration} to ${newDuration} turns remaining`
-            );
-          } else {
-            console.log(
-              `Decremented effect ${effect.id} from ${effect.source} from ${effect.duration} to ${newDuration} turns`
-            );
-          }
-          return { ...effect, duration: newDuration };
-        }
-      }
-
-      // Otherwise keep the original duration
-      return effect;
-    });
-
-    // Get all effects that have expired
-    const expiredEffects = updatedEffects.filter(
-      (effect) =>
-        effect.duration <= 0 &&
-        (effect.modifiers?.removeOnExpire ||
-          effect.source === "emberCrown" ||
-          effect.source === "arcaneArmor" ||
-          effect.source === "arcaneAnchor" ||
-          (effect.source === "mistformKnight" &&
-            effect.modifiers?.isMistformClone)) &&
-        !effect.id.includes("emberVisual")
-    );
-
-    // Log all expired effects
-    expiredEffects.forEach((effect) => {
-      console.log(
-        `Effect ${effect.id} from ${effect.source} has expired and will remove its piece`
-      );
-
-      // Find which square this effect is on
-      for (const square in this.customBoardState) {
-        const piece = this.customBoardState[square];
-        if (piece && piece.effects.some((e) => e.id === effect.id)) {
-          squaresToRemovePieces.push(square as Square);
-
-          // Log the expiration in the game log
-          const pieceName = this.getPieceTypeName(piece.type as PieceSymbol);
-          const color = piece.color === "w" ? "White" : "Black";
-
-          // Special log for mistform clones
-          if (
-            effect.source === "mistformKnight" &&
-            effect.modifiers?.isMistformClone
-          ) {
-            this.gameLog.push(
-              `${color}'s Mistform Knight clone at ${square} expired and vanished`
-            );
-            console.log(
-              `Mistform Knight clone at ${square} expired and will be removed`
-            );
-          } else {
-            this.gameLog.push(
-              `${color}'s ${pieceName} at ${square} expired from ${effect.source} effect and was removed`
-            );
-          }
-
-          console.log(
-            `Found piece with expired effect at ${square}, marking for removal`
-          );
-          break;
-        }
-      }
-    });
-
-    // Update all piece effects
+    // First process piece effects
     for (const square in this.customBoardState) {
       const piece = this.customBoardState[square];
-      if (piece) {
-        // Get all effects for this piece
-        const pieceEffects = piece.effects.map((pieceEffect) => {
-          // Find the updated effect in our processed list
-          const updatedEffect = updatedEffects.find(
-            (e) => e.id === pieceEffect.id
-          );
-          return updatedEffect || pieceEffect;
-        });
+      if (!piece || !piece.effects || piece.effects.length === 0) continue;
 
-        // Remove any expired effects
-        piece.effects = pieceEffects.filter(
-          (e) => e.duration > 0 || e.id.includes("emberVisual")
+      console.log(`Processing effects for piece at ${square}`);
+
+      // Find any cursed glyph effects on the piece
+      const cursedGlyphEffect = piece.effects.find(
+        (effect) => effect.source === "cursedGlyph"
+      );
+
+      if (cursedGlyphEffect) {
+        console.log(
+          `Found cursed glyph effect on piece at ${square} with ${cursedGlyphEffect.duration} turns remaining`
         );
 
-        // If this piece has ember crown effects, log them
-        if (piece.effects.some((e) => e.source === "emberCrown")) {
-          const emberEffect = piece.effects.find(
-            (e) => e.source === "emberCrown" && !e.id.includes("emberVisual")
-          );
-          if (emberEffect) {
-            console.log(
-              `Ember Crown at ${square} now has ${emberEffect.duration} turns remaining`
-            );
-          }
-        }
+        // Decrement the effect duration
+        cursedGlyphEffect.duration -= 1;
+        console.log(`Decremented duration to ${cursedGlyphEffect.duration}`);
 
-        // If this piece is a Mistform Knight clone, log the remaining duration
-        if (
-          piece.effects.some(
-            (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
-          )
-        ) {
-          const mistformEffect = piece.effects.find(
-            (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+        // If the effect has expired, transform the piece to a pawn immediately
+        if (cursedGlyphEffect.duration <= 0) {
+          console.log(
+            `Cursed Glyph effect on piece at ${square} has expired, transforming to pawn immediately`
           );
-          if (mistformEffect) {
-            console.log(
-              `Mistform Knight clone at ${square} has ${mistformEffect.duration} turns remaining`
-            );
+
+          // Transform piece immediately
+          this.transformPieceToPawn(
+            square as Square,
+            piece,
+            cursedGlyphEffect.id
+          );
+
+          // Remove this effect to prevent double-processing
+          piece.effects = piece.effects.filter(
+            (effect) => effect.id !== cursedGlyphEffect.id
+          );
+        }
+      }
+    }
+
+    // Process the glyphs themselves (remove expired ones)
+    for (const square in this.glyphs) {
+      const glyph = this.glyphs[square];
+      if (glyph) {
+        const effect = glyph.effect;
+
+        // Decrement the duration
+        effect.duration -= 1;
+        console.log(
+          `Glyph at ${square} has ${effect.duration} turns remaining`
+        );
+
+        // Remove expired glyphs
+        if (effect.duration <= 0) {
+          console.log(`Glyph at ${square} has expired and will be removed`);
+          delete this.glyphs[square];
+          console.log(
+            `After removal, glyph at ${square} exists: ${!!this.glyphs[square]}`
+          );
+
+          // Force a UI refresh after removing the glyph
+          setTimeout(() => {
+            this.syncCustomBoardFromChess();
+          }, 50);
+        }
+      }
+    }
+
+    // Print a summary of effects after processing
+    setTimeout(() => {
+      this.logActiveEffectsSummary();
+    }, 100);
+  }
+
+  // Print a summary of all active effects on the board
+  public logActiveEffectsSummary(): void {
+    console.log("=== ACTIVE EFFECTS SUMMARY ===");
+
+    let hasActiveEffects = false;
+    const whiteEffects: string[] = [];
+    const blackEffects: string[] = [];
+
+    // Collect all pieces with effects
+    for (const square in this.customBoardState) {
+      const piece = this.customBoardState[square];
+      if (piece && piece.effects.length > 0) {
+        hasActiveEffects = true;
+        const pieceType = this.getPieceTypeName(piece.type as PieceSymbol);
+        const effectList = piece.effects
+          .filter(
+            (effect) =>
+              effect.duration > 0 && !effect.id.includes("emberVisual")
+          )
+          .map((effect) => `${effect.source} (${effect.duration} turns)`);
+
+        if (effectList.length > 0) {
+          const summary = `${pieceType} at ${square}: ${effectList.join(", ")}`;
+          if (piece.color === "w") {
+            whiteEffects.push(summary);
+          } else {
+            blackEffects.push(summary);
           }
         }
       }
     }
 
-    // Update the global effects list
-    this.effects = updatedEffects.filter(
-      (effect) => effect.duration > 0 || effect.id.includes("emberVisual")
-    );
+    // Collect all glyphs
+    const glyphs: string[] = [];
+    for (const square in this.glyphs) {
+      const glyph = this.glyphs[square];
+      if (glyph) {
+        hasActiveEffects = true;
+        glyphs.push(
+          `${square}: ${glyph.effect.source} (${glyph.effect.duration} turns)`
+        );
+      }
+    }
 
-    // Remove pieces that had expired effects
-    console.log(
-      `Removing ${squaresToRemovePieces.length} pieces with expired effects`
-    );
-    squaresToRemovePieces.forEach((square) => {
-      this.removePiece(square);
-    });
+    // Print the summary
+    if (hasActiveEffects) {
+      if (whiteEffects.length > 0) {
+        console.log("White pieces with effects:");
+        whiteEffects.forEach((effect) => console.log(`  • ${effect}`));
+      }
+
+      if (blackEffects.length > 0) {
+        console.log("Black pieces with effects:");
+        blackEffects.forEach((effect) => console.log(`  • ${effect}`));
+      }
+
+      if (glyphs.length > 0) {
+        console.log("Active glyphs on board:");
+        glyphs.forEach((glyph) => console.log(`  • ${glyph}`));
+      }
+    } else {
+      console.log("No active effects on the board");
+    }
+
+    console.log("=============================");
+  }
+
+  // Process effects for a specific player's pieces
+  private processPlayerEffects(player: Color): void {
+    // Decrement durations for effects on pieces owned by the specified player
+    for (const square in this.customBoardState) {
+      const piece = this.customBoardState[square];
+      if (piece && piece.color === player) {
+        piece.effects.forEach((effect) => {
+          if (
+            effect.source === "emberCrown" &&
+            !effect.id.includes("emberVisual")
+          ) {
+            console.log(
+              `Processing ${player}'s ember crown effect: current duration = ${effect.duration}`
+            );
+          }
+        });
+      }
+    }
+  }
+
+  // Check for glyphs at a square and apply their effects
+  private checkForGlyphs(square: Square): void {
+    console.log(`Checking for glyphs at ${square}`);
+    const glyph = this.glyphs[square];
+
+    if (glyph) {
+      console.log(`Found glyph at ${square}: `, glyph);
+      const glyphEffect = glyph.effect;
+
+      // If this is a cursed glyph, apply its effect to the piece
+      if (glyphEffect.source === "cursedGlyph") {
+        console.log(`Cursed Glyph triggered at ${square}`);
+
+        // Get the piece that landed on the glyph
+        const targetPiece = this.getPieceAt(square);
+        if (targetPiece) {
+          // Check if the piece is a king - kings are immune to curse effects
+          if (targetPiece.type === "k") {
+            console.log(`King at ${square} is immune to Cursed Glyph effect`);
+
+            // Remove the glyph but don't apply the curse
+            console.log(
+              `Removing triggered glyph from ${square} (king immunity)`
+            );
+            delete this.glyphs[square];
+
+            // Log the immunity
+            const pieceColor = targetPiece.color === "w" ? "White" : "Black";
+            this.gameLog.push(
+              `${pieceColor}'s King at ${square} was immune to Cursed Glyph effect`
+            );
+
+            // Force a UI refresh
+            this.syncCustomBoardFromChess();
+            return;
+          }
+
+          // For non-king pieces, apply the curse effect
+          // Create a curse effect with visual indicator
+          const curseEffect: Effect = {
+            id: `curse-${Date.now()}`,
+            type: "transform", // Required property for Effect interface
+            duration: 2, // Last for 2 turns - one turn to show the icon, one turn to transform
+            source: "cursedGlyph", // This is what the UI will check for
+            modifiers: {
+              triggered: true, // Mark as triggered
+              transformToPawn: true, // Will transform at end of duration
+              visualCurse: true, // Add a visual indicator to the piece
+            },
+          };
+
+          console.log(
+            `Adding cursed glyph effect to piece at ${square}`,
+            curseEffect
+          );
+
+          // Force removal of any previous cursed glyph effects on this piece
+          if (targetPiece.effects) {
+            targetPiece.effects = targetPiece.effects.filter(
+              (effect) => effect.source !== "cursedGlyph"
+            );
+          }
+
+          // Add the effect to the piece
+          this.addEffect(square, curseEffect);
+
+          // Verify the effect was added correctly
+          const updatedPiece = this.getPieceAt(square);
+          console.log(
+            `VERIFICATION: Piece at ${square} now has ${updatedPiece?.effects.length} effects:`,
+            updatedPiece?.effects.map((e) => e.source)
+          );
+
+          // Log the curse
+          const pieceColor = targetPiece.color === "w" ? "White" : "Black";
+          const pieceType = this.getPieceTypeName(
+            targetPiece.type as PieceSymbol
+          );
+          this.gameLog.push(
+            `${pieceColor}'s ${pieceType} at ${square} was cursed by Cursed Glyph`
+          );
+
+          // Remove the glyph from the square since it's been triggered
+          console.log(`Removing triggered glyph from ${square}`);
+          delete this.glyphs[square];
+
+          // Force a UI refresh and print effects summary
+          this.syncCustomBoardFromChess();
+          setTimeout(() => {
+            // Force UI update
+            const currentFen = this.chess.fen();
+            this.chess.load(currentFen);
+            console.log("Refreshed UI after applying cursed glyph effect");
+            this.logActiveEffectsSummary();
+          }, 100);
+        } else {
+          console.error(`No piece found at ${square} to apply curse effect to`);
+        }
+      }
+    }
+  }
+
+  // Add a glyph to a square
+  addGlyphToSquare(square: Square, effect: Effect): void {
+    console.log(`Adding glyph to square ${square}:`, effect);
+    this.glyphs[square] = { effect };
+  }
+
+  // Get all glyphs on the board
+  getGlyphs(): Record<string, GlyphInfo> {
+    return { ...this.glyphs };
+  }
+
+  // Remove a glyph from a square
+  removeGlyph(square: Square): void {
+    if (this.glyphs[square]) {
+      delete this.glyphs[square];
+    }
+  }
+
+  // Get a glyph at a specific square
+  getGlyphAt(square: Square): Effect | null {
+    return this.glyphs[square]?.effect || null;
   }
 
   // Add an effect to a piece
   addEffect(square: Square, effect: Effect): void {
     const piece = this.customBoardState[square];
     if (piece) {
+      console.log(`Adding effect to piece at ${square}:`, {
+        effectId: effect.id,
+        effectSource: effect.source,
+        effectDuration: effect.duration,
+        pieceType: piece.type,
+        pieceColor: piece.color,
+      });
+
+      // Initialize effects array if it doesn't exist
+      if (!piece.effects) {
+        piece.effects = [];
+      }
+
       piece.effects.push(effect);
       this.effects.push(effect);
+
+      console.log(`Piece at ${square} now has ${piece.effects.length} effects`);
+    } else {
+      console.error(`Failed to add effect: No piece found at ${square}`);
     }
   }
 
@@ -1079,6 +1338,9 @@ class GameManager {
         this.gameLog.push(
           `${this.chess.turn() === "w" ? "Black" : "White"} ended their turn`
         );
+      } else {
+        // If we're not ending the turn, still print the effect summary
+        this.logActiveEffectsSummary();
       }
 
       return true;
@@ -1240,6 +1502,9 @@ class GameManager {
       `${currentPlayer === "w" ? "White" : "Black"} ended their turn`
     );
 
+    // Print summary of all active effects
+    this.logActiveEffectsSummary();
+
     console.log("Turn ended. New player:", newPlayer);
   }
 
@@ -1260,23 +1525,62 @@ class GameManager {
     this.endTurn();
   }
 
-  // Process effects for a specific player's pieces
-  private processPlayerEffects(player: Color): void {
-    // Decrement durations for effects on pieces owned by the specified player
-    for (const square in this.customBoardState) {
-      const piece = this.customBoardState[square];
-      if (piece && piece.color === player) {
-        piece.effects.forEach((effect) => {
-          if (
-            effect.source === "emberCrown" &&
-            !effect.id.includes("emberVisual")
-          ) {
-            console.log(
-              `Processing ${player}'s ember crown effect: current duration = ${effect.duration}`
-            );
-          }
-        });
-      }
+  // Transform a piece to a pawn (for Cursed Glyph effect)
+  private transformPieceToPawn(
+    square: Square,
+    piece: PieceMeta,
+    effectId: string
+  ): boolean {
+    try {
+      console.log(
+        `Transforming piece at ${square} to pawn due to Cursed Glyph`
+      );
+
+      // Transform the piece to a pawn while keeping the same color
+      const pawnType = "p" as PieceSymbol;
+
+      // Use chess.js to update the piece
+      this.chess.remove(square);
+      this.chess.put({ type: pawnType, color: piece.color }, square);
+
+      // Update our custom board state
+      piece.type = pawnType;
+
+      // Keep the piece's hasMoved property
+      piece.hasMoved = true;
+
+      // Remove the cursed glyph effect
+      piece.effects = piece.effects.filter((e) => e.id !== effectId);
+
+      // Also remove from global effects list
+      this.effects = this.effects.filter((e) => e.id !== effectId);
+
+      // Log the transformation in the game log
+      this.gameLog.push(
+        `${
+          piece.color === "w" ? "White" : "Black"
+        }'s piece at ${square} was transformed to a pawn by the Cursed Glyph spell`
+      );
+
+      console.log(
+        `Transformed piece at ${square} to pawn and removed curse effect`
+      );
+
+      // Force a UI refresh after transformation
+      this.syncCustomBoardFromChess();
+
+      // Additional refresh with a small delay to ensure the UI updates
+      setTimeout(() => {
+        this.syncCustomBoardFromChess();
+        // Force additional refresh to ensure UI is updated
+        const currentFen = this.chess.fen();
+        this.chess.load(currentFen);
+      }, 100);
+
+      return true;
+    } catch (error) {
+      console.error("Error transforming piece to pawn:", error);
+      return false;
     }
   }
 }

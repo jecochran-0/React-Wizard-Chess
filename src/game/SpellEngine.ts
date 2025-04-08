@@ -6,11 +6,9 @@ import GameManager from "./GameManager";
 
 // Define specialized target types
 type SingleTarget = Square;
-type MultiTarget = Square[];
+// Remove unused type
+// type MultiTarget = Square[];
 type FromToTarget = { from: Square; to: Square };
-
-// Union type for all possible target formats
-type SpellTargetData = SingleTarget | MultiTarget | FromToTarget;
 
 export class SpellEngine {
   private gameManager: GameManager;
@@ -19,54 +17,107 @@ export class SpellEngine {
     this.gameManager = gameManager;
   }
 
-  // Cast a spell with the given targets
-  castSpell(spellId: SpellId, targets: SpellTargetData): boolean {
-    const spell = getSpellById(spellId);
-    if (!spell) {
-      console.error(`Spell ${spellId} not found`);
-      return false;
-    }
+  /**
+   * Cast a spell with the given targets
+   */
+  castSpell(spellId: string, targetInfo: FromToTarget | SingleTarget): boolean {
+    console.log(`Casting spell ${spellId} with targets:`, targetInfo);
 
-    // Switch based on spell ID to call the appropriate spell function
-    switch (spellId) {
-      case "astralSwap":
-        if (Array.isArray(targets) && targets.length === 2) {
-          return this.castAstralSwap(targets[0], targets[1]);
+    try {
+      let success = false;
+      const mana = this.getSpellCost(spellId as SpellId);
+
+      if (
+        mana >
+        this.gameManager.getPlayerMana()[this.gameManager.getCurrentPlayer()]
+      ) {
+        console.log("Not enough mana to cast spell");
+        return false;
+      }
+
+      switch (spellId) {
+        case "phantomStep":
+          if (
+            targetInfo &&
+            typeof targetInfo === "object" &&
+            "from" in targetInfo &&
+            "to" in targetInfo
+          ) {
+            success = this.castPhantomStep(targetInfo.from, targetInfo.to);
+          }
+          break;
+        case "arcaneArmor":
+          if (typeof targetInfo === "string") {
+            success = this.castArcaneArmor(targetInfo);
+          }
+          break;
+        case "mistformKnight":
+          if (
+            targetInfo &&
+            typeof targetInfo === "object" &&
+            "from" in targetInfo &&
+            "to" in targetInfo
+          ) {
+            success = this.castMistformKnight(targetInfo.from, targetInfo.to);
+          }
+          break;
+        case "cursedGlyph":
+          if (typeof targetInfo === "string") {
+            success = this.castCursedGlyph(targetInfo);
+          }
+          break;
+        case "astralSwap":
+          if (Array.isArray(targetInfo) && targetInfo.length === 2) {
+            success = this.castAstralSwap(targetInfo[0], targetInfo[1]);
+          }
+          break;
+        case "emberCrown":
+          if (targetInfo) {
+            success = this.castEmberCrown(targetInfo as SingleTarget);
+          }
+          break;
+        case "arcaneAnchor":
+          if (targetInfo) {
+            success = this.castArcaneAnchor(targetInfo as SingleTarget);
+          }
+          break;
+        case "frostShield":
+          if (targetInfo) {
+            success = this.castFrostShield(targetInfo as SingleTarget);
+          }
+          break;
+        case "shadowStrike":
+          if (targetInfo) {
+            success = this.castShadowStrike(targetInfo as SingleTarget);
+          }
+          break;
+        case "chronoRecall":
+          if (targetInfo) {
+            success = this.castChronoRecall(targetInfo as SingleTarget);
+          }
+          break;
+        default:
+          console.error(`Unknown spell ID: ${spellId}`);
+          return false;
+      }
+
+      // If spell was successful, spend mana
+      if (success) {
+        // Don't deduct mana here - GameManager will handle this after castSpell returns true
+        console.log(`Successfully cast ${spellId}`);
+
+        // Log a summary of all active effects after casting the spell
+        if (typeof this.gameManager.logActiveEffectsSummary === "function") {
+          this.gameManager.logActiveEffectsSummary();
         }
-        return false;
-      case "phantomStep":
-        if (
-          typeof targets === "object" &&
-          "from" in targets &&
-          "to" in targets
-        ) {
-          return this.castPhantomStep(targets.from, targets.to);
-        }
-        return false;
-      case "mistformKnight":
-        if (
-          typeof targets === "object" &&
-          "from" in targets &&
-          "to" in targets
-        ) {
-          return this.castMistformKnight(targets.from, targets.to);
-        }
-        return false;
-      case "emberCrown":
-        return this.castEmberCrown(targets as SingleTarget);
-      case "arcaneAnchor":
-        return this.castArcaneAnchor(targets as SingleTarget);
-      case "frostShield":
-        return this.castFrostShield(targets as SingleTarget);
-      case "shadowStrike":
-        return this.castShadowStrike(targets as SingleTarget);
-      case "arcaneArmor":
-        return this.castArcaneArmor(targets as SingleTarget);
-      case "chronoRecall":
-        return this.castChronoRecall(targets as SingleTarget);
-      default:
-        console.error(`Implementation for spell ${spellId} not found`);
-        return false;
+      } else {
+        console.log(`Failed to cast ${spellId}`);
+      }
+
+      return success;
+    } catch (error) {
+      console.error(`Error casting spell ${spellId}:`, error);
+      return false;
     }
   }
 
@@ -669,6 +720,43 @@ export class SpellEngine {
 
     // Log the successful cast
     console.log(`Successfully recalled piece from ${target} to ${destination}`);
+
+    return true;
+  }
+
+  /**
+   * Implements the Cursed Glyph spell.
+   * Creates a glyph on an empty square that transforms any piece that steps on it into a pawn.
+   */
+  private castCursedGlyph(target: SingleTarget): boolean {
+    console.log(`Attempting to cast Cursed Glyph on ${target}`);
+
+    // Verify the target square is empty
+    if (this.gameManager.getPieceAt(target)) {
+      console.log("Cannot place a glyph on an occupied square");
+      return false;
+    }
+
+    // Create a glyph effect
+    const effect: Effect = {
+      id: uuidv4(),
+      type: "glyph",
+      duration: 10, // Lasts for 10 turns unless triggered
+      source: "cursedGlyph",
+      modifiers: {
+        onPieceEnter: "transformToPawn", // Use a string identifier instead of a function
+      },
+    };
+
+    // Add the effect to the square
+    this.gameManager.addGlyphToSquare(target, effect);
+
+    // Spend mana - use castSpell from gameManager to handle the mana deduction
+    const spell = getSpellById("cursedGlyph" as SpellId);
+    if (spell) {
+      // The GameManager will handle the mana deduction when the spell is successful
+      console.log(`Glyph placed successfully at ${target}`);
+    }
 
     return true;
   }

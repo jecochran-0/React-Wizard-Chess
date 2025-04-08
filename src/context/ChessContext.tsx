@@ -13,6 +13,7 @@ import {
   PlayerSpells,
   SpellTarget,
   SpellTargetType,
+  Effect,
 } from "../types/types";
 
 // Define the context type
@@ -23,6 +24,7 @@ export interface ChessContextType {
   playerSpells: PlayerSpells;
   boardState: Record<Square, PieceMeta>;
   gameLog: string[];
+  boardGlyphs: Record<string, { effect: Effect }>;
 
   // Selected items
   selectedPiece: Square | null;
@@ -70,6 +72,9 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     gameManager.getBoardState() as Record<Square, PieceMeta>
   );
   const [gameLog, setGameLog] = useState<string[]>(gameManager.getGameLog());
+  const [boardGlyphs, setBoardGlyphs] = useState<
+    Record<string, { effect: Effect }>
+  >(gameManager.getGlyphs());
 
   // Selected state
   const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
@@ -166,6 +171,9 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     // Update board state
     setBoardState(newBoardState);
 
+    // Update board glyphs
+    setBoardGlyphs(gameManager.getGlyphs());
+
     // Log the React state after update (will be visible in next render)
     setTimeout(() => {
       console.log("Board state in React after update:");
@@ -214,6 +222,11 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
       setPlayerMana(gameManager.getPlayerMana());
       setGameLog(gameManager.getGameLog());
 
+      // Explicitly update the glyphs after the move to ensure triggered glyphs are removed from UI
+      const updatedGlyphs = gameManager.getGlyphs();
+      setBoardGlyphs(updatedGlyphs);
+      console.log("Updated board glyphs after move:", updatedGlyphs);
+
       // Clear selection
       setSelectedPiece(null);
     }
@@ -234,6 +247,13 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
       setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
       setPlayerMana(gameManager.getPlayerMana());
       setGameLog(gameManager.getGameLog());
+
+      // Explicitly update the glyphs after casting a spell
+      setBoardGlyphs(gameManager.getGlyphs());
+      console.log(
+        "Updated board glyphs after spell cast:",
+        gameManager.getGlyphs()
+      );
 
       // Clear spell selection
       setSelectedSpell(null);
@@ -274,6 +294,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     playerSpells,
     boardState,
     gameLog,
+    boardGlyphs,
     selectedPiece,
     selectedSpell,
     legalMoves,
