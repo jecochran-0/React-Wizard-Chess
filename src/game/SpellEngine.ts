@@ -293,23 +293,64 @@ export class SpellEngine {
     }
   }
 
-  // Ember Crown: Add a damage effect to a piece
+  // Ember Crown: Transform a pawn to a queen for 3 turns, then it dies
   private castEmberCrown(target: SingleTarget): boolean {
+    console.log(`Attempting to cast Ember Crown on ${target}`);
+
+    // Get the piece at the target square
     const piece = this.gameManager.getPieceAt(target);
 
-    if (!piece) {
+    // Must target a piece owned by the current player
+    const currentPlayer = this.gameManager.getCurrentPlayer();
+    if (!piece || piece.color !== currentPlayer) {
+      console.error("Target must be a piece owned by the current player");
       return false;
     }
 
-    // Create a damage effect (flames) on the piece
-    const effect = this.createEffect("transform", 3, "emberCrown", {
-      damagePerTurn: 1,
-    });
+    // Must target a pawn
+    if (piece.type !== "p") {
+      console.error("Ember Crown can only be cast on pawns");
+      return false;
+    }
 
-    // Add the effect to the piece
-    this.gameManager.addEffect(target, effect);
+    // Update chess.js board to change the pawn to a queen
+    const tempBoard = new Chess(this.gameManager.getFEN());
 
-    return true;
+    // Check if we can promote the pawn
+    tempBoard.remove(target);
+    tempBoard.put({ type: "q", color: piece.color }, target);
+
+    // Check if the king would be in check after transformation
+    if (tempBoard.isCheck()) {
+      console.error("Cannot transform pawn as it would result in check");
+      return false;
+    }
+
+    // Perform the transformation in the actual board
+    const success = this.gameManager.transformPiece(target, "q", "emberCrown");
+
+    if (success) {
+      console.log(
+        `Successfully transformed pawn at ${target} to an Ember Queen with temporary effect`
+      );
+
+      // Add a special marker for ember queens that helps us track them visually
+      const emberEffect: Effect = {
+        id: `emberVisual-${Date.now()}`,
+        type: "transform", // Using transform as the base type to match existing effect types
+        duration: 999, // Very long duration as this is just for visual tracking
+        source: "emberCrown",
+        modifiers: {
+          visualType: "emberQueen",
+          // This ensures the piece always renders as an ember queen even after moving
+        },
+      };
+
+      // Add the visual effect to help with tracking
+      this.gameManager.addEffect(target, emberEffect);
+    }
+
+    return success;
   }
 
   // Frost Shield: Protect a piece from capture

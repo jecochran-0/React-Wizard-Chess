@@ -1,0 +1,51 @@
+/* Ember Crown Effect Animation */
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+}
+
+.ember-crown-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(239, 68, 68, 0.3) 0%,
+    rgba(249, 115, 22, 0.2) 70%,
+    transparent 100%
+  );
+  animation: pulse 1.5s infinite;
+  z-index: -1;
+  box-shadow: 0 0 15px 5px rgba(239, 68, 68, 0.3);
+}
+
+/* Add an additional inner glow for more fiery look */
+.ember-crown-effect::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  right: 20%;
+  bottom: 20%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(254, 240, 138, 0.4) 0%,
+    rgba(253, 186, 116, 0.3) 50%,
+    transparent 100%
+  );
+  animation: pulse 2s infinite reverse;
+}

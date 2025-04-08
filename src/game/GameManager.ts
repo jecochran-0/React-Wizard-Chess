@@ -71,21 +71,60 @@ class GameManager {
     const newCustomBoardState: CustomBoardState = {};
     const board = this.chess.board();
 
+    // Create a map to track pieces by their effects
+    const effectsMap = new Map<string, Effect[]>();
+
+    // Store all effects from the current board state
+    for (const square in this.customBoardState) {
+      const piece = this.customBoardState[square];
+      if (piece && piece.effects.length > 0) {
+        // Store by square initially
+        effectsMap.set(square, [...piece.effects]);
+
+        // For ember crown pieces, also log details
+        if (piece.effects.some((effect) => effect.source === "emberCrown")) {
+          console.log(
+            `Tracking emberCrown piece at ${square} with ${piece.effects.length} effects`
+          );
+        }
+      }
+    }
+
+    // Build new board state from chess.js
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
         const piece = board[rank][file];
         if (piece) {
           const square = this.coordsToSquare(file, rank);
-
-          // If the piece already exists in our custom state, preserve its effects
           const existingPiece = this.customBoardState[square];
+
+          // Check if this is a moved piece that had effects
+          let pieceEffects: Effect[] = [];
+
+          // First try to get effects from the same square
+          if (effectsMap.has(square)) {
+            pieceEffects = effectsMap.get(square) || [];
+          }
+          // If no effects found but this is the only piece of this type+color, try to find matching effects
+          else if (existingPiece?.effects.length > 0) {
+            pieceEffects = existingPiece.effects;
+          }
+
+          // Create the updated piece state
           newCustomBoardState[square] = {
             type: piece.type,
             color: piece.color,
             square: square as Square,
-            effects: existingPiece?.effects || [],
+            effects: pieceEffects,
             hasMoved: existingPiece?.hasMoved || false,
           };
+
+          // Log if we've successfully preserved an ember crown effect
+          if (pieceEffects.some((effect) => effect.source === "emberCrown")) {
+            console.log(
+              `Preserved emberCrown effect on piece at ${square} during sync`
+            );
+          }
         }
       }
     }
@@ -112,17 +151,55 @@ class GameManager {
   // Make a chess move
   makeMove(from: Square, to: Square): boolean {
     try {
+      // Store piece effects before move since they might be lost during the move
+      const pieceBeforeMove = this.customBoardState[from];
+      const pieceEffects = pieceBeforeMove?.effects || [];
+      const hasEmberCrown = pieceEffects.some(
+        (effect) => effect.source === "emberCrown"
+      );
+
+      console.log(
+        `Moving piece from ${from} to ${to}, has emberCrown effect: ${hasEmberCrown}`
+      );
+
+      // Make the move in chess.js
       const move = this.chess.move({ from, to, promotion: "q" });
+
       if (move) {
+        // Record the move
         this.moveHistory.push(move);
+
+        // Update the custom board state
         this.syncCustomBoardFromChess();
+
+        // Important: Preserve effects from the original piece to the moved piece
+        if (pieceEffects.length > 0 && this.customBoardState[to]) {
+          console.log(
+            `Transferring ${pieceEffects.length} effects to the piece at ${to}`
+          );
+          this.customBoardState[to].effects = [...pieceEffects];
+
+          // Debug log for ember crown specifically
+          if (hasEmberCrown) {
+            console.log(`Preserved emberCrown effect on piece at ${to}`);
+          }
+        }
 
         // Update hasMoved flag
         if (this.customBoardState[to]) {
           this.customBoardState[to].hasMoved = true;
         }
 
+        // Log the move
         this.logMove(from, to);
+
+        // Add mana after a successful move
+        const currentPlayer = this.getCurrentPlayer();
+        this.currentPlayerMana[currentPlayer] = Math.min(
+          this.currentPlayerMana[currentPlayer] + 1,
+          10
+        );
+
         return true;
       }
       return false;
@@ -235,35 +312,92 @@ class GameManager {
   }
 
   // Process end of turn effects
-  endTurn(): void {
-    // Process active effects
-    this.processEndOfTurnEffects();
-
-    // Update the board state
-    this.syncCustomBoardFromChess();
-
-    // Regenerate mana
-    const currentPlayer = this.getCurrentPlayer();
-    const newPlayer = currentPlayer === "w" ? "b" : "w";
-    this.currentPlayerMana[newPlayer] = Math.min(
-      this.currentPlayerMana[newPlayer] + 3,
-      10
-    );
-
-    this.gameLog.push(
-      `${currentPlayer === "w" ? "White" : "Black"} ended their turn`
-    );
-  }
-
-  // Process effects at the end of a turn
   private processEndOfTurnEffects(): void {
-    // Decrease duration of all effects
-    this.effects = this.effects
-      .map((effect) => ({ ...effect, duration: effect.duration - 1 }))
-      .filter((effect) => effect.duration > 0); // Remove expired effects
+    // Track squares with effects that need to be removed
+    const squaresToRemovePieces: Square[] = [];
 
-    // Apply any end-of-turn effect logic
-    // This will be expanded in the full implementation
+    // Debug the active effects to ensure they're being tracked properly
+    console.log(
+      "Processing end of turn effects, current effects:",
+      this.effects.length
+    );
+
+    // Log all active effects before processing
+    this.effects.forEach((effect) => {
+      console.log(
+        `Effect ${effect.id} from ${effect.source} has ${effect.duration} turns remaining, removeOnExpire=${effect.modifiers?.removeOnExpire}`
+      );
+    });
+
+    // Process all effects first
+    this.effects = this.effects
+      .map((effect) => {
+        const newDuration = effect.duration - 1;
+        console.log(
+          `Effect ${effect.id} from ${effect.source} has ${newDuration} turns remaining after decrement`
+        );
+        return { ...effect, duration: newDuration };
+      })
+      .filter((effect) => {
+        const keepEffect = effect.duration > 0;
+
+        // If the effect is expiring and should remove the piece
+        if (
+          !keepEffect &&
+          (effect.modifiers?.removeOnExpire || effect.source === "emberCrown")
+        ) {
+          console.log(
+            `Effect ${effect.id} from ${effect.source} is expiring and will remove its piece`
+          );
+          // Find the square this effect is on
+          for (const square in this.customBoardState) {
+            const piece = this.customBoardState[square];
+            if (piece.effects.some((e) => e.id === effect.id)) {
+              squaresToRemovePieces.push(square as Square);
+
+              // Log the expiration
+              const pieceName = this.getPieceTypeName(
+                piece.type as PieceSymbol
+              );
+              const color = piece.color === "w" ? "White" : "Black";
+              this.gameLog.push(
+                `${color}'s ${pieceName} at ${square} expired from ${effect.source} effect and was removed`
+              );
+              console.log(
+                `Found piece with expiring effect at ${square}, marking for removal`
+              );
+              break;
+            }
+          }
+        }
+
+        // Also update the effects list in the corresponding piece
+        for (const square in this.customBoardState) {
+          const piece = this.customBoardState[square];
+          if (piece.effects.some((e) => e.id === effect.id)) {
+            if (!keepEffect) {
+              // Remove expired effects from pieces
+              piece.effects = piece.effects.filter((e) => e.id !== effect.id);
+              console.log(
+                `Removed expired effect ${effect.id} from piece at ${square}`
+              );
+            } else {
+              // Update duration for effects that are kept
+              piece.effects = piece.effects.map((e) =>
+                e.id === effect.id ? { ...e, duration: effect.duration } : e
+              );
+            }
+          }
+        }
+
+        return keepEffect;
+      });
+
+    // Remove pieces for expired effects
+    console.log(`Removing pieces at squares:`, squaresToRemovePieces);
+    squaresToRemovePieces.forEach((square) => {
+      this.removePiece(square);
+    });
   }
 
   // Add an effect to a piece
@@ -320,7 +454,7 @@ class GameManager {
     try {
       const moves = this.chess.moves({ square: from, verbose: true });
       return moves.some((move) => move.to === to);
-    } catch (error) {
+    } catch (_) {
       return false;
     }
   }
@@ -458,6 +592,13 @@ class GameManager {
       delete this.customBoardState[from];
       this.customBoardState[to] = updatedPiece;
 
+      // Add mana for the current player before potentially switching turns
+      const currentPlayer = this.chess.turn();
+      this.currentPlayerMana[currentPlayer] = Math.min(
+        this.currentPlayerMana[currentPlayer] + 1,
+        10
+      );
+
       // Log the move
       this.gameLog.push(
         `${
@@ -479,8 +620,9 @@ class GameManager {
         this.processEndOfTurnEffects();
 
         // Add mana to the next player
-        this.currentPlayerMana[this.chess.turn()] = Math.min(
-          this.currentPlayerMana[this.chess.turn()] + 1,
+        const nextPlayer = this.chess.turn();
+        this.currentPlayerMana[nextPlayer] = Math.min(
+          this.currentPlayerMana[nextPlayer] + 1,
           10
         );
 
@@ -499,6 +641,112 @@ class GameManager {
   // Method to update player spells after initialization
   updatePlayerSpells(newSpells: PlayerSpells): void {
     this.playerSpells = newSpells;
+  }
+
+  // Transform a piece from one type to another (for spells like Ember Crown)
+  transformPiece(
+    square: Square,
+    newType: PieceSymbol,
+    spellId: SpellId
+  ): boolean {
+    try {
+      // Get the piece
+      const piece = this.customBoardState[square];
+
+      if (!piece) {
+        console.error("No piece at square to transform");
+        return false;
+      }
+
+      // Update chess.js board
+      const chessPiece = this.chess.get(square);
+
+      if (!chessPiece) {
+        console.error("Failed to get chess.js piece for transformation");
+        return false;
+      }
+
+      // Remove the original piece
+      this.chess.remove(square);
+
+      // Place the transformed piece
+      this.chess.put({ type: newType, color: chessPiece.color }, square);
+
+      // Update custom board state - keep the piece's position and effects
+      const updatedPiece = {
+        ...piece,
+        type: newType,
+        effects: [...piece.effects],
+      };
+
+      // Add the transformation effect with a duration
+      const transformEffect: Effect = {
+        id: `${spellId}-${Date.now()}`,
+        type: "transform", // This matches the EffectType in types.ts
+        duration: 3, // 3 turns
+        source: spellId,
+        modifiers: {
+          originalType: piece.type, // Keep track of the original piece type
+          removeOnExpire: true, // This is crucial - make sure the piece is removed when effect expires
+        },
+      };
+
+      console.log(
+        `Created ${spellId} effect with duration ${transformEffect.duration} turns and removeOnExpire=true`
+      );
+
+      updatedPiece.effects.push(transformEffect);
+      this.effects.push(transformEffect);
+
+      // Update the custom board state
+      this.customBoardState[square] = updatedPiece;
+
+      // Log the transformation
+      this.gameLog.push(
+        `${piece.color === "w" ? "White" : "Black"}'s ${this.getPieceTypeName(
+          piece.type as PieceSymbol
+        )} at ${square} was transformed to ${this.getPieceTypeName(
+          newType
+        )} by ${spellId}`
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error transforming piece:", error);
+      return false;
+    }
+  }
+
+  // Process end of turn effects
+  endTurn(): void {
+    // Process active effects
+    this.processEndOfTurnEffects();
+
+    // Get current player before switch
+    const currentPlayer = this.getCurrentPlayer();
+
+    // Update the board state
+    this.syncCustomBoardFromChess();
+
+    // Switch turns - The next player becomes the current player after this operation
+    if (currentPlayer === "w") {
+      this.chess.load(this.chess.fen().replace(" w ", " b "));
+    } else {
+      this.chess.load(this.chess.fen().replace(" b ", " w "));
+    }
+
+    // Get the new current player (which is the player whose turn it now is)
+    const newPlayer = this.getCurrentPlayer();
+
+    // Add mana to the new current player (consistent with move and spell casting)
+    this.currentPlayerMana[newPlayer] = Math.min(
+      this.currentPlayerMana[newPlayer] + 1,
+      10
+    );
+
+    this.gameLog.push(
+      `${currentPlayer === "w" ? "White" : "Black"} ended their turn`
+    );
   }
 }
 

@@ -60,6 +60,21 @@ const ChessBoard: React.FC = () => {
           }
         }
         setValidTargets(ownedPieces);
+      }
+      // If it's Ember Crown, find all owned pawns as valid targets
+      else if (selectedSpell === "emberCrown") {
+        const ownedPawns: ChessSquare[] = [];
+        for (const square in boardState) {
+          const squareKey = square as ChessSquare;
+          if (
+            boardState[squareKey] &&
+            boardState[squareKey].color === currentPlayer &&
+            boardState[squareKey].type === "p" // Only pawns
+          ) {
+            ownedPawns.push(squareKey);
+          }
+        }
+        setValidTargets(ownedPawns);
       } else {
         setValidTargets([]);
       }
@@ -454,6 +469,19 @@ const ChessBoard: React.FC = () => {
           setSpellTargets([]);
           setValidTargets([]);
         }
+      }
+      return;
+    }
+
+    // For Ember Crown (single target spell on own pawns)
+    if (selectedSpell === "emberCrown") {
+      // Only allow selecting valid pawn targets
+      if (validTargets.includes(square)) {
+        // Cast the spell with the target square
+        castSpell(selectedSpell, square);
+        setTargetingMode(false);
+        setSpellTargets([]);
+        setValidTargets([]);
       }
       return;
     }
