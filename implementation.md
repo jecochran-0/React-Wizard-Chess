@@ -397,84 +397,14 @@ private castDarkConversion(targets: MultiTarget, newPieceType: "n" | "b"): boole
 ```
 
 10. Spirit Link (5 Mana)
-    Link a major piece with pawns.
+
+Selection: ONE indicator prompts the user to select 1 piece as the primary piece to be linked (This can be any piece EXCEPT the king). With the same indicator the user is then prompted to select as many pieces as they want to be backup pieces for the spirit link, the user much select backup pieces until their combined "backup value" is equal to or exceeds the value of the primary piece. The user can then cast the spell when a valid combination of pieces is selected. The user can cancel this spell at any time to reset the selections.
+
+Functionality: The spirit link effect lasts 3 turns, a turn is decremented when the user's side that cast the spell moves a piece. If the primary piece is captured while the effect is active, then ALL backup pieces linked to it die and get removed from the game state. This can happen the other way around, if a backup piece is captured, the total "backup value" of all backup pieces is re-evaluated, if at any point the total backup value of all backup pieces drops below the value of the primary piece, the spirit link effect gets removed from all pieces immidiately.
+
+Other things: I would like the primary piece to have the "Link_Heart.png" image in the assets folder as an icon for UX. I would like backup pieces to have the "Link_Skull.png" image also in the assets folder as an icon for UX. During the selection process, these images are also shown on the corresponding selected pieces to make clear which pieces they have selected for the backup pieces, as well as the primary piece.
 
 Implementation:
-
-```typescript
-private castSpiritLink(primary: Square, backups: Square[]): boolean {
-  // Verify primary piece is a major piece (queen, rook, bishop, knight)
-  const primaryPiece = this.gameManager.getPieceAt(primary);
-  const currentPlayer = this.gameManager.getCurrentPlayer();
-
-  if (!primaryPiece || primaryPiece.color !== currentPlayer) {
-    console.error("Primary piece must be owned by the current player");
-    return false;
-  }
-
-  if (primaryPiece.type === "p" || primaryPiece.type === "k") {
-    console.error("Primary piece must be a major piece (queen, rook, bishop, knight)");
-    return false;
-  }
-
-  // Verify backup pieces are pawns owned by the current player
-  for (const square of backups) {
-    const piece = this.gameManager.getPieceAt(square);
-    if (!piece || piece.color !== currentPlayer || piece.type !== "p") {
-      console.error("All backup pieces must be pawns owned by the current player");
-      return false;
-    }
-  }
-
-  // Create the spirit link effect
-  const linkEffect = this.createEffect("link", 3, "spiritLink", {
-    primarySquare: primary,
-    backupSquares: backups,
-    removeOnExpire: true,
-  });
-
-  // Add the effect to the primary piece
-  this.gameManager.addEffect(primary, linkEffect);
-
-  // Add visual effects to linked pieces
-  const visualEffect = this.createEffect("visual", 3, "spiritLink", {
-    isLinked: true,
-    isPrimary: false,
-    removeOnExpire: true,
-  });
-
-  for (const square of backups) {
-    this.gameManager.addEffect(square, visualEffect);
-  }
-
-  console.log(`Spirit Link established between ${primary} and ${backups.join(", ")}`);
-  return true;
-}
-
-// Must also implement a hook in the capture logic:
-private handleCapture(square: Square): void {
-  const piece = this.gameManager.getPieceAt(square);
-  if (!piece) return;
-
-  // Check if this piece has a spirit link effect
-  const linkEffect = piece.effects.find(e => e.source === "spiritLink");
-  if (linkEffect && linkEffect.modifiers) {
-    // If the primary piece is captured, teleport it to the first backup
-    const backupSquare = linkEffect.modifiers.backupSquares[0];
-
-    // Remove the backup pawn
-    this.gameManager.removePiece(backupSquare);
-
-    // Move the primary piece to the backup location
-    this.gameManager.movePieceDirectly(square, backupSquare, false);
-
-    // Remove the spirit link effect
-    this.gameManager.removeEffect(square, linkEffect.id);
-
-    console.log(`Spirit Link triggered! ${piece.type} teleported to ${backupSquare}`);
-  }
-}
-```
 
 11. Second Wind (8 Mana)
     Move two pieces (no capture or check)
