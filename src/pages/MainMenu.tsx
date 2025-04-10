@@ -13,6 +13,17 @@ const MainMenu = () => {
   >([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionParticles, setTransitionParticles] = useState<
+    {
+      x: number;
+      y: number;
+      size: number;
+      delay: number;
+      duration: number;
+      color: string;
+    }[]
+  >([]);
 
   useEffect(() => {
     // Create random sparkle positions with constraints to prevent overflow
@@ -93,6 +104,48 @@ const MainMenu = () => {
       audioRef.current.muted = !audioRef.current.muted;
       setIsMuted(!isMuted);
     }
+  };
+
+  // Handle game start with transition
+  const handleStartGame = () => {
+    // Generate transition particles
+    const particles = Array.from({ length: 100 }, () => ({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 2 + Math.random() * 8,
+      delay: Math.random() * 0.5,
+      duration: 0.5 + Math.random() * 1,
+      color: getRandomManaColor().replace("0.7", "0.9"),
+    }));
+    setTransitionParticles(particles);
+
+    // Start transition
+    setIsTransitioning(true);
+
+    // Play transition sound if needed
+    if (audioRef.current && !audioRef.current.muted) {
+      const transitionSound = new Audio("/assets/Sounds/spell_selection.mp3");
+      transitionSound.volume = 0.4;
+      transitionSound
+        .play()
+        .catch((e) => console.log("Cannot play transition sound:", e));
+    }
+
+    // Fade out current music if not muted
+    if (audioRef.current && !audioRef.current.muted) {
+      const fadeAudio = setInterval(() => {
+        if (audioRef.current && audioRef.current.volume > 0.1) {
+          audioRef.current.volume -= 0.1;
+        } else {
+          clearInterval(fadeAudio);
+        }
+      }, 100);
+    }
+
+    // Wait for animation to complete then start the game
+    setTimeout(() => {
+      startGame(); // This function should handle navigation/page change
+    }, 1500); // Match this time with the CSS animation duration
   };
 
   return (
@@ -245,445 +298,507 @@ const MainMenu = () => {
         />
       ))}
 
-      {/* Title with magical styling */}
-      <div
-        style={{
-          position: "relative",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "5rem",
-            fontWeight: "bold",
-            textAlign: "center",
-            fontFamily: "'Cinzel', serif",
-            backgroundImage:
-              "linear-gradient(135deg, #ffb347 10%, #ffcc33 45%, #ffd700 70%, #ffe766 90%)",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            color: "transparent",
-            WebkitTextStroke: "1px rgba(255, 255, 255, 0.2)",
-            textShadow:
-              "0 0 20px rgba(255, 165, 0, 0.7), 0 0 40px rgba(255, 140, 0, 0.5)",
-            animation: "magical-swirl 10s infinite", // Removed pulse-glow animation
-            position: "relative",
-          }}
-        >
-          Wizard's Chess
-        </h1>
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "120%",
-            height: "120%",
-            backgroundImage:
-              "radial-gradient(circle, rgba(255, 165, 0, 0.4) 0%, transparent 70%)",
-            filter: "blur(20px)",
-            zIndex: -1,
-          }}
-        />
-      </div>
-
-      {/* Main Card with arcane-themed design */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "450px",
-          background:
-            "linear-gradient(135deg, rgba(46, 30, 91, 0.85) 0%, rgba(58, 63, 189, 0.7) 100%)",
-          backdropFilter: "blur(8px)",
-          borderRadius: "1rem",
-          padding: "1.5rem",
-          boxShadow:
-            "0 0 30px rgba(58, 63, 189, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.1)",
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          marginBottom: "1.5rem",
-          position: "relative",
-          overflow: "hidden",
-          animation: "float 6s ease-in-out infinite",
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L90 50 L70 90 L30 90 L10 50 L30 10 L70 10 L90 50 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E")`,
-          backgroundSize: "100px 100px",
-        }}
-      >
-        {/* Ancient rune frame border */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            borderRadius: "1rem",
-            border: "8px solid transparent",
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0 L40 0 L40 40 L0 40 Z' stroke='rgba(255,255,255,0.1)' fill='none' stroke-dasharray='2 4'/%3E%3C/svg%3E")`,
-            backgroundSize: "20px 20px",
-            backgroundPosition: "0 0",
-            opacity: 0.5,
-            mixBlendMode: "overlay",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Magical card effects */}
-        <div
-          style={{
-            position: "absolute",
-            top: "-50%",
-            left: "-50%",
-            width: "200%",
-            height: "200%",
-            background:
-              "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, transparent 60%)",
-            transform: "rotate(-15deg)",
-            pointerEvents: "none",
-          }}
-        />
-
-        <h2
-          style={{
-            fontSize: "1.7rem",
-            fontFamily: "'Cinzel', serif",
-            fontWeight: "bold",
-            marginBottom: "1.2rem",
-            textAlign: "center",
-            position: "relative",
-            color: "#ffffff",
-            textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
-          }}
-        >
-          Choose Your Side
-        </h2>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "1rem",
-            marginBottom: "1.2rem",
-            position: "relative",
-          }}
-        >
-          <button
-            onClick={() => handleColorSelect("w")}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              padding: "0.8rem",
-              borderRadius: "0.7rem",
-              backgroundColor:
-                gameConfig.playerColor === "w"
-                  ? "rgba(220, 240, 255, 0.15)"
-                  : "rgba(255, 255, 255, 0.1)",
-              border:
-                gameConfig.playerColor === "w"
-                  ? "2px solid rgba(220, 240, 255, 0.6)"
-                  : "2px solid rgba(255, 255, 255, 0.2)",
-              boxShadow:
-                gameConfig.playerColor === "w"
-                  ? "0 0 12px rgba(135, 206, 250, 0.5), inset 0 0 10px rgba(220, 240, 255, 0.2)"
-                  : "none",
-              transition: "all 0.3s",
-              cursor: "pointer",
-              transform:
-                gameConfig.playerColor === "w" ? "translateY(-4px)" : "none",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {gameConfig.playerColor === "w" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: "100%",
-                  background:
-                    "linear-gradient(180deg, rgba(220,240,255,0.15) 0%, rgba(220,240,255,0) 70%)",
-                  opacity: 0.6,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            {gameConfig.playerColor === "w" && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "0.6rem",
-                  border: "1px solid rgba(255,255,255,0.3)",
-                  background:
-                    "repeating-linear-gradient(45deg, rgba(135,206,250,0.05), rgba(135,206,250,0.05) 5px, rgba(255,255,255,0.05) 5px, rgba(255,255,255,0.05) 10px)",
-                  opacity: 0.5,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            <span
-              style={{
-                fontSize: "2.5rem",
-                marginBottom: "0.5rem",
-                color: gameConfig.playerColor === "w" ? "#ffffff" : "#dddddd",
-                textShadow:
-                  gameConfig.playerColor === "w"
-                    ? "0 0 8px rgba(135, 206, 250, 0.8), 0 0 2px rgba(255, 255, 255, 0.9)"
-                    : "none",
-                position: "relative",
-                zIndex: 2,
-              }}
-            >
-              ♙
-            </span>
-            <span
-              style={{
-                fontWeight: "600",
-                position: "relative",
-                zIndex: 2,
-                color: gameConfig.playerColor === "w" ? "#ffffff" : "#dddddd",
-                textShadow:
-                  gameConfig.playerColor === "w"
-                    ? "0 0 4px rgba(0, 0, 0, 0.5)"
-                    : "none",
-              }}
-            >
-              White
-            </span>
-
-            {gameConfig.playerColor === "w" && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "0.7rem",
-                  background:
-                    "radial-gradient(circle at 30% 30%, rgba(135, 206, 250, 0.15) 0%, transparent 70%)",
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            {gameConfig.playerColor === "w" && (
-              <div
-                style={{
-                  position: "absolute",
-                  width: "150%",
-                  height: "8px",
-                  bottom: "-4px",
-                  left: "-25%",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(135, 206, 250, 0.5) 50%, transparent)",
-                  animation: "light-sweep 2s infinite",
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-          </button>
-
-          <button
-            onClick={() => handleColorSelect("b")}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              padding: "0.8rem",
-              borderRadius: "0.7rem",
-              backgroundColor:
-                gameConfig.playerColor === "b"
-                  ? "rgba(20, 20, 35, 0.8)"
-                  : "rgba(0, 0, 0, 0.3)",
-              border:
-                gameConfig.playerColor === "b"
-                  ? "2px solid rgba(20, 20, 35, 0.9)"
-                  : "2px solid rgba(0, 0, 0, 0.2)",
-              boxShadow:
-                gameConfig.playerColor === "b"
-                  ? "0 0 12px rgba(30, 0, 60, 0.5), inset 0 0 8px rgba(75, 0, 130, 0.3)"
-                  : "none",
-              transition: "all 0.3s",
-              cursor: "pointer",
-              transform:
-                gameConfig.playerColor === "b" ? "translateY(-4px)" : "none",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {gameConfig.playerColor === "b" && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0, rgba(0,0,0,0) 5px, rgba(75,0,130,0.05) 5px, rgba(75,0,130,0.05) 10px)",
-                  opacity: 0.5,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            {gameConfig.playerColor === "b" && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "0.6rem",
-                  border: "1px solid rgba(0,0,0,0.7)",
-                  opacity: 0.8,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            <span
-              style={{
-                fontSize: "2.5rem",
-                marginBottom: "0.5rem",
-                color: gameConfig.playerColor === "b" ? "#ffffff" : "#dddddd",
-                textShadow:
-                  gameConfig.playerColor === "b"
-                    ? "0 0 8px rgba(75, 0, 130, 0.8), 0 0 2px rgba(0, 0, 0, 0.9)"
-                    : "none",
-                position: "relative",
-                zIndex: 2,
-              }}
-            >
-              ♟
-            </span>
-            <span
-              style={{
-                fontWeight: "600",
-                position: "relative",
-                zIndex: 2,
-                color: gameConfig.playerColor === "b" ? "#ffffff" : "#dddddd",
-                textShadow:
-                  gameConfig.playerColor === "b"
-                    ? "0 0 4px rgba(0, 0, 0, 0.7)"
-                    : "none",
-              }}
-            >
-              Black
-            </span>
-
-            {gameConfig.playerColor === "b" && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "0.7rem",
-                  background:
-                    "radial-gradient(circle at 70% 30%, rgba(75, 0, 130, 0.2) 0%, rgba(0, 0, 0, 0.1) 70%)",
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            {gameConfig.playerColor === "b" && (
-              <div
-                style={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "100%",
-                  background:
-                    "linear-gradient(135deg, transparent 0%, rgba(75, 0, 130, 0.15) 50%, transparent 100%)",
-                  animation: "shadow-move 3s infinite alternate",
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-          </button>
-        </div>
-
-        <button
-          onClick={startGame}
-          className="begin-journey-btn"
-          style={{
-            width: "100%",
-            backgroundColor: "rgba(168, 74, 47, 0.7)",
-            color: "white",
-            padding: "0.9rem 1rem",
-            borderRadius: "0.7rem",
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-            fontFamily: "'Cinzel', serif",
-            border: "2px solid rgba(255, 200, 120, 0.3)",
-            cursor: "pointer",
-            position: "relative",
-            overflow: "hidden",
-            transition: "all 0.3s",
-            textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
-            animation: "button-pulse 5s infinite",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(168, 74, 47, 0.9)";
-            e.currentTarget.style.boxShadow =
-              "0 0 15px rgba(255, 160, 10, 0.7)";
-            e.currentTarget.style.transform = "translateY(-2px)";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(168, 74, 47, 0.7)";
-            e.currentTarget.style.boxShadow = "none";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
+      {/* Transition particles */}
+      {isTransitioning &&
+        transitionParticles.map((particle, index) => (
           <div
-            className="button-shine"
+            key={`transition-${index}`}
             style={{
               position: "absolute",
-              top: "-180%",
+              top: `${particle.y}%`,
+              left: `${particle.x}%`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              borderRadius: "50%",
+              backgroundColor: particle.color,
+              boxShadow: `0 0 15px 5px ${particle.color}`,
+              opacity: 0,
+              zIndex: 100,
+              animation: `transition-particle ${particle.duration}s ease-out ${particle.delay}s forwards`,
+            }}
+          />
+        ))}
+
+      {/* Main content container with transition */}
+      <div
+        className={
+          isTransitioning ? "main-content transitioning" : "main-content"
+        }
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          transition: "opacity 1.2s ease-out, transform 1.2s ease-out",
+          opacity: isTransitioning ? 0 : 1,
+          transform: isTransitioning
+            ? "scale(0.9) translateY(20px)"
+            : "scale(1) translateY(0)",
+        }}
+      >
+        {/* Title with magical styling */}
+        <div
+          style={{
+            position: "relative",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "5rem",
+              fontWeight: "bold",
+              textAlign: "center",
+              fontFamily: "'Cinzel', serif",
+              backgroundImage:
+                "linear-gradient(135deg, #ffb347 10%, #ffcc33 45%, #ffd700 70%, #ffe766 90%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+              WebkitTextStroke: "1px rgba(255, 255, 255, 0.2)",
+              textShadow:
+                "0 0 20px rgba(255, 165, 0, 0.7), 0 0 40px rgba(255, 140, 0, 0.5)",
+              animation: "magical-swirl 10s infinite", // Removed pulse-glow animation
+              position: "relative",
+            }}
+          >
+            Wizard's Chess
+          </h1>
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "120%",
+              height: "120%",
+              backgroundImage:
+                "radial-gradient(circle, rgba(255, 165, 0, 0.4) 0%, transparent 70%)",
+              filter: "blur(20px)",
+              zIndex: -1,
+            }}
+          />
+        </div>
+
+        {/* Main Card with arcane-themed design */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "450px",
+            background:
+              "linear-gradient(135deg, rgba(46, 30, 91, 0.85) 0%, rgba(58, 63, 189, 0.7) 100%)",
+            backdropFilter: "blur(8px)",
+            borderRadius: "1rem",
+            padding: "1.5rem",
+            boxShadow:
+              "0 0 30px rgba(58, 63, 189, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.1)",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            marginBottom: "1.5rem",
+            position: "relative",
+            overflow: "hidden",
+            animation: "float 6s ease-in-out infinite",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L90 50 L70 90 L30 90 L10 50 L30 10 L70 10 L90 50 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E")`,
+            backgroundSize: "100px 100px",
+          }}
+        >
+          {/* Ancient rune frame border */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              borderRadius: "1rem",
+              border: "8px solid transparent",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0 L40 0 L40 40 L0 40 Z' stroke='rgba(255,255,255,0.1)' fill='none' stroke-dasharray='2 4'/%3E%3C/svg%3E")`,
+              backgroundSize: "20px 20px",
+              backgroundPosition: "0 0",
+              opacity: 0.5,
+              mixBlendMode: "overlay",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Magical card effects */}
+          <div
+            style={{
+              position: "absolute",
+              top: "-50%",
               left: "-50%",
               width: "200%",
               height: "200%",
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              transform: "rotate(45deg)",
-              transition: "all 0.7s",
-              animation: "button-sheen 5s infinite",
+              background:
+                "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, transparent 60%)",
+              transform: "rotate(-15deg)",
+              pointerEvents: "none",
             }}
           />
-          Begin Your Journey
-        </button>
+
+          <h2
+            style={{
+              fontSize: "1.7rem",
+              fontFamily: "'Cinzel', serif",
+              fontWeight: "bold",
+              marginBottom: "1.2rem",
+              textAlign: "center",
+              position: "relative",
+              color: "#ffffff",
+              textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+            }}
+          >
+            Choose Your Side
+          </h2>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "1rem",
+              marginBottom: "1.2rem",
+              position: "relative",
+            }}
+          >
+            <button
+              onClick={() => handleColorSelect("w")}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "0.8rem",
+                borderRadius: "0.7rem",
+                backgroundColor:
+                  gameConfig.playerColor === "w"
+                    ? "rgba(220, 240, 255, 0.15)"
+                    : "rgba(255, 255, 255, 0.1)",
+                border:
+                  gameConfig.playerColor === "w"
+                    ? "2px solid rgba(220, 240, 255, 0.6)"
+                    : "2px solid rgba(255, 255, 255, 0.2)",
+                boxShadow:
+                  gameConfig.playerColor === "w"
+                    ? "0 0 12px rgba(135, 206, 250, 0.5), inset 0 0 10px rgba(220, 240, 255, 0.2)"
+                    : "none",
+                transition: "all 0.3s",
+                cursor: "pointer",
+                transform:
+                  gameConfig.playerColor === "w" ? "translateY(-4px)" : "none",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {gameConfig.playerColor === "w" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "100%",
+                    background:
+                      "linear-gradient(180deg, rgba(220,240,255,0.15) 0%, rgba(220,240,255,0) 70%)",
+                    opacity: 0.6,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {gameConfig.playerColor === "w" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "0.6rem",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    background:
+                      "repeating-linear-gradient(45deg, rgba(135,206,250,0.05), rgba(135,206,250,0.05) 5px, rgba(255,255,255,0.05) 5px, rgba(255,255,255,0.05) 10px)",
+                    opacity: 0.5,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              <span
+                style={{
+                  fontSize: "2.5rem",
+                  marginBottom: "0.5rem",
+                  color: gameConfig.playerColor === "w" ? "#ffffff" : "#dddddd",
+                  textShadow:
+                    gameConfig.playerColor === "w"
+                      ? "0 0 8px rgba(135, 206, 250, 0.8), 0 0 2px rgba(255, 255, 255, 0.9)"
+                      : "none",
+                  position: "relative",
+                  zIndex: 2,
+                }}
+              >
+                ♙
+              </span>
+              <span
+                style={{
+                  fontWeight: "600",
+                  position: "relative",
+                  zIndex: 2,
+                  color: gameConfig.playerColor === "w" ? "#ffffff" : "#dddddd",
+                  textShadow:
+                    gameConfig.playerColor === "w"
+                      ? "0 0 4px rgba(0, 0, 0, 0.5)"
+                      : "none",
+                }}
+              >
+                White
+              </span>
+
+              {gameConfig.playerColor === "w" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "0.7rem",
+                    background:
+                      "radial-gradient(circle at 30% 30%, rgba(135, 206, 250, 0.15) 0%, transparent 70%)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {gameConfig.playerColor === "w" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    width: "150%",
+                    height: "8px",
+                    bottom: "-4px",
+                    left: "-25%",
+                    background:
+                      "linear-gradient(90deg, transparent, rgba(135, 206, 250, 0.5) 50%, transparent)",
+                    animation: "light-sweep 2s infinite",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+            </button>
+
+            <button
+              onClick={() => handleColorSelect("b")}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "0.8rem",
+                borderRadius: "0.7rem",
+                backgroundColor:
+                  gameConfig.playerColor === "b"
+                    ? "rgba(20, 20, 35, 0.8)"
+                    : "rgba(0, 0, 0, 0.3)",
+                border:
+                  gameConfig.playerColor === "b"
+                    ? "2px solid rgba(20, 20, 35, 0.9)"
+                    : "2px solid rgba(0, 0, 0, 0.2)",
+                boxShadow:
+                  gameConfig.playerColor === "b"
+                    ? "0 0 12px rgba(30, 0, 60, 0.5), inset 0 0 8px rgba(75, 0, 130, 0.3)"
+                    : "none",
+                transition: "all 0.3s",
+                cursor: "pointer",
+                transform:
+                  gameConfig.playerColor === "b" ? "translateY(-4px)" : "none",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {gameConfig.playerColor === "b" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0, rgba(0,0,0,0) 5px, rgba(75,0,130,0.05) 5px, rgba(75,0,130,0.05) 10px)",
+                    opacity: 0.5,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {gameConfig.playerColor === "b" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "0.6rem",
+                    border: "1px solid rgba(0,0,0,0.7)",
+                    opacity: 0.8,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              <span
+                style={{
+                  fontSize: "2.5rem",
+                  marginBottom: "0.5rem",
+                  color: gameConfig.playerColor === "b" ? "#ffffff" : "#dddddd",
+                  textShadow:
+                    gameConfig.playerColor === "b"
+                      ? "0 0 8px rgba(75, 0, 130, 0.8), 0 0 2px rgba(0, 0, 0, 0.9)"
+                      : "none",
+                  position: "relative",
+                  zIndex: 2,
+                }}
+              >
+                ♟
+              </span>
+              <span
+                style={{
+                  fontWeight: "600",
+                  position: "relative",
+                  zIndex: 2,
+                  color: gameConfig.playerColor === "b" ? "#ffffff" : "#dddddd",
+                  textShadow:
+                    gameConfig.playerColor === "b"
+                      ? "0 0 4px rgba(0, 0, 0, 0.7)"
+                      : "none",
+                }}
+              >
+                Black
+              </span>
+
+              {gameConfig.playerColor === "b" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "0.7rem",
+                    background:
+                      "radial-gradient(circle at 70% 30%, rgba(75, 0, 130, 0.2) 0%, rgba(0, 0, 0, 0.1) 70%)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {gameConfig.playerColor === "b" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    width: "100%",
+                    height: "100%",
+                    background:
+                      "linear-gradient(135deg, transparent 0%, rgba(75, 0, 130, 0.15) 50%, transparent 100%)",
+                    animation: "shadow-move 3s infinite alternate",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+            </button>
+          </div>
+
+          <button
+            onClick={handleStartGame}
+            disabled={isTransitioning}
+            className="begin-journey-btn"
+            style={{
+              width: "100%",
+              backgroundColor: "rgba(168, 74, 47, 0.7)",
+              color: "white",
+              padding: "0.9rem 1rem",
+              borderRadius: "0.7rem",
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              fontFamily: "'Cinzel', serif",
+              border: "2px solid rgba(255, 200, 120, 0.3)",
+              cursor: isTransitioning ? "default" : "pointer",
+              position: "relative",
+              overflow: "hidden",
+              transition: "all 0.3s",
+              textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+              animation: "button-pulse 5s infinite",
+              opacity: isTransitioning ? 0.7 : 1,
+            }}
+            onMouseOver={(e) => {
+              if (!isTransitioning) {
+                e.currentTarget.style.backgroundColor =
+                  "rgba(168, 74, 47, 0.9)";
+                e.currentTarget.style.boxShadow =
+                  "0 0 15px rgba(255, 160, 10, 0.7)";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isTransitioning) {
+                e.currentTarget.style.backgroundColor =
+                  "rgba(168, 74, 47, 0.7)";
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.transform = "translateY(0)";
+              }
+            }}
+          >
+            <div
+              className="button-shine"
+              style={{
+                position: "absolute",
+                top: "-180%",
+                left: "-50%",
+                width: "200%",
+                height: "200%",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                transform: "rotate(45deg)",
+                transition: "all 0.7s",
+                animation: "button-sheen 5s infinite",
+              }}
+            />
+            Begin Your Journey
+          </button>
+        </div>
+
+        {/* How to Play section with magical styling */}
+        <div
+          style={{
+            maxWidth: "450px",
+            textAlign: "center",
+            color: "#ffffff",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(5px)",
+            padding: "1.5rem",
+            borderRadius: "0.75rem",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            boxShadow: "0 4px 20px rgba(46, 30, 91, 0.3)",
+            opacity: 0.9,
+          }}
+        >
+          <h3
+            style={{
+              fontWeight: "bold",
+              marginBottom: "0.75rem",
+              color: "#ffffff",
+              fontSize: "1.3rem",
+              fontFamily: "'Cinzel', serif",
+              textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+            }}
+          >
+            How to Play
+          </h3>
+          <p
+            style={{
+              lineHeight: "1.6",
+              textShadow: "0 0 20px rgba(0, 0, 0, 0.4)",
+            }}
+          >
+            Wizard's Chess combines traditional chess with magical spells.
+            Choose your side, select your arcane abilities, and outwit your
+            opponent with strategy and sorcery. Each turn, you'll gain 1 mana
+            (up to 15) to cast powerful spells that can turn the tide of battle.
+          </p>
+        </div>
       </div>
 
-      {/* How to Play section with magical styling */}
-      <div
-        style={{
-          maxWidth: "450px",
-          textAlign: "center",
-          color: "#ffffff",
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          backdropFilter: "blur(5px)",
-          padding: "1.5rem",
-          borderRadius: "0.75rem",
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          boxShadow: "0 4px 20px rgba(46, 30, 91, 0.3)",
-          opacity: 0.9,
-        }}
-      >
-        <h3
+      {/* Screen transition overlay */}
+      {isTransitioning && (
+        <div
+          className="transition-overlay"
           style={{
-            fontWeight: "bold",
-            marginBottom: "0.75rem",
-            color: "#ffffff",
-            fontSize: "1.3rem",
-            fontFamily: "'Cinzel', serif",
-            textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0)",
+            backdropFilter: "blur(0px)",
+            zIndex: 50,
+            animation: "screen-transition 1.5s forwards",
           }}
-        >
-          How to Play
-        </h3>
-        <p
-          style={{
-            lineHeight: "1.6",
-            textShadow: "0 0 20px rgba(0, 0, 0, 0.4)",
-          }}
-        >
-          Wizard's Chess combines traditional chess with magical spells. Choose
-          your side, select your arcane abilities, and outwit your opponent with
-          strategy and sorcery. Each turn, you'll gain 1 mana (up to 15) to cast
-          powerful spells that can turn the tide of battle.
-        </p>
-      </div>
+        />
+      )}
 
       {/* Copyright info */}
       <div
@@ -751,6 +866,18 @@ const MainMenu = () => {
           @keyframes shadow-move {
             0% { background-position: 0% 0%; }
             100% { background-position: 100% 100%; }
+          }
+          
+          @keyframes transition-particle {
+            0% { transform: scale(0) translate(0, 0); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: scale(2) translate(var(--random-x, 50px), var(--random-y, -50px)); opacity: 0; }
+          }
+          
+          @keyframes screen-transition {
+            0% { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }
+            50% { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); }
+            100% { background-color: rgba(0, 0, 0, 1); backdrop-filter: blur(12px); }
           }
           
           .begin-journey-btn:hover .button-shine {
