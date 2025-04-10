@@ -76,20 +76,12 @@ const spells: Spell[] = [
     mustTargetOwnPiece: true,
   },
   {
-    id: "secondWind",
-    name: "Second Wind",
-    description: "Move two pieces (no capture or check).",
-    manaCost: 8,
-    targetType: "multi",
-    requiredTargets: 4, // 2 from-to pairs
-    mustTargetOwnPiece: true,
-  },
-  {
     id: "nullfield",
     name: "Nullfield",
-    description: "Remove any spell effect.",
+    description:
+      "Remove all spell effects from the board. Purges all active effects, cancels transformations, and removes glyphs.",
     manaCost: 5,
-    targetType: "single",
+    targetType: "none",
   },
   {
     id: "veilOfShadows",
@@ -97,14 +89,6 @@ const spells: Spell[] = [
     description: "Hide half of your board from the opponent for 2 turns.",
     manaCost: 4,
     targetType: "none",
-  },
-  {
-    id: "raiseBonewalker",
-    name: "Raise the Bonewalker",
-    description: "Summon pawn that auto-promotes in 6 turns.",
-    manaCost: 6,
-    targetType: "single",
-    mustTargetEmptySquare: true,
   },
   {
     id: "cursedGlyph",
@@ -115,29 +99,12 @@ const spells: Spell[] = [
     mustTargetEmptySquare: true,
   },
   {
-    id: "pressureField",
-    name: "Pressure Field",
-    description: "Prevent ending adjacent to Rooks for 3 turns.",
-    manaCost: 3,
-    targetType: "single",
-    mustTargetOwnPiece: true,
-  },
-  {
     id: "darkConversion",
     name: "Dark Conversion",
     description: "Sacrifice 3 pawns to summon a Knight or Bishop.",
     manaCost: 5,
     targetType: "multi",
     requiredTargets: 3,
-    mustTargetOwnPiece: true,
-  },
-  {
-    id: "spiritLink",
-    name: "Spirit Link",
-    description: "Link a major piece with pawns for enhanced protection.",
-    manaCost: 5,
-    targetType: "multi",
-    requiredTargets: 2,
     mustTargetOwnPiece: true,
   },
 ];
@@ -167,6 +134,7 @@ export const getDefaultSpells = (player: "w" | "b"): SpellId[] => {
       "frostShield",
       "shadowStrike",
       "arcaneArmor",
+      "nullfield",
     ];
   } else {
     return [
@@ -175,6 +143,7 @@ export const getDefaultSpells = (player: "w" | "b"): SpellId[] => {
       "frostShield",
       "shadowStrike",
       "arcaneArmor",
+      "nullfield",
     ];
   }
 };

@@ -66,27 +66,6 @@ export const SPELLS: Spell[] = [
     icon: "🔮",
   },
   {
-    id: "spirit-link",
-    name: "Spirit Link",
-    manaCost: 5,
-    description: "Link a major piece with pawns.",
-    icon: "🔗",
-  },
-  {
-    id: "second-wind",
-    name: "Second Wind",
-    manaCost: 8,
-    description: "Move two pieces (no capture or check)",
-    icon: "💨",
-  },
-  {
-    id: "pressure-field",
-    name: "Pressure Field",
-    manaCost: 3,
-    description: "Prevent ending adjacent to Rooks",
-    icon: "🛡️",
-  },
-  {
     id: "nullfield",
     name: "Nullfield",
     manaCost: 5,
@@ -99,12 +78,5 @@ export const SPELLS: Spell[] = [
     manaCost: 4,
     description: "Hide board from enemy",
     icon: "🌑",
-  },
-  {
-    id: "bonewalker",
-    name: "Raise the Bonewalker",
-    manaCost: 6,
-    description: "Summon pawn → auto-promote in 6 turns.",
-    icon: "💀",
   },
 ];

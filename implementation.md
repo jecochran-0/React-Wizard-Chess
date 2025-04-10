@@ -513,7 +513,7 @@ private castNullfield(target: Square): boolean {
 ```
 
 14. Veil of Shadows (4 Mana)
-    Hide board from enemy
+    if used every active effect gets removed. Ember queens get turned back into pawns, pieces with arcane armor lose the effect, all mist knights get removed from the board, any glyphs on the board are removed, any pieces that are cursed lose the effect, veil of shadows is removed if active.
 
 Implementation:
 

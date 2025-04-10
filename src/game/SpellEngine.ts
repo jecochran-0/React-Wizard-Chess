@@ -78,6 +78,10 @@ export class SpellEngine {
           // Veil of Shadows doesn't require a target
           success = this.castVeilOfShadows();
           break;
+        case "nullfield":
+          // Nullfield doesn't require a target
+          success = this.castNullfield();
+          break;
         case "astralSwap":
           if (Array.isArray(targetInfo) && targetInfo.length === 2) {
             success = this.castAstralSwap(targetInfo[0], targetInfo[1]);
@@ -950,6 +954,86 @@ export class SpellEngine {
       "Veil of Shadows cast - opponent cannot see your half of the board for 2 turns"
     );
 
+    return true;
+  }
+
+  // Nullfield: Remove all active effects from the board
+  private castNullfield(): boolean {
+    console.log("Attempting to cast Nullfield");
+
+    let effectsRemoved = 0;
+
+    // 1. Get all pieces with effects
+    const allPieces = this.gameManager.getAllPieces();
+
+    for (const { square, piece } of allPieces) {
+      // Skip pieces without effects
+      if (!piece.effects || piece.effects.length === 0) continue;
+
+      // Handle Ember Crown specifically - transform queens back to pawns
+      const hasEmberCrown = piece.effects.some(
+        (e) => e.source === "emberCrown"
+      );
+      if (hasEmberCrown && piece.type === "q") {
+        console.log(`Transforming Ember Queen at ${square} back to a pawn`);
+        // Remove the piece and replace with a pawn
+        this.gameManager.removePiece(square);
+        this.gameManager.addPiece(
+          square,
+          "p" as PieceSymbol,
+          piece.color as "w" | "b",
+          [] // No effects
+        );
+        effectsRemoved++;
+        continue; // Skip to next piece since we've replaced this one
+      }
+
+      // Handle Mistform Knight clones - remove them completely
+      const isMistformClone = piece.effects.some(
+        (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+      );
+      if (isMistformClone) {
+        console.log(`Removing Mistform Knight clone at ${square}`);
+        this.gameManager.removePiece(square);
+        effectsRemoved++;
+        continue; // Skip to next piece since we've removed this one
+      }
+
+      // For all other effects, clear them from the piece
+      if (piece.effects.length > 0) {
+        console.log(
+          `Removing ${piece.effects.length} effects from piece at ${square}`
+        );
+        effectsRemoved += piece.effects.length;
+
+        // Clear all effects from the piece
+        for (const effect of [...piece.effects]) {
+          this.gameManager.removeEffect(square, effect.id);
+        }
+      }
+    }
+
+    // 2. Remove all glyphs from the board
+    const glyphs = this.gameManager.getGlyphs();
+    let glyphCount = 0;
+
+    for (const square in glyphs) {
+      console.log(`Removing glyph at ${square}`);
+      this.gameManager.removeGlyph(square as Square);
+      glyphCount++;
+    }
+
+    // Log the results
+    console.log(
+      `Nullfield removed ${effectsRemoved} effects from pieces and ${glyphCount} glyphs`
+    );
+
+    // Log a success message
+    console.log(
+      "Successfully cast Nullfield, removing all effects from the board"
+    );
+
+    // Return true as the spell was successfully cast
     return true;
   }
 }

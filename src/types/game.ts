@@ -23,8 +23,9 @@ export interface Spell {
   name: string;
   manaCost: number;
   description: string;
-  targetType: SpellTargetType;
+  targetType?: SpellTargetType;
   maxTargets?: number;
+  icon?: string;
 }
 
 export type SpellTargetType =

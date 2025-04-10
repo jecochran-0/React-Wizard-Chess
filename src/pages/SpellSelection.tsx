@@ -150,7 +150,7 @@ const SpellSelection = () => {
             textShadow: "0 0 10px rgba(255, 165, 0, 0.5)",
           }}
         >
-          Select 5 spells from the 10 available
+          Select 5 spells from the {availableSpells.length} available
         </h2>
         <div
           style={{
