@@ -94,10 +94,9 @@ const spells: Spell[] = [
   {
     id: "veilOfShadows",
     name: "Veil of Shadows",
-    description: "Hide board from enemy for 1 turn.",
+    description: "Hide half of your board from the opponent for 2 turns.",
     manaCost: 4,
-    targetType: "single",
-    mustTargetEmptySquare: true,
+    targetType: "none",
   },
   {
     id: "raiseBonewalker",

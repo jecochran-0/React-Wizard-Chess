@@ -71,10 +71,42 @@ const Square: React.FC<SquareProps> = ({
   onClick,
 }) => {
   // Access the chess context
-  const { boardGlyphs } = useChess();
+  const { boardGlyphs, currentPlayer } = useChess();
 
   // Check if this square has a glyph with more detailed debugging
   const squareHasGlyph = boardGlyphs && square in boardGlyphs;
+
+  // Check if this square should be hidden by Veil of Shadows
+  const shouldHideSquare = () => {
+    // Get all the piece's effects
+    if (!piece) return false;
+
+    // Check if the piece has a Veil of Shadows effect
+    const hasVeilEffect = piece.effects?.some(
+      (effect) => effect.source === "veilOfShadows" && effect.duration > 0
+    );
+
+    // If the piece is not the current player's and has veil effect, it should be hidden
+    if (hasVeilEffect && piece.color !== currentPlayer) {
+      // Get the rank (row number)
+      const rank = parseInt(square.charAt(1));
+
+      // For white player, hide black's back ranks (1-4)
+      if (currentPlayer === "w" && rank <= 4) {
+        return true;
+      }
+
+      // For black player, hide white's back ranks (5-8)
+      if (currentPlayer === "b" && rank >= 5) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Check if the square should be hidden
+  const isHidden = shouldHideSquare();
 
   // Debug logging for glyph detection
   if (squareHasGlyph) {
@@ -100,34 +132,42 @@ const Square: React.FC<SquareProps> = ({
     cursor: "pointer",
   };
 
-  // Apply styles based on square state (in order of priority)
-  if (isSelected) {
-    style.backgroundColor = "#3b82f6"; // Selected piece
-    style.boxShadow = "inset 0 0 0 3px #2563eb";
-  } else if (isCheck) {
-    style.backgroundColor = "#ef4444"; // King in check
-  } else if (isLastMove) {
-    style.boxShadow = "inset 0 0 0 3px #f59e0b"; // Last move
-  }
+  // If the square is hidden by Veil of Shadows, override all other styling
+  if (isHidden) {
+    style.backgroundColor = "#0f172a"; // Dark background
+    style.boxShadow = "inset 0 0 15px rgba(0, 0, 0, 0.8)";
+    style.filter = "brightness(0.3) contrast(0.7)";
+    style.pointerEvents = "none"; // Disable interaction
+  } else {
+    // Apply styles based on square state (in order of priority)
+    if (isSelected) {
+      style.backgroundColor = "#3b82f6"; // Selected piece
+      style.boxShadow = "inset 0 0 0 3px #2563eb";
+    } else if (isCheck) {
+      style.backgroundColor = "#ef4444"; // King in check
+    } else if (isLastMove) {
+      style.boxShadow = "inset 0 0 0 3px #f59e0b"; // Last move
+    }
 
-  // Handle spell targeting visual indicators
-  if (isTargeted) {
-    style.boxShadow = "inset 0 0 0 3px #a855f7";
-    style.backgroundColor = isLight ? "#f5f3ff" : "#4c1d95";
-  }
+    // Handle spell targeting visual indicators
+    if (isTargeted) {
+      style.boxShadow = "inset 0 0 0 3px #a855f7";
+      style.backgroundColor = isLight ? "#f5f3ff" : "#4c1d95";
+    }
 
-  // Visual indicator for valid targets during spell casting
-  if (isValidTarget) {
-    style.boxShadow = "inset 0 0 0 3px #10b981";
-    style.backgroundColor = isLight ? "#ecfdf5" : "#064e3b";
+    // Visual indicator for valid targets during spell casting
+    if (isValidTarget) {
+      style.boxShadow = "inset 0 0 0 3px #10b981";
+      style.backgroundColor = isLight ? "#ecfdf5" : "#064e3b";
 
-    // Debug log for valid targets
-    if (piece) {
-      console.log(
-        `Square ${square} is marked as valid target, has piece: ${piece.color} ${piece.type}`
-      );
-    } else {
-      console.log(`Square ${square} is marked as valid target, empty square`);
+      // Debug log for valid targets
+      if (piece) {
+        console.log(
+          `Square ${square} is marked as valid target, has piece: ${piece.color} ${piece.type}`
+        );
+      } else {
+        console.log(`Square ${square} is marked as valid target, empty square`);
+      }
     }
   }
 
@@ -400,7 +440,11 @@ const Square: React.FC<SquareProps> = ({
   };
 
   return (
-    <div className="square" style={style} onClick={onClick}>
+    <div
+      className={`square ${isHidden ? "hidden" : ""}`}
+      style={style}
+      onClick={onClick}
+    >
       {pieceElement}
 
       {/* Display Cursed Glyph image */}

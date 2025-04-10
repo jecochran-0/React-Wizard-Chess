@@ -437,12 +437,13 @@ class GameManager {
         for (const square in this.customBoardState) {
           const piece = this.customBoardState[square];
           if (piece && piece.color === currentPlayer) {
-            // Find all effects that should be decremented (but NOT cursedGlyph - curse decrements on the piece owner's turn)
+            // Find all effects that should be decremented
             const effectsToUpdate = piece.effects.filter(
               (effect) =>
                 (effect.source === "emberCrown" ||
                   effect.source === "arcaneArmor" ||
                   effect.source === "arcaneAnchor" ||
+                  effect.source === "veilOfShadows" ||
                   (effect.source === "mistformKnight" &&
                     effect.modifiers?.isMistformClone)) &&
                 !effect.id.includes("emberVisual")
@@ -455,14 +456,20 @@ class GameManager {
                   (effect.source === "emberCrown" ||
                     effect.source === "arcaneArmor" ||
                     effect.source === "arcaneAnchor" ||
+                    effect.source === "veilOfShadows" ||
                     (effect.source === "mistformKnight" &&
                       effect.modifiers?.isMistformClone)) &&
                   !effect.id.includes("emberVisual")
                 ) {
                   effectsUpdated = true;
                   const newDuration = effect.duration - 1;
-                  // Add special logging for Mistform Knight clones to debug their countdown
-                  if (
+
+                  // Add special logging for Veil of Shadows
+                  if (effect.source === "veilOfShadows") {
+                    console.log(
+                      `Decremented veilOfShadows effect to ${newDuration} turns remaining`
+                    );
+                  } else if (
                     effect.source === "mistformKnight" &&
                     effect.modifiers?.isMistformClone
                   ) {
@@ -822,13 +829,81 @@ class GameManager {
   // Process end of turn effects
   private processEndOfTurnEffects(): void {
     console.log("Processing end of turn effects...");
+    const playerEndingTurn = this.getCurrentPlayer() === "w" ? "b" : "w"; // The player who just ended their turn
 
     // First process piece effects
     for (const square in this.customBoardState) {
       const piece = this.customBoardState[square];
       if (!piece || !piece.effects || piece.effects.length === 0) continue;
 
+      // For regular effects, only process those for the player ending their turn
+      const mistformCloneEffect = piece.effects.find(
+        (e) => e.source === "mistformKnight" && e.modifiers?.isMistformClone
+      );
+
+      // Special handling for Mistform Knight clones - check the cloneCreator property
+      if (mistformCloneEffect) {
+        const cloneCreator =
+          mistformCloneEffect.modifiers?.cloneCreator || piece.color;
+
+        // Only process this clone if it belongs to the player ending their turn
+        if (cloneCreator !== playerEndingTurn) {
+          console.log(
+            `Skipping Mistform clone at ${square} as it belongs to player ${cloneCreator} not ${playerEndingTurn}`
+          );
+          continue;
+        }
+
+        console.log(
+          `Processing Mistform Knight clone at ${square} for player ${playerEndingTurn}`
+        );
+      }
+      // For non-mistform effects, only process those belonging to the player ending their turn
+      else if (piece.color !== playerEndingTurn) {
+        continue;
+      }
+
       console.log(`Processing effects for piece at ${square}`);
+
+      // Process all effects on the piece
+      piece.effects.forEach((effect) => {
+        // Skip visual-only effects that don't need to decrement
+        if (effect.id.includes("emberVisual")) return;
+
+        // Decrement the effect duration
+        effect.duration -= 1;
+
+        if (
+          effect.source === "mistformKnight" &&
+          effect.modifiers?.isMistformClone
+        ) {
+          console.log(
+            `Decremented Mistform Knight clone effect from ${
+              effect.duration + 1
+            } to ${
+              effect.duration
+            } turns remaining for player ${playerEndingTurn}`
+          );
+        } else {
+          console.log(
+            `Decremented ${effect.source} effect to ${effect.duration} turns remaining`
+          );
+        }
+
+        // Log specific effects for debugging
+        if (
+          effect.source === "mistformKnight" &&
+          effect.modifiers?.isMistformClone
+        ) {
+          console.log(
+            `Mistform Knight clone at ${square} now has ${effect.duration} turns remaining`
+          );
+        } else if (effect.source === "veilOfShadows") {
+          console.log(
+            `Veil of Shadows effect on ${square} now has ${effect.duration} turns remaining`
+          );
+        }
+      });
 
       // Find any cursed glyph effects on the piece
       const cursedGlyphEffect = piece.effects.find(
@@ -839,10 +914,6 @@ class GameManager {
         console.log(
           `Found cursed glyph effect on piece at ${square} with ${cursedGlyphEffect.duration} turns remaining`
         );
-
-        // Decrement the effect duration
-        cursedGlyphEffect.duration -= 1;
-        console.log(`Decremented duration to ${cursedGlyphEffect.duration}`);
 
         // If the effect has expired, transform the piece to a pawn immediately
         if (cursedGlyphEffect.duration <= 0) {
@@ -863,6 +934,11 @@ class GameManager {
           );
         }
       }
+
+      // Remove any expired effects (except visual indicators)
+      piece.effects = piece.effects.filter(
+        (effect) => effect.duration > 0 || effect.id.includes("emberVisual")
+      );
     }
 
     // Process the glyphs themselves (remove expired ones)
@@ -1547,17 +1623,18 @@ class GameManager {
   endTurn(): void {
     console.log("Processing end of turn...");
 
-    // Process active effects
-    this.processEndOfTurnEffects();
+    // Get current player before switch (this is the player ending their turn)
+    const playerEndingTurn = this.getCurrentPlayer();
+    console.log(`Player ${playerEndingTurn} is ending their turn`);
 
-    // Get current player before switch
-    const currentPlayer = this.getCurrentPlayer();
+    // Process active effects for the player ending their turn
+    this.processEndOfTurnEffects();
 
     // Update the board state
     this.syncCustomBoardFromChess();
 
     // Switch turns - The next player becomes the current player after this operation
-    if (currentPlayer === "w") {
+    if (playerEndingTurn === "w") {
       this.chess.load(this.chess.fen().replace(" w ", " b "));
     } else {
       this.chess.load(this.chess.fen().replace(" b ", " w "));
@@ -1573,7 +1650,7 @@ class GameManager {
     );
 
     this.gameLog.push(
-      `${currentPlayer === "w" ? "White" : "Black"} ended their turn`
+      `${playerEndingTurn === "w" ? "White" : "Black"} ended their turn`
     );
 
     // Print summary of all active effects

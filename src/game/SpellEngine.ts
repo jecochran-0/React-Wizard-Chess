@@ -74,6 +74,10 @@ export class SpellEngine {
           // The Kings Gambit spell doesn't require a target
           success = this.castKingsGambit();
           break;
+        case "veilOfShadows":
+          // Veil of Shadows doesn't require a target
+          success = this.castVeilOfShadows();
+          break;
         case "astralSwap":
           if (Array.isArray(targetInfo) && targetInfo.length === 2) {
             success = this.castAstralSwap(targetInfo[0], targetInfo[1]);
@@ -619,11 +623,12 @@ export class SpellEngine {
       // 1. Create a clone effect for the cloned knight
       const cloneEffect = this.createEffect(
         "transform",
-        1, // Will disappear after 1 turns
+        1, // Will disappear after 1 turn
         "mistformKnight",
         {
           isMistformClone: true,
           removeOnExpire: true,
+          cloneCreator: currentPlayer, // Track which player created this clone
           preventCapture: false, // Clone can be captured
         }
       );
@@ -905,6 +910,46 @@ export class SpellEngine {
         newPieceType === "n" ? "Knight" : "Bishop"
       }`
     );
+    return true;
+  }
+
+  // Veil of Shadows: Hides your half of the board from the opponent for 2 turns
+  private castVeilOfShadows(): boolean {
+    console.log("Attempting to cast Veil of Shadows");
+
+    // Check that the current player's king isn't in check
+    if (this.gameManager.isKingInCheck()) {
+      console.error("Cannot cast Veil of Shadows while in check");
+      return false;
+    }
+
+    // Create an effect that blocks vision for 2 turns
+    const effect: Effect = {
+      id: uuidv4(),
+      type: "visual",
+      duration: 2, // Last for 2 turns
+      source: "veilOfShadows",
+      modifiers: {
+        hideBackRanks: true,
+        removeOnExpire: true,
+      },
+    };
+
+    // Get all of the current player's pieces
+    const pieces = this.gameManager
+      .getAllPieces()
+      .filter((p) => p.piece.color === this.gameManager.getCurrentPlayer());
+
+    // Add the veil effect to each of the player's pieces
+    for (const { square } of pieces) {
+      this.gameManager.addEffect(square, effect);
+    }
+
+    // Log the spell cast
+    console.log(
+      "Veil of Shadows cast - opponent cannot see your half of the board for 2 turns"
+    );
+
     return true;
   }
 }

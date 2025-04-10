@@ -26,8 +26,8 @@ type TargetingMode = SpellTargetType | null;
 
 const ChessBoard: React.FC = () => {
   const {
-    currentPlayer,
     boardState,
+    currentPlayer,
     selectedPiece,
     selectedSpell,
     legalMoves,
@@ -37,15 +37,13 @@ const ChessBoard: React.FC = () => {
   } = useChess();
 
   // State for spell targeting
-  const [spellTargets, setSpellTargets] = useState<Square[] | FromToTarget[]>(
-    []
-  );
+  const [spellTargets, setSpellTargets] = useState<Square[]>([]);
   const [targetingMode, setTargetingMode] = useState<TargetingMode>(null);
   const [validTargets, setValidTargets] = useState<Square[]>([]);
 
   // Replace popup with a message indicator
   const [statusMessage, setStatusMessage] = useState<string>("");
-  const [showMessage, setShowMessage] = useState<boolean>(false);
+  const [showStatus, setShowStatus] = useState<boolean>(false);
 
   // Get the position of the king that is in check (if any)
   // Using a state variable to track if the king is in check or not
@@ -60,11 +58,11 @@ const ChessBoard: React.FC = () => {
   // Show a status message with automatic timeout
   const showStatusMessage = (message: string, duration = 3000) => {
     setStatusMessage(message);
-    setShowMessage(true);
+    setShowStatus(true);
 
     // Auto-hide after duration
     setTimeout(() => {
-      setShowMessage(false);
+      setShowStatus(false);
     }, duration);
   };
 
@@ -95,63 +93,71 @@ const ChessBoard: React.FC = () => {
     }
   }, [selectedSpell, currentPlayer, boardState]);
 
-  // Find valid targets for a spell
+  // Get valid targets for the selected spell
   const findValidTargetsForSpell = (spellId: string): Square[] => {
     const spell = getSpellById(spellId);
     if (!spell) return [];
 
     const validSquares: Square[] = [];
-    console.log(
-      `Finding valid targets for ${spellId}, spellTargets length: ${spellTargets.length}`
-    );
 
-    // Special case for Dark Conversion - only show pawns owned by current player
-    if (spellId === "darkConversion") {
-      console.log("Finding pawns for Dark Conversion");
-
-      // For Dark Conversion, we're only targeting our own pawns
-      for (const square in boardState) {
-        const squareKey = square as Square;
-        const piece = boardState[squareKey];
-
-        // Check if the square has a pawn owned by the current player
-        if (piece && piece.color === currentPlayer && piece.type === "p") {
-          // Allow only pawns owned by the current player
-          validSquares.push(squareKey);
-        }
-      }
-
-      console.log(`Found ${validSquares.length} pawns as valid targets`);
-      setValidTargets(validSquares);
+    // For spells that don't require targets, don't highlight any squares
+    if (spell.targetType === "none") {
+      console.log(`Spell ${spellId} doesn't require targets`);
       return validSquares;
     }
 
-    // Check for spells that must target empty squares (like Cursed Glyph)
-    if (spell.mustTargetEmptySquare) {
-      console.log(`${spellId} must target empty squares`);
-      // Iterate through all squares on the board
-      const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
-      const ranks = [1, 2, 3, 4, 5, 6, 7, 8];
+    // Special case for each spell
+    switch (spellId) {
+      case "veilOfShadows": {
+        console.log("Veil of Shadows doesn't need specific targets");
+        setValidTargets([]);
+        return [];
+      }
 
-      for (const file of files) {
-        for (const rank of ranks) {
-          const squareKey = `${file}${rank}` as Square;
-          // Check if the square is empty (no piece in boardState)
-          if (!boardState[squareKey]) {
-            // Only empty squares are valid
+      case "darkConversion": {
+        console.log("Finding pawns for Dark Conversion");
+
+        // For Dark Conversion, we're only targeting our own pawns
+        for (const square in boardState) {
+          const squareKey = square as Square;
+          const piece = boardState[squareKey];
+
+          // Check if the square has a pawn owned by the current player
+          if (piece && piece.color === currentPlayer && piece.type === "p") {
+            // Allow only pawns owned by the current player
             validSquares.push(squareKey);
           }
         }
+
+        console.log(`Found ${validSquares.length} pawns as valid targets`);
+        setValidTargets(validSquares);
+        return validSquares;
       }
 
-      console.log(
-        `Found ${validSquares.length} empty squares as valid targets`
-      );
-      setValidTargets(validSquares);
-      return validSquares;
-    }
+      case "cursedGlyph": {
+        console.log(`${spellId} must target empty squares`);
+        // Iterate through all squares on the board
+        const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+        const ranks = [1, 2, 3, 4, 5, 6, 7, 8];
 
-    switch (spellId) {
+        for (const file of files) {
+          for (const rank of ranks) {
+            const squareKey = `${file}${rank}` as Square;
+            // Check if the square is empty (no piece in boardState)
+            if (!boardState[squareKey]) {
+              // Only empty squares are valid
+              validSquares.push(squareKey);
+            }
+          }
+        }
+
+        console.log(
+          `Found ${validSquares.length} empty squares as valid targets`
+        );
+        setValidTargets(validSquares);
+        return validSquares;
+      }
+
       case "kingsGambit": {
         // Find the king owned by the current player
         for (const square in boardState) {
@@ -338,6 +344,23 @@ const ChessBoard: React.FC = () => {
 
   // Handle square click
   const handleSquareClick = (square: Square) => {
+    // For Veil of Shadows spell, we want to cast it immediately when any square is clicked
+    if (selectedSpell === "veilOfShadows") {
+      // Cast the spell directly when any square is clicked
+      const success = castSpell(selectedSpell, []);
+      if (success) {
+        console.log(`Successfully cast Veil of Shadows`);
+        setSpellTargets([]);
+        setTargetingMode(null);
+        setValidTargets([]);
+        showStatusMessage(
+          "Veil of Shadows cast! Your opponent cannot see your half of the board for 2 turns.",
+          5000
+        );
+      }
+      return;
+    }
+
     // If a spell is selected, handle spell targeting
     if (selectedSpell) {
       handleSpellTargeting(square);
@@ -511,212 +534,67 @@ const ChessBoard: React.FC = () => {
     // Log the targeting action for debugging
     console.log(`Targeting with spell ${selectedSpell}, clicked ${square}`);
 
-    // Special case for Dark Conversion
-    if (selectedSpell === "darkConversion") {
-      console.log(`Processing Dark Conversion targeting, clicked ${square}`);
-
-      // Check if this square is a valid target
-      const isValidTarget = validTargets.includes(square);
-      if (!isValidTarget) {
-        console.log(`${square} is not a valid target for Dark Conversion`);
-        return;
+    // For spells that don't need targets
+    if (spell.targetType === "none") {
+      const success = castSpell(selectedSpell, []);
+      if (success) {
+        console.log(`Successfully cast ${selectedSpell}`);
+        setSpellTargets([]);
+        setTargetingMode(null);
+        setValidTargets([]);
+        showStatusMessage(`${spell.name} cast successfully!`, 5000);
       }
-
-      // Add the pawn to the targets
-      const updatedTargets = [...darkConversionTargets, square];
-      setDarkConversionTargets(updatedTargets);
-      console.log(
-        `Added pawn at ${square} to Dark Conversion targets (${updatedTargets.length}/3)`
-      );
-
-      // Update valid targets to exclude the one we just selected
-      const newValidTargets = validTargets.filter((sq) => sq !== square);
-      setValidTargets(newValidTargets);
-
-      // If we have all three pawns selected, open the piece selector immediately
-      if (updatedTargets.length === 3) {
-        console.log("All three pawns selected, opening piece selector");
-        setShowPieceTypeSelector(true);
-      }
-
       return;
     }
 
-    // Special case for Cursed Glyph
-    if (selectedSpell === "cursedGlyph") {
-      console.log(`Casting Cursed Glyph on ${square}`);
-
-      // Check if the target is valid (empty square)
-      if (!boardState[square]) {
-        // Cast the spell on the empty square
-        const success = castSpell(selectedSpell, square);
-
-        if (success) {
-          console.log(`Successfully cast Cursed Glyph on ${square}`);
-          // The castSpell method in ChessContext will update the UI with the new glyph
-        } else {
-          console.log(`Failed to cast Cursed Glyph on ${square}`);
-          showStatusMessage(
-            "Failed to cast Cursed Glyph. Try another location."
-          );
-        }
-        return;
-      } else {
-        showStatusMessage("Cursed Glyph must be placed on an empty square.");
-        return;
-      }
-    }
-
-    // If not in targeting mode, do nothing
-    if (!targetingMode) return;
-
-    // Check if this square is a valid target
-    const isValidTarget = validTargets.includes(square);
-    if (!isValidTarget) {
-      console.log(`${square} is not a valid target for ${selectedSpell}`);
-      return;
-    }
-
-    let success: boolean;
-    let updatedTargets: Square[];
-    let fromToTarget: FromToTarget;
-
-    // Logic based on the spell's targeting mode
-    switch (targetingMode) {
+    switch (spell.targetType) {
       case "single":
-        // For single-target spells like Ember Crown or Kings Gambit
-        success = castSpell(selectedSpell, square);
-        if (success) {
-          console.log(`Successfully cast ${selectedSpell} on ${square}`);
-          setSpellTargets([]);
-          setTargetingMode(null);
+        if (selectedSpell === "cursedGlyph") {
+          console.log(`Casting Cursed Glyph on ${square}`);
 
-          // Show success message for Kings Gambit
-          if (selectedSpell === "kingsGambit") {
-            showStatusMessage(
-              "King's Gambit cast! You can now move your king twice in one turn.",
-              5000
-            );
-          }
-        }
-        break;
+          // Check if the target is valid (empty square)
+          if (!boardState[square]) {
+            // Cast the spell on the empty square
+            const success = castSpell(selectedSpell, square);
 
-      case "multi":
-        // For multi-target spells
-        if (isFromToTarget(spellTargets[0])) {
-          // Reset targets if we have a FromToTarget (wrong state)
-          setSpellTargets([]);
-        }
-
-        // For Astral Swap, handle the transition from first to second target specially
-        if (selectedSpell === "astralSwap" && spellTargets.length === 0) {
-          console.log("Selected first target for Astral Swap:", square);
-
-          // Set the first target
-          setSpellTargets([square]);
-
-          // Immediately calculate the valid second targets based on the first selection
-          const firstPiece = boardState[square];
-          if (!firstPiece) return;
-
-          // Calculate valid second targets based on the first selection
-          const validSecondTargets: Square[] = [];
-          const firstPieceIsPawn = firstPiece.type === "p";
-          const firstPieceOnBackRow =
-            (firstPiece.color === "w" && square[1] === "1") ||
-            (firstPiece.color === "b" && square[1] === "8");
-
-          console.log("First piece:", {
-            type: firstPiece.type,
-            backRow: firstPieceOnBackRow,
-          });
-
-          // Find valid second targets
-          for (const sqKey in boardState) {
-            const squareKey = sqKey as Square;
-            const piece = boardState[squareKey];
-
-            if (
-              piece &&
-              piece.color === currentPlayer &&
-              squareKey !== square
-            ) {
-              // Skip if already selected as first target
-              let isValidSecondTarget = true;
-
-              // Conditions that make a second target invalid:
-
-              // 1. If first piece is a pawn, don't allow targeting back row
-              if (firstPieceIsPawn) {
-                const isBackRow =
-                  (firstPiece.color === "w" && squareKey[1] === "1") ||
-                  (firstPiece.color === "b" && squareKey[1] === "8");
-
-                if (isBackRow) {
-                  console.log(
-                    `Excluding ${squareKey}: can't swap pawn to player's back row`
-                  );
-                  isValidSecondTarget = false;
-                }
-              }
-
-              // 2. If first piece is on back row, don't allow targeting pawns
-              if (firstPieceOnBackRow && piece.type === "p") {
-                console.log(
-                  `Excluding ${squareKey}: can't swap back row piece with pawn`
-                );
-                isValidSecondTarget = false;
-              }
-
-              // 3. Don't allow pawns on back row as second target
-              const isPawnOnBackRow =
-                piece.type === "p" &&
-                ((piece.color === "w" && squareKey[1] === "1") ||
-                  (piece.color === "b" && squareKey[1] === "8"));
-
-              if (isPawnOnBackRow) {
-                console.log(
-                  `Excluding ${squareKey}: can't swap with pawn already on back row`
-                );
-                isValidSecondTarget = false;
-              }
-
-              if (isValidSecondTarget) {
-                validSecondTargets.push(squareKey);
-              }
-            }
-          }
-
-          console.log("Valid second targets:", validSecondTargets);
-          setValidTargets(validSecondTargets);
-          return;
-        }
-        // For the second selection of Astral Swap or other multi-target spells
-        else {
-          // Cast as Square[] to handle the multi-target case correctly
-          updatedTargets = [...(spellTargets as Square[]), square];
-          setSpellTargets(updatedTargets);
-
-          // If we have the required number of targets, cast the spell
-          if (
-            spell.requiredTargets &&
-            updatedTargets.length === spell.requiredTargets
-          ) {
-            success = castSpell(selectedSpell, updatedTargets);
             if (success) {
-              console.log(
-                `Successfully cast ${selectedSpell} on multiple targets`
+              console.log(`Successfully cast Cursed Glyph on ${square}`);
+              // The castSpell method in ChessContext will update the UI with the new glyph
+            } else {
+              console.log(`Failed to cast Cursed Glyph on ${square}`);
+              showStatusMessage(
+                "Failed to cast Cursed Glyph. Try another location."
               );
-              setSpellTargets([]);
-              setTargetingMode(null);
-              setValidTargets([]);
+            }
+            return;
+          } else {
+            showStatusMessage(
+              "Cursed Glyph must be placed on an empty square."
+            );
+            return;
+          }
+        }
+        // For single-target spells like Ember Crown or Kings Gambit
+        else {
+          const success = castSpell(selectedSpell, square);
+          if (success) {
+            console.log(`Successfully cast ${selectedSpell} on ${square}`);
+            setSpellTargets([]);
+            setTargetingMode(null);
+
+            // Show success message for Kings Gambit
+            if (selectedSpell === "kingsGambit") {
+              showStatusMessage(
+                "King's Gambit cast! You can now move your king twice in one turn.",
+                5000
+              );
             }
           }
         }
         break;
 
+      // For from-to type spells
       case "from-to":
-        // For spells like Phantom Step that require a source and destination
         if (spellTargets.length === 0) {
           // First click - select source
           console.log(
@@ -775,12 +653,12 @@ const ChessBoard: React.FC = () => {
           );
 
           // Create fromToTarget object for the spell
-          fromToTarget = {
+          const fromToTarget: FromToTarget = {
             from: fromSquare,
             to: toSquare,
           };
 
-          success = castSpell(selectedSpell, fromToTarget);
+          const success = castSpell(selectedSpell, fromToTarget);
           if (success) {
             console.log(
               `Successfully cast ${selectedSpell} from ${fromToTarget.from} to ${fromToTarget.to}`
@@ -788,6 +666,63 @@ const ChessBoard: React.FC = () => {
             setSpellTargets([]);
             setTargetingMode(null);
             setValidTargets([]);
+          }
+        }
+        break;
+
+      // Special case for Dark Conversion
+      case "multi":
+        if (selectedSpell === "darkConversion") {
+          console.log(
+            `Processing Dark Conversion targeting, clicked ${square}`
+          );
+
+          // Check if this square is a valid target
+          const isValidTarget = validTargets.includes(square);
+          if (!isValidTarget) {
+            console.log(`${square} is not a valid target for Dark Conversion`);
+            return;
+          }
+
+          // Add the pawn to the targets
+          const updatedTargets = [...darkConversionTargets, square];
+          setDarkConversionTargets(updatedTargets);
+          console.log(
+            `Added pawn at ${square} to Dark Conversion targets (${updatedTargets.length}/3)`
+          );
+
+          // Update valid targets to exclude the one we just selected
+          const newValidTargets = validTargets.filter((sq) => sq !== square);
+          setValidTargets(newValidTargets);
+
+          // If we have all three pawns selected, open the piece selector immediately
+          if (updatedTargets.length === 3) {
+            console.log("All three pawns selected, opening piece selector");
+            setShowPieceTypeSelector(true);
+          }
+
+          return;
+        }
+        // For the second selection of Astral Swap or other multi-target spells
+        else {
+          // Cast as Square[] to handle the multi-target case correctly
+          const updatedTargets = [...(spellTargets as Square[]), square];
+          setSpellTargets(updatedTargets);
+
+          // If we have the required number of targets, cast the spell
+          if (
+            spell.requiredTargets &&
+            updatedTargets.length === spell.requiredTargets
+          ) {
+            const success = castSpell(selectedSpell, updatedTargets);
+            if (success) {
+              console.log(
+                `Successfully cast ${selectedSpell} on multiple targets`
+              );
+              setSpellTargets([]);
+              setTargetingMode(null);
+              setValidTargets([]);
+            }
           }
         }
         break;
@@ -1073,6 +1008,30 @@ const ChessBoard: React.FC = () => {
     const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
     const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
+    // Add an overlay for Veil of Shadows
+    const veilOfShadowsOverlay =
+      selectedSpell === "veilOfShadows" ? (
+        <div
+          className="absolute inset-0 bg-purple-900 bg-opacity-20 flex items-center justify-center z-10 cursor-pointer"
+          onClick={() => {
+            const success = castSpell(selectedSpell, []);
+            if (success) {
+              setTargetingMode(null);
+              setSpellTargets([]);
+              setValidTargets([]);
+              showStatusMessage(
+                "Veil of Shadows cast! Your opponent cannot see your half of the board for 2 turns.",
+                5000
+              );
+            }
+          }}
+        >
+          <div className="text-white text-xl font-bold bg-purple-800 bg-opacity-75 p-4 rounded-lg">
+            Click anywhere to cast Veil of Shadows
+          </div>
+        </div>
+      ) : null;
+
     for (const rank of ranks) {
       const row = [];
       for (const file of files) {
@@ -1118,7 +1077,12 @@ const ChessBoard: React.FC = () => {
       );
     }
 
-    return board;
+    return (
+      <div className="relative">
+        {veilOfShadowsOverlay}
+        {board}
+      </div>
+    );
   };
 
   // Display targeting instructions based on selected spell
@@ -1130,6 +1094,12 @@ const ChessBoard: React.FC = () => {
 
     let instruction = "";
     switch (targetingMode) {
+      case "none":
+        if (selectedSpell === "veilOfShadows") {
+          return null; // Don't render instruction here for Veil of Shadows, we'll show it on the board
+        }
+        instruction = `Click anywhere to cast ${spell.name}`;
+        break;
       case "single":
         instruction = `Select a target for ${spell.name}`;
         break;
@@ -1173,11 +1143,11 @@ const ChessBoard: React.FC = () => {
   };
 
   return (
-    <div className="chess-board-container">
+    <div className="flex flex-col items-center w-full">
       {renderTargetingInstructions()}
 
       {/* Status message indicator */}
-      {showMessage && (
+      {showStatus && (
         <div
           className="status-message"
           style={{

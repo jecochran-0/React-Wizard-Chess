@@ -26,7 +26,7 @@ export interface Spell {
   mustTargetEmptySquare?: boolean;
 }
 
-export type SpellTargetType = "single" | "multi" | "from-to";
+export type SpellTargetType = "single" | "multi" | "from-to" | "none";
 
 export interface SpellTarget {
   square: Square;
