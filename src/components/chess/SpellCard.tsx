@@ -67,7 +67,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            borderRadius: showText ? "3px 3px 0 0" : "3px",
+            borderRadius: "0px",
           }}
         />
         {showText && (
@@ -120,7 +120,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
               justifyContent: "center",
               color: "white",
               fontSize: "10px",
-              borderRadius: "4px",
+              borderRadius: "0px",
             }}
           >
             {!hasEnoughMana ? "Need Mana" : "Cannot Cast"}

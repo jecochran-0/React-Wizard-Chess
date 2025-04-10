@@ -117,57 +117,90 @@ const Square: React.FC<SquareProps> = ({
     });
   }
 
-  // Square color determined by position
-  const bgColor = isLight ? "#f0f9ff" : "#1e293b";
+  // Square color determined by position - Wooden Theme
+  const lightWoodColor = "#e0c19f"; // Light, slightly worn wood
+  const darkWoodColor = "#8b5a2b"; // Lighter, warmer dark wood
+  const bgColor = isLight ? lightWoodColor : darkWoodColor;
+
+  // Generate a simple hash from the square name for subtle variations
+  let hash = 0;
+  for (let i = 0; i < square.length; i++) {
+    hash = square.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const variation = Math.abs(hash % 100) / 100; // 0 to 0.99
 
   // Base square style
   const style: React.CSSProperties = {
-    width: "50px",
     height: "50px",
+    width: "50px",
     backgroundColor: bgColor,
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
     cursor: "pointer",
+    boxSizing: "border-box",
+    border: `1px solid rgba(0, 0, 0, 0.2)`, // Subtle darker border for wood
+    boxShadow: `inset 0 0 ${2 + variation * 4}px rgba(0, 0, 0, 0.3)`, // Varying inner shadow
   };
+
+  // Apply wood grain texture selectively and with variation
+  if (!isLight) {
+    // Apply more prominent texture to dark squares
+    style.backgroundImage = `
+      linear-gradient(${45 + variation * 10}deg, rgba(0,0,0,${
+      0.02 + variation * 0.03
+    }) 15%, transparent 15.5%, transparent 84.5%, rgba(0,0,0,${
+      0.02 + variation * 0.03
+    }) 85%),
+      linear-gradient(${
+        135 - variation * 15
+      }deg, transparent 48%, rgba(255,255,255,${
+      0.01 + variation * 0.02
+    }) 50%, transparent 52%)
+    `;
+    style.backgroundSize = `${8 + variation * 8}px ${
+      8 + variation * 8
+    }px, 100% 100%`; // Vary pattern size slightly
+  } else {
+    // Apply very subtle texture to light squares
+    style.backgroundImage = `
+      radial-gradient(circle at ${30 + variation * 40}% ${
+      30 + variation * 40
+    }%, rgba(255,255,255,0.05) 0%, transparent 50%)
+    `;
+    style.backgroundSize = "100% 100%";
+  }
 
   // If the square is hidden by Veil of Shadows, override all other styling
   if (isHidden) {
-    style.backgroundColor = "#0f172a"; // Dark background
+    style.backgroundColor = "#1a1a1a"; // Very dark grey/black
+    style.backgroundImage = "none"; // Remove wood grain when hidden
     style.boxShadow = "inset 0 0 15px rgba(0, 0, 0, 0.8)";
     style.filter = "brightness(0.3) contrast(0.7)";
     style.pointerEvents = "none"; // Disable interaction
+    style.border = "1px solid #000";
   } else {
     // Apply styles based on square state (in order of priority)
     if (isSelected) {
-      style.backgroundColor = "#3b82f6"; // Selected piece
-      style.boxShadow = "inset 0 0 0 3px #2563eb";
+      style.backgroundColor = "#8b5cf6"; // Adjusted selected color for contrast on wood
+      style.boxShadow = "inset 0 0 0 3px #6d28d9";
     } else if (isCheck) {
-      style.backgroundColor = "#ef4444"; // King in check
+      style.backgroundColor = "#dc2626"; // Adjusted check color
     } else if (isLastMove) {
-      style.boxShadow = "inset 0 0 0 3px #f59e0b"; // Last move
+      style.boxShadow = "inset 0 0 0 3px #d97706"; // Adjusted last move color
     }
 
     // Handle spell targeting visual indicators
     if (isTargeted) {
       style.boxShadow = "inset 0 0 0 3px #a855f7";
-      style.backgroundColor = isLight ? "#f5f3ff" : "#4c1d95";
+      style.backgroundColor = isLight ? "#f3e8ff" : "#5b21b6"; // Adjusted target colors
     }
 
     // Visual indicator for valid targets during spell casting
     if (isValidTarget) {
       style.boxShadow = "inset 0 0 0 3px #10b981";
-      style.backgroundColor = isLight ? "#ecfdf5" : "#064e3b";
-
-      // Debug log for valid targets
-      if (piece) {
-        console.log(
-          `Square ${square} is marked as valid target, has piece: ${piece.color} ${piece.type}`
-        );
-      } else {
-        console.log(`Square ${square} is marked as valid target, empty square`);
-      }
+      style.backgroundColor = isLight ? "#d1fae5" : "#047857"; // Adjusted valid target colors
     }
   }
 
