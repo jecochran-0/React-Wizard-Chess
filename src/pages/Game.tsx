@@ -165,114 +165,10 @@ const GameContent: React.FC = () => {
         }}
       />
 
-      {/* Header with game info */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 20px",
-          backgroundColor: "rgba(15, 23, 42, 0.8)",
-          borderBottom: "1px solid rgba(100, 116, 139, 0.3)",
-          backdropFilter: "blur(5px)",
-          transform: isGameLoaded ? "translateY(0)" : "translateY(-50px)",
-          opacity: isGameLoaded ? 1 : 0,
-          transition: "transform 1s ease-out, opacity 1s ease-out",
-          zIndex: 2,
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "24px",
-            fontWeight: "bold",
-            margin: 0,
-            background:
-              "linear-gradient(135deg, #ffb347 10%, #ffcc33 45%, #ffd700 70%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            textShadow: "0 0 10px rgba(255, 165, 0, 0.3)",
-          }}
-        >
-          Wizard's Chess
-        </h1>
-
-        <div style={{ display: "flex", gap: "20px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "4px 10px",
-              backgroundColor: "rgba(15, 23, 42, 0.7)",
-              borderRadius: "6px",
-              color: "white",
-            }}
-          >
-            <span>Turn:</span>
-            <span
-              style={{
-                fontWeight: "bold",
-                backgroundColor: currentPlayer === "w" ? "#d1d5db" : "black",
-                color: currentPlayer === "w" ? "#1e293b" : "white",
-                padding: "2px 8px",
-                borderRadius: "4px",
-              }}
-            >
-              {currentPlayer === "w" ? "White" : "Black"}
-            </span>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "4px 10px",
-              backgroundColor: "rgba(15, 23, 42, 0.7)",
-              borderRadius: "6px",
-              color: "white",
-            }}
-          >
-            <span>Mana:</span>
-            <span style={{ color: "#a855f7", fontWeight: "bold" }}>
-              {playerMana[currentPlayer]}/10
-            </span>
-          </div>
-
-          {/* Sound control button */}
-          <button
-            onClick={() => {
-              if (audioRef.current) {
-                audioRef.current.muted = !audioRef.current.muted;
-              }
-            }}
-            style={{
-              width: "32px",
-              height: "32px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              border: "1px solid rgba(255, 255, 255, 0.2)",
-              borderRadius: "4px",
-              color: "rgba(255, 255, 255, 0.7)",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              padding: 0,
-              fontSize: "16px",
-            }}
-            title="Toggle Music"
-          >
-            {audioRef.current?.muted ? "🔇" : "🔊"}
-          </button>
-        </div>
-      </div>
-
       {/* Main game area */}
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
           height: "calc(100vh - 60px)",
           width: "100%",
           opacity: isGameLoaded ? 1 : 0,
@@ -283,157 +179,33 @@ const GameContent: React.FC = () => {
           zIndex: 2,
         }}
       >
-        {/* Top section containing board and game log */}
+        {/* Spells panel - moved to left side */}
         <div
           style={{
             display: "flex",
-            flexGrow: 1,
-            justifyContent: "space-between",
-            width: "100%",
+            flexDirection: "column",
+            justifyContent: "center",
+            padding: "10px",
+            width: "200px",
+            margin: "0",
+            height: "100%",
+            transform: isGameLoaded ? "translateX(0)" : "translateX(-50px)",
+            opacity: isGameLoaded ? 1 : 0,
+            transition: "transform 1s ease-out, opacity 1s ease-out",
+            transitionDelay: "0.5s",
+            borderRight: "1px solid rgba(100, 116, 139, 0.2)",
           }}
         >
-          {/* Chess board - centered and larger */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              flexGrow: 1,
-              padding: "10px",
-              opacity: isGameLoaded ? 1 : 0,
-              transform: isGameLoaded ? "scale(1)" : "scale(0.9)",
-              transition: "opacity 1s ease-out, transform 1s ease-out",
-              transitionDelay: "0.7s",
-            }}
-          >
-            <ChessBoard />
-          </div>
-
-          {/* Game log - fixed width */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "8px",
-              padding: "10px",
-              backgroundColor: "rgba(15, 23, 42, 0.8)",
-              backdropFilter: "blur(5px)",
-              borderRadius: "0 0 0 8px",
-              width: "180px",
-              margin: "0",
-              color: "white",
-              height: "fit-content",
-              transform: isGameLoaded ? "translateX(0)" : "translateX(50px)",
-              opacity: isGameLoaded ? 1 : 0,
-              transition: "transform 1s ease-out, opacity 1s ease-out",
-              transitionDelay: "0.5s",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "14px",
-                margin: "0",
-                textAlign: "center",
-                borderBottom: "1px solid rgba(100, 116, 139, 0.5)",
-                paddingBottom: "6px",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-              onClick={() => setLogExpanded(!logExpanded)}
-            >
-              Game Log
-              <span>{logExpanded ? "▲" : "▼"}</span>
-            </h2>
-
-            {logExpanded && (
-              <div
-                style={{
-                  maxHeight: "400px",
-                  overflowY: "auto",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                  fontSize: "12px",
-                  marginTop: "4px",
-                  opacity: isGameLoaded ? 1 : 0,
-                  transition: "opacity 0.5s ease-out",
-                  transitionDelay: "1s",
-                }}
-              >
-                {gameLog.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "4px",
-                      color: "rgba(255, 255, 255, 0.6)",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    No moves yet
-                  </div>
-                ) : (
-                  gameLog.map((log, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        padding: "4px",
-                        backgroundColor: "rgba(100, 116, 139, 0.1)",
-                        borderRadius: "4px",
-                        opacity: isGameLoaded ? 1 : 0,
-                        transform: isGameLoaded
-                          ? "translateX(0)"
-                          : "translateX(10px)",
-                        transition:
-                          "opacity 0.3s ease-out, transform 0.3s ease-out",
-                        transitionDelay: `${1 + index * 0.05}s`,
-                      }}
-                    >
-                      {log}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Spells panel - moved to bottom */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "12px",
-            padding: "8px",
-            backgroundColor: "rgba(15, 23, 42, 0.8)",
-            backdropFilter: "blur(5px)",
-            borderRadius: "8px 8px 0 0",
-            margin: "0",
-            transform: isGameLoaded ? "translateY(0)" : "translateY(50px)",
-            opacity: isGameLoaded ? 1 : 0,
-            transition: "transform 1s ease-out, opacity 1s ease-out",
-            transitionDelay: "0.5s",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "12px",
-              fontWeight: "600",
-              margin: "0",
-              textAlign: "center",
-              paddingRight: "12px",
-              borderRight: "1px solid rgba(100, 116, 139, 0.5)",
-              color: "white",
-              alignSelf: "center",
-            }}
-          >
-            Your Spells
-          </h2>
-
-          <div
-            style={{
-              display: "flex",
               alignItems: "center",
-              gap: "12px",
+              justifyContent: "space-around",
+              gap: "30px",
+              flexGrow: 1,
+              paddingTop: "20px",
+              paddingBottom: "20px",
             }}
           >
             {spells.map((spell, index) => {
@@ -445,11 +217,13 @@ const GameContent: React.FC = () => {
                   style={{
                     opacity: isGameLoaded ? 1 : 0,
                     transform: isGameLoaded
-                      ? "translateY(0)"
-                      : "translateY(20px)",
+                      ? "scale(1.2)"
+                      : "translateY(20px) scale(1.2)",
                     transition:
                       "opacity 0.5s ease-out, transform 0.5s ease-out",
                     transitionDelay: `${0.6 + index * 0.1}s`,
+                    borderRadius: "6px",
+                    overflow: "hidden",
                   }}
                 >
                   <SpellCard
@@ -458,40 +232,303 @@ const GameContent: React.FC = () => {
                     isDisabled={false}
                     playerMana={playerMana[currentPlayer]}
                     onSelect={handleSpellSelect}
+                    showText={false}
                   />
                 </div>
               );
             })}
           </div>
 
+          {/* Keyboard shortcut for ending turn - visually hidden but functional */}
           <button
             onClick={handleEndTurn}
+            aria-label="End Turn"
+            title="Press to end turn"
             style={{
-              backgroundColor: "rgba(147, 51, 234, 0.9)",
-              color: "white",
-              padding: "8px 16px",
-              borderRadius: "4px",
-              fontWeight: "600",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.3s",
-              opacity: isGameLoaded ? 1 : 0,
-              transform: isGameLoaded ? "translateY(0)" : "translateY(20px)",
-              transitionDelay: "1.2s",
-              marginLeft: "auto",
-              alignSelf: "center",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(167, 71, 254, 0.9)";
-              e.currentTarget.style.transform = "translateY(-2px)";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(147, 51, 234, 0.9)";
-              e.currentTarget.style.transform = "translateY(0)";
+              position: "absolute",
+              width: "1px",
+              height: "1px",
+              padding: 0,
+              margin: "-1px",
+              overflow: "hidden",
+              clip: "rect(0, 0, 0, 0)",
+              whiteSpace: "nowrap",
+              border: 0,
             }}
           >
             End Turn
           </button>
+        </div>
+
+        {/* Center column with chess board */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            height: "100%",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Game board with header - moved together */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              transition: "all 0.5s ease-out",
+              transform: isGameLoaded ? "scale(1)" : "scale(0.9)",
+              width: "90%",
+              maxWidth: "900px",
+            }}
+          >
+            {/* Game info header - attached to the board */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px 20px",
+                width: "100%",
+                marginBottom: "8px",
+                backgroundColor: "rgba(15, 23, 42, 0.4)",
+                backdropFilter: "blur(3px)",
+                borderRadius: "8px 8px 0 0",
+                transform: isGameLoaded ? "translateY(0)" : "translateY(-20px)",
+                opacity: isGameLoaded ? 1 : 0,
+                transition: "transform 1s ease-out, opacity 1s ease-out",
+                transitionDelay: "0.4s",
+                borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRight: "1px solid rgba(30, 30, 60, 0.4)",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "4px 10px",
+                  backgroundColor: "rgba(15, 23, 42, 0.7)",
+                  borderRadius: "6px",
+                  color: "white",
+                }}
+              >
+                <span>Turn:</span>
+                <span
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor:
+                      currentPlayer === "w" ? "#d1d5db" : "black",
+                    color: currentPlayer === "w" ? "#1e293b" : "white",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  {currentPlayer === "w" ? "White" : "Black"}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "4px 10px",
+                  backgroundColor: "rgba(15, 23, 42, 0.7)",
+                  borderRadius: "6px",
+                  color: "white",
+                }}
+              >
+                <span>Mana:</span>
+                <span style={{ color: "#a855f7", fontWeight: "bold" }}>
+                  {playerMana[currentPlayer]}/10
+                </span>
+              </div>
+
+              {/* Sound control button */}
+              <button
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.muted = !audioRef.current.muted;
+                  }
+                }}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(0, 0, 0, 0.5)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  borderRadius: "4px",
+                  color: "rgba(255, 255, 255, 0.7)",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  padding: 0,
+                  fontSize: "16px",
+                }}
+                title="Toggle Music"
+              >
+                {audioRef.current?.muted ? "🔇" : "🔊"}
+              </button>
+            </div>
+
+            {/* Chess board - centered */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                width: "100%",
+                height: "85vh",
+                opacity: isGameLoaded ? 1 : 0,
+                transition: "opacity 1s ease-out",
+                transitionDelay: "0.7s",
+              }}
+            >
+              <div
+                style={{
+                  transform: "scale(1.8)",
+                  transformOrigin: "center center",
+                  maxHeight: "85vh",
+                }}
+              >
+                <ChessBoard />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Game log - with magical theme */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            padding: "12px",
+            background:
+              "linear-gradient(135deg, rgba(15, 23, 42, 0.5) 0%, rgba(44, 31, 75, 0.6) 100%)",
+            backdropFilter: "blur(3px)",
+            width: "180px",
+            margin: "10px 10px 10px 0",
+            color: "white",
+            height: "calc(100% - 20px)",
+            maxHeight: "calc(100vh - 80px)",
+            transform: isGameLoaded ? "translateX(0)" : "translateX(50px)",
+            opacity: isGameLoaded ? 1 : 0,
+            transition: "transform 1s ease-out, opacity 1s ease-out",
+            transitionDelay: "0.5s",
+            borderLeft: "1px solid rgba(100, 116, 139, 0.3)",
+            boxShadow: "inset 0 0 15px rgba(138, 43, 226, 0.15)",
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: "8px 0 0 8px",
+          }}
+        >
+          {/* Magical overlay for game log */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='40' stroke='rgba(138, 43, 226, 0.1)' fill='none' stroke-dasharray='5 3'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(138, 43, 226, 0.07)' fill='none'/%3E%3C/svg%3E")`,
+              backgroundSize: "200px 200px",
+              zIndex: -1,
+              opacity: 0.5,
+              pointerEvents: "none",
+            }}
+          />
+
+          <h2
+            style={{
+              fontSize: "14px",
+              margin: "0 0 12px 0",
+              textAlign: "center",
+              padding: "6px 0",
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              color: "rgba(255, 255, 255, 0.9)",
+              fontFamily: "'Cinzel', serif",
+              background:
+                "linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.2), transparent)",
+              borderBottom: "1px solid rgba(138, 43, 226, 0.3)",
+              position: "relative",
+              textShadow: "0 0 8px rgba(138, 43, 226, 0.5)",
+            }}
+            onClick={() => setLogExpanded(!logExpanded)}
+          >
+            <span style={{ margin: "0 auto" }}>Game Log</span>
+            <span style={{ position: "absolute", right: "0" }}>
+              {logExpanded ? "▲" : "▼"}
+            </span>
+          </h2>
+
+          {logExpanded && (
+            <div
+              style={{
+                flexGrow: 1,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                fontSize: "12px",
+                opacity: isGameLoaded ? 1 : 0,
+                transition: "opacity 0.5s ease-out",
+                transitionDelay: "1s",
+                height: "100%",
+                scrollbarWidth: "thin",
+                scrollbarColor: "rgba(138, 43, 226, 0.3) transparent",
+                padding: "0 4px",
+              }}
+            >
+              {gameLog.length === 0 ? (
+                <div
+                  style={{
+                    padding: "8px",
+                    color: "rgba(255, 255, 255, 0.6)",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    background: "rgba(0, 0, 0, 0.2)",
+                    borderRadius: "4px",
+                    border: "1px dashed rgba(138, 43, 226, 0.2)",
+                  }}
+                >
+                  No moves yet
+                </div>
+              ) : (
+                gameLog.map((log, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: "4px",
+                      opacity: isGameLoaded ? 1 : 0,
+                      transform: isGameLoaded
+                        ? "translateX(0)"
+                        : "translateX(10px)",
+                      transition:
+                        "opacity 0.3s ease-out, transform 0.3s ease-out",
+                      transitionDelay: `${1 + index * 0.05}s`,
+                      background: "rgba(15, 23, 42, 0.3)",
+                      borderLeft:
+                        index % 2 === 0
+                          ? "2px solid rgba(138, 43, 226, 0.4)"
+                          : "2px solid rgba(65, 105, 225, 0.4)",
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
 

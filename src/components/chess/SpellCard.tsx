@@ -29,6 +29,7 @@ interface SpellCardProps {
   isDisabled: boolean;
   playerMana: number;
   onSelect: (spellId: string) => void;
+  showText?: boolean;
 }
 
 const SpellCard: React.FC<SpellCardProps> = ({
@@ -37,6 +38,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
   isDisabled,
   playerMana,
   onSelect,
+  showText = true,
 }) => {
   // Check if player has enough mana
   const hasEnoughMana = playerMana >= spell.manaCost;
@@ -65,26 +67,28 @@ const SpellCard: React.FC<SpellCardProps> = ({
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            borderRadius: "4px 4px 0 0",
+            borderRadius: showText ? "3px 3px 0 0" : "3px",
           }}
         />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "0",
-            width: "100%",
-            backgroundColor: "rgba(15, 23, 42, 0.7)",
-            padding: "2px 4px",
-            fontSize: "9px",
-            color: "white",
-            textAlign: "center",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {spell.name}
-        </div>
+        {showText && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "0",
+              width: "100%",
+              backgroundColor: "rgba(15, 23, 42, 0.7)",
+              padding: "2px 4px",
+              fontSize: "9px",
+              color: "white",
+              textAlign: "center",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {spell.name}
+          </div>
+        )}
       </div>
     );
   };
