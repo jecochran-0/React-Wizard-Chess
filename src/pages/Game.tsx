@@ -486,7 +486,7 @@ const GameContent: React.FC = () => {
             justifyContent: "space-between",
             alignItems: "center",
             padding: "10px 20px",
-            width: "100%",
+            width: "calc(100% - 430px)", // Adjust width to match board container width
             marginBottom: "15px",
             backgroundColor: "rgba(15, 23, 42, 0.5)",
             backdropFilter: "blur(3px)",
@@ -501,6 +501,7 @@ const GameContent: React.FC = () => {
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L70 30 L30 30 Z' stroke='rgba(255,255,255,0.05)' fill='none'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(255,255,255,0.03)' fill='none'/%3E%3C/svg%3E")`,
             backgroundSize: "100px 100px",
+            marginLeft: "155px", // Align with board container
           }}
         >
           <div
@@ -718,7 +719,9 @@ const GameContent: React.FC = () => {
                         selectedSpell === spell.id
                           ? "pulse 1.5s infinite"
                           : "none",
+                      transformOrigin: "center center",
                     }}
+                    className="spell-card-hover"
                   >
                     <img
                       src={
@@ -1009,6 +1012,57 @@ const GameContent: React.FC = () => {
             0% { transform: scale(0) rotate(0deg); opacity: 0; }
             50% { opacity: 0.8; }
             100% { transform: scale(3) rotate(360deg); opacity: 0; }
+          }
+          
+          @keyframes rotate-magic {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse {
+            0% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
+            50% { box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); }
+            100% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
+          }
+          
+          .spell-card-hover {
+            transition: all 0.3s ease;
+            overflow: visible;
+          }
+          
+          .spell-card-hover:hover {
+            transform: translateY(-2px) scale(1.05);
+            z-index: 10;
+          }
+          
+          .spell-card-hover:hover::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+            background: linear-gradient(45deg, rgba(138, 43, 226, 0), rgba(138, 43, 226, 0.5), rgba(138, 43, 226, 0));
+            background-size: 200% 200%;
+            animation: shine 1.5s linear infinite;
+            border-radius: 5px;
+            z-index: -1;
+            opacity: 0.7;
+          }
+          
+          .spell-card-hover:hover::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            background: radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.3), transparent 70%);
+            filter: blur(5px);
+            z-index: -1;
+            opacity: 0.7;
+          }
+          
+          @keyframes shine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
           }
         `}
       </style>
