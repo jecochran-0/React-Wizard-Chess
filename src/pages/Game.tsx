@@ -7,6 +7,7 @@ import { Spell, SpellId } from "../types/types";
 import "../styles/SpellCard.css";
 import gameBackgroundImage from "/assets/Game_Background.png";
 import { useGame } from "../context/GameContext";
+import { SoundProvider, useSound } from "../context/SoundContext";
 
 const GameContent: React.FC = () => {
   const {
@@ -19,29 +20,37 @@ const GameContent: React.FC = () => {
     gameLog,
   } = useChess();
 
+  const {
+    playMoveSound,
+    playPieceDyingSound,
+    playSelectSound,
+    playSpellSelectedSound,
+    playKingCheckSound,
+    playKingCheckmateSound,
+    playSpellSound,
+    isMuted,
+    setIsMuted,
+  } = useSound();
+
   const [logExpanded, setLogExpanded] = useState(true);
   const [isGameLoaded, setIsGameLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Set a small timeout to allow for CSS transitions to begin
     setTimeout(() => {
       setIsGameLoaded(true);
     }, 100);
 
-    // Initialize background music with fade-in
     audioRef.current = new Audio("/assets/Sounds/wizardchess_battle_theme.mp3");
     audioRef.current.loop = true;
-    audioRef.current.volume = 0; // Start with 0 volume for fade-in
+    audioRef.current.volume = 0;
 
     const playPromise = audioRef.current.play();
 
-    // Handle autoplay restrictions
     if (playPromise !== undefined) {
       playPromise.catch((error) => {
         console.log("Audio autoplay prevented:", error);
 
-        // Add a one-time event listener for user interaction to start audio
         const startAudio = () => {
           if (audioRef.current) {
             audioRef.current
@@ -58,7 +67,6 @@ const GameContent: React.FC = () => {
       });
     }
 
-    // Fade in the audio
     const fadeInAudio = () => {
       const fadeInterval = setInterval(() => {
         if (audioRef.current && audioRef.current.volume < 0.6) {
@@ -71,7 +79,6 @@ const GameContent: React.FC = () => {
 
     fadeInAudio();
 
-    // Cleanup function
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -80,25 +87,70 @@ const GameContent: React.FC = () => {
     };
   }, []);
 
-  // Get spell objects from spell IDs
+  useEffect(() => {
+    if (gameLog.length > 0) {
+      const latestLog = gameLog[gameLog.length - 1];
+
+      if (latestLog.includes("captured")) {
+        playPieceDyingSound();
+      } else if (latestLog.includes("check")) {
+        playKingCheckSound();
+      } else if (latestLog.includes("checkmate")) {
+        playKingCheckmateSound();
+      } else if (latestLog.includes("cast")) {
+        const spellCastMatch = latestLog.match(/cast\s+(\w+)/i);
+        if (spellCastMatch && spellCastMatch[1]) {
+          const spellName = spellCastMatch[1].toLowerCase();
+
+          const spellId = Object.keys(spellSoundMap).find(
+            (id) =>
+              id.toLowerCase().includes(spellName) ||
+              spellName.includes(id.toLowerCase())
+          );
+
+          if (spellId) {
+            playSpellSound(spellId as SpellId);
+          }
+        }
+      } else if (latestLog.includes("moved")) {
+        playMoveSound();
+      }
+    }
+  }, [
+    gameLog,
+    playMoveSound,
+    playPieceDyingSound,
+    playKingCheckSound,
+    playKingCheckmateSound,
+    playSpellSound,
+  ]);
+
   const spells =
     playerSpells[currentPlayer]
       ?.map((id: SpellId) => getSpellById(id))
       .filter(Boolean) || [];
 
-  // Handle spell selection
   const handleSpellSelect = (spellId: SpellId) => {
+    playSpellSelectedSound();
+
     if (selectedSpell === spellId) {
-      // Deselect if already selected
       selectSpell(null);
     } else {
       selectSpell(spellId);
     }
   };
 
-  // Handle end turn button click
   const handleEndTurn = () => {
+    playSelectSound();
     endTurn();
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      const newMutedState = !audioRef.current.muted;
+      audioRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
+    }
   };
 
   return (
@@ -117,7 +169,6 @@ const GameContent: React.FC = () => {
         position: "relative",
       }}
     >
-      {/* Game entrance animation */}
       <div
         className="game-entrance-animation"
         style={{
@@ -129,7 +180,6 @@ const GameContent: React.FC = () => {
           transition: "opacity 1.5s ease-out",
         }}
       >
-        {/* Magical particles for entrance */}
         {Array.from({ length: 30 }, (_, i) => (
           <div
             key={`entrance-particle-${i}`}
@@ -151,7 +201,6 @@ const GameContent: React.FC = () => {
         ))}
       </div>
 
-      {/* Arcane overlay */}
       <div
         style={{
           position: "absolute",
@@ -165,7 +214,6 @@ const GameContent: React.FC = () => {
         }}
       />
 
-      {/* Main game area */}
       <div
         style={{
           display: "flex",
@@ -179,7 +227,6 @@ const GameContent: React.FC = () => {
           zIndex: 2,
         }}
       >
-        {/* Spells panel - moved to left side */}
         <div
           style={{
             display: "flex",
@@ -239,7 +286,6 @@ const GameContent: React.FC = () => {
             })}
           </div>
 
-          {/* Keyboard shortcut for ending turn - visually hidden but functional */}
           <button
             onClick={handleEndTurn}
             aria-label="End Turn"
@@ -260,7 +306,6 @@ const GameContent: React.FC = () => {
           </button>
         </div>
 
-        {/* Center column with chess board */}
         <div
           style={{
             display: "flex",
@@ -271,7 +316,6 @@ const GameContent: React.FC = () => {
             justifyContent: "center",
           }}
         >
-          {/* Game board with header - moved together */}
           <div
             style={{
               display: "flex",
@@ -283,7 +327,6 @@ const GameContent: React.FC = () => {
               maxWidth: "900px",
             }}
           >
-            {/* Game info header - attached to the board */}
             <div
               style={{
                 display: "flex",
@@ -348,13 +391,8 @@ const GameContent: React.FC = () => {
                 </span>
               </div>
 
-              {/* Sound control button */}
               <button
-                onClick={() => {
-                  if (audioRef.current) {
-                    audioRef.current.muted = !audioRef.current.muted;
-                  }
-                }}
+                onClick={toggleMute}
                 style={{
                   width: "32px",
                   height: "32px",
@@ -370,13 +408,12 @@ const GameContent: React.FC = () => {
                   padding: 0,
                   fontSize: "16px",
                 }}
-                title="Toggle Music"
+                title="Toggle Sound"
               >
-                {audioRef.current?.muted ? "🔇" : "🔊"}
+                {isMuted ? "🔇" : "🔊"}
               </button>
             </div>
 
-            {/* Chess board - centered */}
             <div
               style={{
                 display: "flex",
@@ -402,7 +439,6 @@ const GameContent: React.FC = () => {
           </div>
         </div>
 
-        {/* Game log - with magical theme */}
         <div
           style={{
             display: "flex",
@@ -427,7 +463,6 @@ const GameContent: React.FC = () => {
             borderRadius: "8px 0 0 8px",
           }}
         >
-          {/* Magical overlay for game log */}
           <div
             style={{
               position: "absolute",
@@ -532,7 +567,6 @@ const GameContent: React.FC = () => {
         </div>
       </div>
 
-      {/* CSS animations */}
       <style>
         {`
           @keyframes game-entrance-particle {
@@ -550,18 +584,19 @@ const Game: React.FC = () => {
   const { gameConfig } = useGame();
 
   return (
-    <ChessProvider>
-      <GameWithSpells selectedGameSpells={gameConfig.selectedSpells} />
-    </ChessProvider>
+    <SoundProvider>
+      <ChessProvider>
+        <GameWithSpells selectedGameSpells={gameConfig.selectedSpells} />
+      </ChessProvider>
+    </SoundProvider>
   );
 };
 
-// Map from kebab-case to camelCase
 const spellIdMapping: Record<string, string> = {
   "astral-swap": "astralSwap",
   "phantom-step": "phantomStep",
   "ember-crown": "emberCrown",
-  "arcane-anchor": "arcaneArmor", // Note: using arcaneArmor for arcane-anchor
+  "arcane-anchor": "arcaneArmor",
   "mistform-knight": "mistformKnight",
   "chrono-recall": "chronoRecall",
   "cursed-glyph": "cursedGlyph",
@@ -575,40 +610,45 @@ const spellIdMapping: Record<string, string> = {
   bonewalker: "raiseBonewalker",
 };
 
-// New component to handle setting spells
+const spellSoundMap: Record<string, string> = {
+  arcaneArmor: "ArcaneAnchor_effect.mp3",
+  astralSwap: "AstralSwap_effect.mp3",
+  chronoRecall: "ChronoRecall_effect.mp3",
+  cursedGlyph: "CursedGlyph_effect.mp3",
+  darkConversion: "DarkConversion_effect.mp3",
+  emberCrown: "EmberQueen_effect.mp3",
+  kingsGambit: "KingsGambit_effect.mp3",
+  mistformKnight: "Mistknight_effect.mp3",
+  nullfield: "Nullfield_effect.mp3",
+  phantomStep: "PhantomStep_Effect.mp3",
+  veilOfShadows: "VeilOfShadows_effect.mp3",
+};
+
 const GameWithSpells: React.FC<{ selectedGameSpells: Spell[] }> = ({
   selectedGameSpells,
 }) => {
   const { setPlayerSpells } = useChess();
 
-  // Adding a ref to track if we've already processed the spells
   const hasProcessedSpells = React.useRef(false);
 
   useEffect(() => {
-    // Only process spells once to avoid infinite console logs and rerenders
     if (
       selectedGameSpells &&
       selectedGameSpells.length > 0 &&
       !hasProcessedSpells.current
     ) {
-      // Set the flag to true so we don't reprocess
       hasProcessedSpells.current = true;
 
-      // Convert from game spells format to chess context format
       const spellIds = selectedGameSpells.map((spell) => {
-        // Use the mapping object to get the correct ID
         const spellId =
           spellIdMapping[spell.id] ||
-          // Fallback to regex replacement if not in mapping
           spell.id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 
         return spellId as SpellId;
       });
 
-      // Ensure we have exactly 5 spells for each player
       const validSpellIds = spellIds.slice(0, 5);
 
-      // Set the same spells for both players for now
       setPlayerSpells({
         w: validSpellIds,
         b: validSpellIds,

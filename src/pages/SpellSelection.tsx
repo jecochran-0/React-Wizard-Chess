@@ -216,6 +216,15 @@ const SpellSelection = () => {
   const handleStartGame = () => {
     if (selectedSpells.length !== 5 || isTransitioning) return;
 
+    // Play SpellsSelected effect sound
+    const spellsSelectedSound = new Audio(
+      "/assets/Sounds/SpellsSelected_effect.mp3"
+    );
+    spellsSelectedSound.volume = 0.8;
+    spellsSelectedSound
+      .play()
+      .catch((e) => console.log("Cannot play spell selection sound:", e));
+
     // Generate transition particles
     const particles = Array.from({ length: 120 }, () => ({
       x: Math.random() * 100,

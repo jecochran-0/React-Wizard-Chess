@@ -5,6 +5,7 @@ import SquareComponent from "./Square";
 import { getSpellById } from "../../utils/spells";
 import { SpellTargetType, Effect } from "../../types/types";
 import PieceTypeSelector from "./PieceTypeSelector";
+import { useSound } from "../../context/SoundContext";
 
 // Define a type for chess piece that matches the board state structure
 interface ChessPiece {
@@ -50,10 +51,14 @@ const ChessBoard: React.FC = () => {
   const [kingInCheck, setKingInCheck] = useState<Square | null>(null);
 
   // Add state for Dark Conversion piece selection
-  const [showPieceTypeSelector, setShowPieceTypeSelector] = useState(false);
+  const [showPieceConversionDialog, setShowPieceConversionDialog] =
+    useState(false);
   const [darkConversionTargets, setDarkConversionTargets] = useState<Square[]>(
     []
   );
+
+  // Add sound effects
+  const { playSelectSound, playMoveSound } = useSound();
 
   // Show a status message with automatic timeout
   const showStatusMessage = (message: string, duration = 3000) => {
@@ -344,20 +349,15 @@ const ChessBoard: React.FC = () => {
 
   // Handle square click
   const handleSquareClick = (square: Square) => {
-    // For Veil of Shadows spell, we want to cast it immediately when any square is clicked
-    if (selectedSpell === "veilOfShadows") {
-      // Cast the spell directly when any square is clicked
-      const success = castSpell(selectedSpell, []);
-      if (success) {
-        console.log(`Successfully cast Veil of Shadows`);
-        setSpellTargets([]);
-        setTargetingMode(null);
-        setValidTargets([]);
-        showStatusMessage(
-          "Veil of Shadows cast! Your opponent cannot see your half of the board for 2 turns.",
-          5000
-        );
-      }
+    // If we need to show a piece conversion dialog, don't do anything else
+    if (showPieceConversionDialog) {
+      return;
+    }
+
+    // If we're in targeting mode, handle spell targeting
+    if (targetingMode) {
+      handleSpellTargeting(square);
+      playSelectSound(); // Play selection sound for targeting
       return;
     }
 
@@ -449,10 +449,15 @@ const ChessBoard: React.FC = () => {
             );
           }, 100);
         }
+
+        // Play move sound (the actual move sound will be triggered by game log updates,
+        // but this ensures the user gets immediate feedback)
+        setTimeout(() => playMoveSound(), 50);
       } else {
         // If it's not a legal move, either select a new piece or deselect
         const piece = boardState[square as keyof typeof boardState];
         if (piece && piece.color === currentPlayer) {
+          playSelectSound(); // Play selection sound when selecting a piece
           selectPiece(square);
         } else {
           selectPiece(null);
@@ -478,6 +483,7 @@ const ChessBoard: React.FC = () => {
           return;
         }
 
+        playSelectSound(); // Play selection sound when selecting a piece
         selectPiece(square);
       }
     }
@@ -505,7 +511,7 @@ const ChessBoard: React.FC = () => {
 
       if (success) {
         setDarkConversionTargets([]);
-        setShowPieceTypeSelector(false);
+        setShowPieceConversionDialog(false);
         resetUI();
       }
     }
@@ -513,7 +519,7 @@ const ChessBoard: React.FC = () => {
 
   // Handle cancellation of piece type selection
   const handlePieceTypeSelectorCancel = () => {
-    setShowPieceTypeSelector(false);
+    setShowPieceConversionDialog(false);
 
     // Reset Dark Conversion targets
     setDarkConversionTargets([]);
@@ -698,7 +704,7 @@ const ChessBoard: React.FC = () => {
           // If we have all three pawns selected, open the piece selector immediately
           if (updatedTargets.length === 3) {
             console.log("All three pawns selected, opening piece selector");
-            setShowPieceTypeSelector(true);
+            setShowPieceConversionDialog(true);
           }
 
           return;
@@ -1169,7 +1175,7 @@ const ChessBoard: React.FC = () => {
 
       {/* Piece Type Selector Dialog for Dark Conversion */}
       <PieceTypeSelector
-        isOpen={showPieceTypeSelector}
+        isOpen={showPieceConversionDialog}
         onSelect={handlePieceTypeSelect}
         onCancel={handlePieceTypeSelectorCancel}
       />

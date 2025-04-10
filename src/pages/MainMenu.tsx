@@ -108,6 +108,11 @@ const MainMenu = () => {
 
   // Handle game start with transition
   const handleStartGame = () => {
+    // Play the MainMenuStart effect sound
+    const startSound = new Audio("/assets/Sounds/MainMenuStart_effect.mp3");
+    startSound.volume = 0.6;
+    startSound.play().catch((e) => console.log("Cannot play start sound:", e));
+
     // Generate transition particles
     const particles = Array.from({ length: 100 }, () => ({
       x: Math.random() * 100,
