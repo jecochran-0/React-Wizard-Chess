@@ -58,7 +58,7 @@ const ChessBoard: React.FC = () => {
   );
 
   // Add sound effects
-  const { playSelectSound, playMoveSound } = useSound();
+  const { playSelectSound, playMoveSound, playSpellSound } = useSound();
 
   // Show a status message with automatic timeout
   const showStatusMessage = (message: string, duration = 3000) => {
@@ -510,6 +510,7 @@ const ChessBoard: React.FC = () => {
       const success = castSpell(selectedSpell, pawnSquares, pieceType);
 
       if (success) {
+        playSpellSound(selectedSpell);
         setDarkConversionTargets([]);
         setShowPieceConversionDialog(false);
         resetUI();
@@ -549,6 +550,7 @@ const ChessBoard: React.FC = () => {
         setTargetingMode(null);
         setValidTargets([]);
         showStatusMessage(`${spell.name} cast successfully!`, 5000);
+        playSpellSound(selectedSpell);
       }
       return;
     }
@@ -566,6 +568,7 @@ const ChessBoard: React.FC = () => {
             if (success) {
               console.log(`Successfully cast Cursed Glyph on ${square}`);
               // The castSpell method in ChessContext will update the UI with the new glyph
+              playSpellSound(selectedSpell);
             } else {
               console.log(`Failed to cast Cursed Glyph on ${square}`);
               showStatusMessage(
@@ -587,6 +590,7 @@ const ChessBoard: React.FC = () => {
             console.log(`Successfully cast ${selectedSpell} on ${square}`);
             setSpellTargets([]);
             setTargetingMode(null);
+            playSpellSound(selectedSpell);
 
             // Show success message for Kings Gambit
             if (selectedSpell === "kingsGambit") {
@@ -672,6 +676,7 @@ const ChessBoard: React.FC = () => {
             setSpellTargets([]);
             setTargetingMode(null);
             setValidTargets([]);
+            playSpellSound(selectedSpell);
           }
         }
         break;
@@ -728,6 +733,7 @@ const ChessBoard: React.FC = () => {
               setSpellTargets([]);
               setTargetingMode(null);
               setValidTargets([]);
+              playSpellSound(selectedSpell);
             }
           }
         }
@@ -1029,6 +1035,7 @@ const ChessBoard: React.FC = () => {
                 "Veil of Shadows cast! Your opponent cannot see your half of the board for 2 turns.",
                 5000
               );
+              playSpellSound(selectedSpell);
             }
           }}
         >

@@ -2,6 +2,247 @@ import { useGame } from "../context/GameContext";
 import { PlayerColor } from "../types/game";
 import backgroundImage from "/assets/MainMenu_Background.png";
 import { useState, useEffect, useRef } from "react";
+import { SoundProvider, useSound } from "../context/SoundContext";
+
+// Settings Panel Component
+const SettingsPanel: React.FC<{
+  bgAudioRef: React.RefObject<HTMLAudioElement | null>;
+}> = ({ bgAudioRef }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const { volume, setVolume, playSelectSound } = useSound();
+  const [musicVolume, setMusicVolume] = useState(0.6);
+
+  // Initialize music volume state based on current audio volume
+  useEffect(() => {
+    if (bgAudioRef.current) {
+      setMusicVolume(bgAudioRef.current.volume);
+    }
+  }, [bgAudioRef]);
+
+  // Handle music volume change with throttling
+  const handleMusicVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setMusicVolume(newVolume);
+
+    // Set the music volume directly on the passed audio reference
+    if (bgAudioRef.current) {
+      bgAudioRef.current.volume = newVolume;
+
+      // If the music is currently muted but we're adjusting volume, unmute it
+      if (bgAudioRef.current.muted) {
+        bgAudioRef.current.muted = false;
+      }
+    }
+  };
+
+  // Handle effects volume change
+  const handleEffectsVolumeChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+
+    // Play a sound effect when changing volume to provide immediate feedback
+    playSelectSound();
+  };
+
+  // Settings icon to toggle panel
+  const SettingsIcon = () => (
+    <button
+      onClick={() => setIsOpen(!isOpen)}
+      style={{
+        width: "32px",
+        height: "32px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+        borderRadius: "4px",
+        color: "rgba(255, 255, 255, 0.7)",
+        cursor: "pointer",
+        transition: "all 0.2s",
+        padding: 0,
+        fontSize: "16px",
+        zIndex: 2000,
+      }}
+      title="Sound Settings"
+    >
+      ⚙️
+    </button>
+  );
+
+  return (
+    <>
+      <SettingsIcon />
+
+      {isOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50px",
+            right: "15px",
+            width: "280px",
+            backgroundColor: "rgba(15, 23, 42, 0.9)",
+            backdropFilter: "blur(8px)",
+            borderRadius: "12px",
+            padding: "20px",
+            color: "white",
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.3)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            zIndex: 2000,
+            transform: isOpen ? "translateY(0)" : "translateY(-20px)",
+            opacity: isOpen ? 1 : 0,
+            transition: "transform 0.3s ease, opacity 0.3s ease",
+            fontFamily: "'Cinzel', serif",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 20px 0",
+              fontSize: "1.2rem",
+              textAlign: "center",
+              backgroundImage:
+                "linear-gradient(135deg, #ffb347 10%, #ffcc33 45%, #ffd700 70%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+              textShadow: "0 0 10px rgba(255, 165, 0, 0.3)",
+            }}
+          >
+            Sound Settings
+          </h3>
+
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "0.9rem",
+              }}
+            >
+              Music Volume
+            </label>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={musicVolume}
+                onChange={handleMusicVolumeChange}
+                style={{
+                  flex: 1,
+                  height: "4px",
+                  accentColor: "#ffd700",
+                  background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${
+                    musicVolume * 100
+                  }%, #444 ${musicVolume * 100}%, #444 100%)`,
+                  outline: "none",
+                  WebkitAppearance: "none",
+                  cursor: "pointer",
+                }}
+              />
+              <span
+                style={{
+                  marginLeft: "10px",
+                  fontSize: "0.9rem",
+                  minWidth: "40px",
+                  textAlign: "right",
+                }}
+              >
+                {Math.round(musicVolume * 100)}%
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "0.9rem",
+              }}
+            >
+              Effect Volume
+            </label>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleEffectsVolumeChange}
+                style={{
+                  flex: 1,
+                  height: "4px",
+                  accentColor: "#ffd700",
+                  background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${
+                    volume * 100
+                  }%, #444 ${volume * 100}%, #444 100%)`,
+                  outline: "none",
+                  WebkitAppearance: "none",
+                  cursor: "pointer",
+                }}
+              />
+              <span
+                style={{
+                  marginLeft: "10px",
+                  fontSize: "0.9rem",
+                  minWidth: "40px",
+                  textAlign: "right",
+                }}
+              >
+                {Math.round(volume * 100)}%
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "20px",
+            }}
+          >
+            <button
+              onClick={() => setIsOpen(false)}
+              style={{
+                backgroundColor: "rgba(30, 41, 59, 0.8)",
+                color: "white",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontFamily: "'Cinzel', serif",
+                fontSize: "0.9rem",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(51, 65, 85, 0.8)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(30, 41, 59, 0.8)";
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+// Wrap the MainMenu export with SoundProvider
+export default function MainMenuWrapper() {
+  return (
+    <SoundProvider>
+      <MainMenu />
+    </SoundProvider>
+  );
+}
 
 const MainMenu = () => {
   const { gameConfig, selectPlayerColor, startGame } = useGame();
@@ -12,7 +253,6 @@ const MainMenu = () => {
     { x: number; y: number; delay: number; size: number; color: string }[]
   >([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionParticles, setTransitionParticles] = useState<
     {
@@ -96,14 +336,6 @@ const MainMenu = () => {
 
   const handleColorSelect = (color: PlayerColor) => {
     selectPlayerColor(color);
-  };
-
-  // Toggle mute function
-  const toggleMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !audioRef.current.muted;
-      setIsMuted(!isMuted);
-    }
   };
 
   // Handle game start with transition
@@ -198,53 +430,23 @@ const MainMenu = () => {
             padding: 0,
             fontSize: "16px",
           }}
-          title="Settings"
-          onClick={() => console.log("Settings clicked")}
-        >
-          ⚙️
-        </button>
-        <button
-          style={{
-            width: "32px",
-            height: "32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            borderRadius: "4px",
-            color: "rgba(255, 255, 255, 0.7)",
-            cursor: "pointer",
-            transition: "all 0.2s",
-            padding: 0,
-            fontSize: "16px",
-          }}
           title="Language"
           onClick={() => console.log("Language clicked")}
         >
           🌐
         </button>
-        <button
-          style={{
-            width: "32px",
-            height: "32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            borderRadius: "4px",
-            color: "rgba(255, 255, 255, 0.7)",
-            cursor: "pointer",
-            transition: "all 0.2s",
-            padding: 0,
-            fontSize: "16px",
-          }}
-          title={isMuted ? "Unmute Music" : "Mute Music"}
-          onClick={toggleMute}
-        >
-          {isMuted ? "🔇" : "🔊"}
-        </button>
+      </div>
+
+      {/* Settings in top right */}
+      <div
+        style={{
+          position: "absolute",
+          top: "15px",
+          right: "15px",
+          zIndex: 10,
+        }}
+      >
+        <SettingsPanel bgAudioRef={audioRef} />
       </div>
 
       {/* Ancient arcane overlay */}
@@ -895,5 +1097,3 @@ const MainMenu = () => {
     </div>
   );
 };
-
-export default MainMenu;

@@ -123,6 +123,7 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({
   // Update volume whenever it changes
   useEffect(() => {
     if (soundEffects.current) {
+      // Apply volume to all sound effects
       soundEffects.current.move.volume = volume;
       soundEffects.current.pieceDying.volume = volume;
       soundEffects.current.select.volume = volume * 0.4;
@@ -133,6 +134,18 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({
       // Update volume for all spell sounds
       Object.values(soundEffects.current.spellSounds).forEach((sound) => {
         sound.volume = volume;
+      });
+
+      // Also update the volume of any currently playing sounds
+      currentlyPlaying.current.forEach((sound) => {
+        // For UI sounds, keep their relative volume ratios
+        if (sound === soundEffects.current?.select) {
+          sound.volume = volume * 0.4;
+        } else if (sound === soundEffects.current?.spellSelected) {
+          sound.volume = volume * 0.6;
+        } else {
+          sound.volume = volume;
+        }
       });
     }
   }, [volume]);
