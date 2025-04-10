@@ -191,6 +191,18 @@ export class SpellEngine {
       return false;
     }
 
+    // Prevent pawns from being swapped to the back rank (ranks 1 and 8)
+    const rank1 = parseInt(square1.charAt(1));
+    const rank2 = parseInt(square2.charAt(1));
+
+    if (
+      (piece1.type === "p" && (rank2 === 1 || rank2 === 8)) ||
+      (piece2.type === "p" && (rank1 === 1 || rank1 === 8))
+    ) {
+      console.error("Cannot place pawns on the first or last rank");
+      return false;
+    }
+
     // Check if the swap would result in a king in check
     const tempBoard = new Chess(this.gameManager.getFEN());
 

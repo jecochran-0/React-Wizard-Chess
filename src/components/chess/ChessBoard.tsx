@@ -716,9 +716,63 @@ const ChessBoard: React.FC = () => {
         }
         // For the second selection of Astral Swap or other multi-target spells
         else {
+          // First, check if this square is a valid target
+          const isValidTarget = validTargets.includes(square);
+          if (!isValidTarget) {
+            console.log(`${square} is not a valid target for ${selectedSpell}`);
+            return;
+          }
+
           // Cast as Square[] to handle the multi-target case correctly
           const updatedTargets = [...(spellTargets as Square[]), square];
           setSpellTargets(updatedTargets);
+
+          // If this is the first target for Astral Swap, update valid targets for second selection
+          if (selectedSpell === "astralSwap" && updatedTargets.length === 1) {
+            console.log(`First piece selected for Astral Swap: ${square}`);
+
+            // Get the selected piece
+            const selectedPiece = boardState[square];
+
+            // Find valid targets for the second selection
+            const secondSelectionTargets: Square[] = [];
+
+            for (const squareKey in boardState) {
+              const targetSquare = squareKey as Square;
+              const targetPiece = boardState[targetSquare];
+
+              // Skip the square we already selected
+              if (targetSquare === square) continue;
+
+              // Make sure it's a valid piece owned by current player
+              if (targetPiece && targetPiece.color === currentPlayer) {
+                // If the first selection is a pawn, don't allow swapping with pieces on rank 1 or 8
+                if (selectedPiece.type === "p") {
+                  const rank = parseInt(targetSquare.charAt(1));
+                  if (rank !== 1 && rank !== 8) {
+                    secondSelectionTargets.push(targetSquare);
+                  }
+                }
+                // If the first selection is on rank 1 or 8, don't allow swapping with pawns
+                else {
+                  const selectedRank = parseInt(square.charAt(1));
+                  if (selectedRank === 1 || selectedRank === 8) {
+                    if (targetPiece.type !== "p") {
+                      secondSelectionTargets.push(targetSquare);
+                    }
+                  } else {
+                    secondSelectionTargets.push(targetSquare);
+                  }
+                }
+              }
+            }
+
+            console.log(
+              `Found ${secondSelectionTargets.length} valid targets for second Astral Swap selection`
+            );
+            setValidTargets(secondSelectionTargets);
+            return;
+          }
 
           // If we have the required number of targets, cast the spell
           if (

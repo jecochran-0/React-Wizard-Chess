@@ -57,6 +57,18 @@ export class SpellEngine {
     )
       return false;
 
+    // Prevent pawns from being swapped to the back rank (ranks 1 and 8)
+    const rank1 = parseInt(sq1.charAt(1));
+    const rank2 = parseInt(sq2.charAt(1));
+
+    if (
+      (piece1.piece[1].toLowerCase() === "p" && (rank2 === 1 || rank2 === 8)) ||
+      (piece2.piece[1].toLowerCase() === "p" && (rank1 === 1 || rank1 === 8))
+    ) {
+      console.error("Cannot place pawns on the first or last rank");
+      return false;
+    }
+
     // Simulate swap in a temp board to check if it results in check
     const tempChess = new Chess(this.chess.fen());
 
