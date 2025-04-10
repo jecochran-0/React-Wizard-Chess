@@ -70,9 +70,7 @@ const SpellSelection = () => {
     setSparklePositions(newSparkles);
 
     // Initialize background music with fade-in
-    audioRef.current = new Audio(
-      "/assets/Sounds/wizardchess_selection_theme.mp3"
-    );
+    audioRef.current = new Audio("/assets/Sounds/wizardchess_battle_theme.mp3");
     audioRef.current.loop = true;
     audioRef.current.volume = 0; // Start with 0 volume for fade-in
 
@@ -248,16 +246,8 @@ const SpellSelection = () => {
         .catch((e) => console.log("Cannot play transition sound:", e));
     }
 
-    // Fade out current music if not muted
-    if (audioRef.current && !audioRef.current.muted) {
-      const fadeAudio = setInterval(() => {
-        if (audioRef.current && audioRef.current.volume > 0.1) {
-          audioRef.current.volume -= 0.1;
-        } else {
-          clearInterval(fadeAudio);
-        }
-      }, 100);
-    }
+    // We're keeping the battle theme playing at its current volume
+    // instead of fading it out, so it continues into the game screen
 
     // Wait for animation to complete then navigate
     setTimeout(() => {

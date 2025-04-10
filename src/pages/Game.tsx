@@ -59,8 +59,38 @@ const GameContent: React.FC = () => {
   const matchStartSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // Initialize battle theme music right away
+    audioRef.current = new Audio("/assets/Sounds/wizardchess_battle_theme.mp3");
+    audioRef.current.loop = true;
+    audioRef.current.volume = 0.4; // Start at medium volume
+
+    // Try to play the audio
+    const playPromise = audioRef.current.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Handle autoplay restrictions
+        const startAudio = () => {
+          if (audioRef.current) {
+            audioRef.current
+              .play()
+              .catch((e) => console.log("Still cannot play audio:", e));
+          }
+          document.removeEventListener("click", startAudio);
+          document.removeEventListener("keydown", startAudio);
+        };
+
+        document.addEventListener("click", startAudio, { once: true });
+        document.addEventListener("keydown", startAudio, { once: true });
+      });
+    }
+
     // Set a small delay before starting the game load animations
     setTimeout(() => {
+      // Lower battle theme volume during transition
+      if (audioRef.current) {
+        audioRef.current.volume = 0.3; // Moderate volume during transition (increased from 0.15)
+      }
+
       // Play match start sound effect
       matchStartSoundRef.current = new Audio(
         "/assets/Sounds/MatchStart_effect.mp3"
@@ -76,49 +106,29 @@ const GameContent: React.FC = () => {
         setTransitionStep(2);
 
         setTimeout(() => {
-          // Transition step 3: Done, show game
+          // Add a final transition effect - fade to game
           setTransitionStep(3);
-          setShowMatchStartTransition(false);
-          setIsGameLoaded(true);
 
-          // Now initialize and fade in game music
-          audioRef.current = new Audio(
-            "/assets/Sounds/wizardchess_battle_theme.mp3"
-          );
-          audioRef.current.loop = true;
-          audioRef.current.volume = 0;
+          // Fade out transition screen over 1.5 seconds
+          setTimeout(() => {
+            // Now actually remove the transition screen and show the game
+            setShowMatchStartTransition(false);
+            setIsGameLoaded(true);
 
-          const playPromise = audioRef.current.play();
-
-          if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-              console.log("Audio autoplay prevented:", error);
-
-              const startAudio = () => {
-                if (audioRef.current) {
-                  audioRef.current
-                    .play()
-                    .catch((e) => console.log("Still cannot play audio:", e));
-                  fadeInAudio();
-                }
-                document.removeEventListener("click", startAudio);
-                document.removeEventListener("keydown", startAudio);
-              };
-
-              document.addEventListener("click", startAudio, { once: true });
-              document.addEventListener("keydown", startAudio, { once: true });
-            });
-          }
-
-          fadeInAudio();
+            // Increase the battle theme volume back up
+            fadeInAudio();
+          }, 1500); // 1.5 seconds for final fade out
         }, 2500); // 2.5 seconds for BEGIN display
       }, 2500); // 2.5 seconds for spells display
     }, 100);
 
     const fadeInAudio = () => {
+      if (!audioRef.current) return;
+
+      const targetVolume = 0.6; // Full volume after transition
       const fadeInterval = setInterval(() => {
-        if (audioRef.current && audioRef.current.volume < 0.3) {
-          audioRef.current.volume += 0.01;
+        if (audioRef.current && audioRef.current.volume < targetVolume) {
+          audioRef.current.volume += 0.02;
         } else {
           clearInterval(fadeInterval);
         }
@@ -219,6 +229,8 @@ const GameContent: React.FC = () => {
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
+          opacity: transitionStep === 3 ? 0 : 1,
+          transition: transitionStep === 3 ? "opacity 1.5s ease-out" : "none",
         }}
       >
         {/* Arcane particles */}
@@ -242,6 +254,35 @@ const GameContent: React.FC = () => {
             }}
           />
         ))}
+
+        {/* Transition particles that flow toward the game - only in Step 3 */}
+        {transitionStep === 3 &&
+          Array.from({ length: 80 }, (_, i) => (
+            <div
+              key={`flow-particle-${i}`}
+              style={{
+                position: "absolute",
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                width: `${2 + Math.random() * 4}px`,
+                height: `${2 + Math.random() * 4}px`,
+                borderRadius: "50%",
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                boxShadow: `0 0 8px 3px ${
+                  [
+                    "rgba(138, 43, 226, 0.7)",
+                    "rgba(65, 105, 225, 0.7)",
+                    "rgba(255, 165, 0, 0.7)",
+                  ][Math.floor(Math.random() * 3)]
+                }`,
+                opacity: 0.8,
+                animation: `flow-to-center 1.5s forwards ease-in ${
+                  Math.random() * 0.8
+                }s`,
+                zIndex: 10,
+              }}
+            />
+          ))}
 
         {/* Transition content */}
         <div
@@ -367,6 +408,28 @@ const GameContent: React.FC = () => {
               BEGIN!
             </h1>
           )}
+
+          {/* Step 3: Final transition - text expands and fades */}
+          {transitionStep === 3 && (
+            <h1
+              style={{
+                fontSize: "7rem",
+                fontFamily: "'Cinzel', serif",
+                backgroundImage:
+                  "linear-gradient(135deg, #ffb347 10%, #ffcc33 45%, #ffd700 70%, #ffe766 90%)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                WebkitTextStroke: "2px rgba(255, 255, 255, 0.3)",
+                textShadow:
+                  "0 0 30px rgba(255, 165, 0, 0.9), 0 0 60px rgba(255, 140, 0, 0.7)",
+                animation: "expand-fade 1.5s forwards",
+                opacity: 1,
+              }}
+            >
+              BEGIN!
+            </h1>
+          )}
         </div>
 
         {/* CSS Animations */}
@@ -395,6 +458,26 @@ const GameContent: React.FC = () => {
             @keyframes float-particle {
               0%, 100% { transform: translateY(0) scale(1); }
               50% { transform: translateY(-20px) scale(1.2); }
+            }
+            
+            @keyframes expand-fade {
+              0% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.5); opacity: 0.7; }
+              100% { transform: scale(3); opacity: 0; }
+            }
+            
+            @keyframes flow-to-center {
+              0% { transform: scale(1); }
+              100% { 
+                transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)) scale(0.5);
+                opacity: 0;
+              }
+            }
+            
+            @keyframes burst-out {
+              0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+              50% { opacity: 0.8; }
+              100% { transform: translate(-50%, -50%) scale(20) rotate(180deg); opacity: 0; }
             }
           `}
         </style>
@@ -425,26 +508,33 @@ const GameContent: React.FC = () => {
           inset: 0,
           pointerEvents: "none",
           zIndex: 10,
-          opacity: isGameLoaded ? 0 : 1,
-          transition: "opacity 1.5s ease-out",
+          opacity: isGameLoaded ? 1 : 0,
+          transition: "opacity 0.8s ease-in",
         }}
       >
-        {Array.from({ length: 30 }, (_, i) => (
+        {/* Entry burst effect - particles radiate from center when game loads */}
+        {Array.from({ length: 50 }, (_, i) => (
           <div
             key={`entrance-particle-${i}`}
             style={{
               position: "absolute",
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              width: `${4 + Math.random() * 8}px`,
-              height: `${4 + Math.random() * 8}px`,
+              top: "50%",
+              left: "50%",
+              width: `${2 + Math.random() * 6}px`,
+              height: `${2 + Math.random() * 6}px`,
               borderRadius: "50%",
               backgroundColor: "#fff",
-              boxShadow: "0 0 15px 5px rgba(135, 206, 250, 0.8)",
+              boxShadow: `0 0 10px 2px ${
+                [
+                  "rgba(138, 43, 226, 0.7)",
+                  "rgba(65, 105, 225, 0.7)",
+                  "rgba(255, 165, 0, 0.7)",
+                ][Math.floor(Math.random() * 3)]
+              }`,
               opacity: 0,
-              animation: `game-entrance-particle 1.5s ease-out ${
-                Math.random() * 0.5
-              }s forwards`,
+              animation: `burst-out 1.2s forwards ease-out ${
+                0.1 + Math.random() * 0.5
+              }s`,
             }}
           />
         ))}
