@@ -561,6 +561,21 @@ const SpellSelection = () => {
                   }}
                 />
 
+                {/* Description overlay that appears on hover */}
+                <div className="description-overlay">
+                  <div className="spell-name">{spell.name}</div>
+                  <div className="spell-description">{spell.description}</div>
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontSize: "10px",
+                      color: "#93c5fd",
+                    }}
+                  >
+                    Cost: {spell.manaCost} mana
+                  </div>
+                </div>
+
                 {/* Selection Checkmark */}
                 {isSpellSelected(spell.id) && (
                   <div
@@ -861,6 +876,49 @@ const SpellSelection = () => {
             top: 60%;
             left: 150%;
             transition: all 0.7s;
+          }
+          
+          /* Description overlay styles */
+          .description-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.85);
+            color: white;
+            padding: 10px;
+            font-size: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            border-radius: 1rem;
+            border: 1px solid rgba(138, 43, 226, 0.5);
+            overflow: hidden;
+          }
+          
+          .spell-card-container:hover .description-overlay {
+            opacity: 1;
+          }
+          
+          .description-overlay .spell-name {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #93c5fd;
+            font-family: 'Cinzel', serif;
+          }
+          
+          .description-overlay .spell-description {
+            line-height: 1.4;
+            padding: 0 5px;
+            margin-bottom: 5px;
           }
         `}
       </style>

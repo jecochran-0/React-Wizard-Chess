@@ -1226,6 +1226,23 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                       }}
                     />
 
+                    {/* Description overlay that appears on hover */}
+                    <div className="description-overlay">
+                      <div className="spell-name">{spell.name}</div>
+                      <div className="spell-description">
+                        {spell.description}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          fontSize: "10px",
+                          color: "#93c5fd",
+                        }}
+                      >
+                        Cost: {spell.manaCost} mana
+                      </div>
+                    </div>
+
                     {/* Mana cost badge */}
                     <div
                       style={{
@@ -1524,11 +1541,52 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
           .spell-card-hover {
             transition: all 0.3s ease;
             overflow: visible;
+            position: relative;
           }
           
           .spell-card-hover:hover {
             transform: translateY(-2px) scale(1.05);
             z-index: 10;
+          }
+          
+          /* Description overlay that appears on hover */
+          .spell-card-hover .description-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.85);
+            color: white;
+            padding: 8px;
+            font-size: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 5;
+            border: 1px solid rgba(138, 43, 226, 0.5);
+            overflow: hidden;
+          }
+          
+          .spell-card-hover:hover .description-overlay {
+            opacity: 1;
+          }
+          
+          .description-overlay .spell-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 11px;
+            color: #93c5fd;
+            font-family: 'Cinzel', serif;
+          }
+          
+          .description-overlay .spell-description {
+            line-height: 1.3;
           }
           
           .spell-card-hover:hover::before {
@@ -1542,16 +1600,6 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             background-size: 200% 200%;
             animation: shine 1.5s linear infinite;
             border-radius: 5px;
-            z-index: -1;
-            opacity: 0.7;
-          }
-          
-          .spell-card-hover:hover::after {
-            content: '';
-            position: absolute;
-            inset: -3px;
-            background: radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.3), transparent 70%);
-            filter: blur(5px);
             z-index: -1;
             opacity: 0.7;
           }
@@ -1585,6 +1633,16 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
           .custom-scrollbar {
             scrollbar-width: thin;
             scrollbar-color: rgba(138, 43, 226, 0.4) rgba(15, 23, 42, 0.3);
+          }
+          
+          .spell-card-hover:hover::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            background: radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.3), transparent 70%);
+            filter: blur(5px);
+            z-index: -1;
+            opacity: 0.7;
           }
         `}
       </style>
