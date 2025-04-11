@@ -9,14 +9,7 @@ import { Chess, Square, Color } from "chess.js";
 import GameManager from "../game/GameManager";
 import { ComputerPlayer } from "../game/ComputerPlayer";
 import { useGame } from "./GameContext";
-import {
-  PieceMeta,
-  SpellId,
-  PlayerSpells,
-  SpellTarget,
-  SpellTargetType,
-  Effect,
-} from "../types/types";
+import { PieceMeta, SpellId, PlayerSpells, Effect } from "../types/types";
 
 // Define the context type
 export interface ChessContextType {
@@ -44,6 +37,9 @@ export interface ChessContextType {
     pieceType?: "n" | "b"
   ) => boolean;
   endTurn: () => void;
+
+  // Function to trigger computer move (async)
+  triggerComputerMove: () => Promise<void>;
 
   // Game setup
   setPlayerSpells: (playerSpells: PlayerSpells) => void;
@@ -94,6 +90,9 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   const [computerPlayer, setComputerPlayer] = useState<ComputerPlayer | null>(
     null
   );
+
+  // State to track if computer is thinking
+  const [isComputerThinking, setIsComputerThinking] = useState(false);
 
   // Initialize computer player based on game config
   useEffect(() => {
@@ -170,7 +169,23 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     } else {
       setLegalMoves([]);
     }
-  }, [selectedPiece, gameManager, boardState]);
+
+    // If it's the computer's turn immediately after initialization, trigger its move
+    if (
+      computerPlayer &&
+      gameManager.getCurrentPlayer() === computerPlayer.getColor() &&
+      !isComputerThinking
+    ) {
+      console.log("Game initialized, triggering computer's first move...");
+      triggerComputerMove();
+    }
+  }, [
+    selectedPiece,
+    gameManager,
+    boardState,
+    computerPlayer,
+    isComputerThinking,
+  ]);
 
   // Update game state after moves
   useEffect(() => {
@@ -241,6 +256,60 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Function to update state after any move (player or computer)
+  const updateStateAfterAction = () => {
+    setCurrentPlayer(gameManager.getCurrentPlayer());
+    setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+    setPlayerMana(gameManager.getPlayerMana());
+    setGameLog(gameManager.getGameLog());
+    setBoardGlyphs(gameManager.getGlyphs());
+    setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
+    // Clear selections
+    setSelectedPiece(null);
+    setSelectedSpell(null);
+    console.log("State updated after action.");
+  };
+
+  // Function to trigger computer move
+  const triggerComputerMove = async () => {
+    if (
+      computerPlayer &&
+      gameManager.getCurrentPlayer() === computerPlayer.getColor() &&
+      !isComputerThinking
+    ) {
+      console.log("Triggering computer move...");
+      // Set thinking state immediately for UI feedback
+      setIsComputerThinking(true);
+
+      // Add a delay to simulate thinking
+      await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms thinking delay
+
+      try {
+        const moveMade = await computerPlayer.makeMove();
+        if (moveMade) {
+          console.log("Computer finished its turn.");
+          // State update will happen naturally as GameManager state changes are reflected,
+          // or potentially triggered by the completion of the computer's move.
+          // We might need explicit update here depending on async timing
+          updateStateAfterAction();
+        } else {
+          console.log("Computer move failed or no action taken.");
+          // Handle game end state? Checkmate/Stalemate?
+        }
+      } catch (error) {
+        console.error("Error during computer turn:", error);
+      } finally {
+        setIsComputerThinking(false);
+      }
+    } else {
+      if (isComputerThinking) {
+        console.log("Computer is already thinking.");
+      } else {
+        console.log("Not computer's turn or computer not enabled.");
+      }
+    }
+  };
+
   // Make a move
   const makeMove = (from: Square, to: Square): boolean => {
     const movingPiece = boardState[from as Square];
@@ -278,21 +347,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
         // Don't clear selection for Kings Gambit so the player can select the king again
         // But we're now selecting the king at its new position in the ChessBoard component
       } else {
-        // Normal move - update UI state after the move
-        setCurrentPlayer(gameManager.getCurrentPlayer());
-        setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
-        setPlayerMana(gameManager.getPlayerMana());
-        setGameLog(gameManager.getGameLog());
-        // Also update the turn number
-        setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
-
-        // Explicitly update the glyphs after the move to ensure triggered glyphs are removed from UI
-        const updatedGlyphs = gameManager.getGlyphs();
-        setBoardGlyphs(updatedGlyphs);
-        console.log("Updated board glyphs after move:", updatedGlyphs);
-
-        // Clear selection
-        setSelectedPiece(null);
+        // Normal move - update state
+        updateStateAfterAction();
       }
 
       // Trigger computer move if it's its turn
@@ -303,20 +359,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
         gameManager.getCurrentPlayer() === computerPlayer.getColor()
       ) {
         console.log("Move successful, triggering computer's turn...");
-        setTimeout(() => {
-          if (computerPlayer.makeMove()) {
-            setCurrentPlayer(gameManager.getCurrentPlayer());
-            setBoardState(
-              gameManager.getBoardState() as Record<Square, PieceMeta>
-            );
-            setPlayerMana(gameManager.getPlayerMana());
-            setGameLog(gameManager.getGameLog());
-            setBoardGlyphs(gameManager.getGlyphs());
-            setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
-          } else {
-            console.log("Computer move failed or no moves available.");
-          }
-        }, 500);
+        // Trigger async computer move
+        triggerComputerMove();
       }
     }
 
@@ -339,39 +383,17 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
       const result = gameManager.castSpell(spellId, targetInfo, pieceType);
 
       if (result) {
-        // Update UI state after spell cast
-        setCurrentPlayer(gameManager.getCurrentPlayer());
-        setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
-        setPlayerMana(gameManager.getPlayerMana());
-        setGameLog(gameManager.getGameLog());
-        setBoardGlyphs(gameManager.getGlyphs());
-        // Also update the turn number
-        setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
+        // Update state after spell cast
+        updateStateAfterAction();
 
-        // Clear spell selection
-        setSelectedSpell(null);
-
-        // Trigger computer move if it's its turn after spell cast
+        // Trigger computer move if it's its turn
         if (
           result &&
           computerPlayer &&
           gameManager.getCurrentPlayer() === computerPlayer.getColor()
         ) {
           console.log("Spell cast successful, triggering computer's turn...");
-          setTimeout(() => {
-            if (computerPlayer.makeMove()) {
-              setCurrentPlayer(gameManager.getCurrentPlayer());
-              setBoardState(
-                gameManager.getBoardState() as Record<Square, PieceMeta>
-              );
-              setPlayerMana(gameManager.getPlayerMana());
-              setGameLog(gameManager.getGameLog());
-              setBoardGlyphs(gameManager.getGlyphs());
-              setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
-            } else {
-              console.log("Computer move failed or no moves available.");
-            }
-          }, 500);
+          triggerComputerMove();
         }
       }
 
@@ -382,45 +404,17 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     const result = gameManager.castSpell(spellId, targets);
 
     if (result) {
-      // Update UI state after spell cast
-      setCurrentPlayer(gameManager.getCurrentPlayer());
-      setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
-      setPlayerMana(gameManager.getPlayerMana());
-      setGameLog(gameManager.getGameLog());
-      // Also update the turn number
-      setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
+      // Update state after standard spell cast
+      updateStateAfterAction();
 
-      // Explicitly update the glyphs after casting a spell
-      setBoardGlyphs(gameManager.getGlyphs());
-      console.log(
-        "Updated board glyphs after spell cast:",
-        gameManager.getGlyphs()
-      );
-
-      // Clear spell selection
-      setSelectedSpell(null);
-
-      // Trigger computer move if it's its turn after standard spell cast
+      // Trigger computer move if it's its turn
       if (
         result &&
         computerPlayer &&
         gameManager.getCurrentPlayer() === computerPlayer.getColor()
       ) {
         console.log("Spell cast successful, triggering computer's turn...");
-        setTimeout(() => {
-          if (computerPlayer.makeMove()) {
-            setCurrentPlayer(gameManager.getCurrentPlayer());
-            setBoardState(
-              gameManager.getBoardState() as Record<Square, PieceMeta>
-            );
-            setPlayerMana(gameManager.getPlayerMana());
-            setGameLog(gameManager.getGameLog());
-            setBoardGlyphs(gameManager.getGlyphs());
-            setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
-          } else {
-            console.log("Computer move failed or no moves available.");
-          }
-        }, 500);
+        triggerComputerMove();
       }
     }
 
@@ -436,16 +430,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     // Call endTurn on the game manager
     gameManager.endTurn();
 
-    // Update UI state after ending turn
-    setCurrentPlayer(gameManager.getCurrentPlayer());
-    setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
-    setPlayerMana(gameManager.getPlayerMana());
-    setGameLog(gameManager.getGameLog());
-    setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
-
-    // Clear selections
-    setSelectedPiece(null);
-    setSelectedSpell(null);
+    // Update state after ending human turn
+    updateStateAfterAction();
 
     // After human ends turn, check if it's computer's turn
     if (
@@ -453,20 +439,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
       gameManager.getCurrentPlayer() === computerPlayer.getColor()
     ) {
       console.log("Human ended turn, triggering computer's turn...");
-      setTimeout(() => {
-        if (computerPlayer.makeMove()) {
-          setCurrentPlayer(gameManager.getCurrentPlayer());
-          setBoardState(
-            gameManager.getBoardState() as Record<Square, PieceMeta>
-          );
-          setPlayerMana(gameManager.getPlayerMana());
-          setGameLog(gameManager.getGameLog());
-          setBoardGlyphs(gameManager.getGlyphs());
-          setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
-        } else {
-          console.log("Computer move failed or no moves available.");
-        }
-      }, 500);
+      triggerComputerMove();
     }
   };
 
@@ -497,6 +470,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     selectedSpell,
     legalMoves,
     currentTurnNumber,
+    triggerComputerMove,
     selectPiece,
     selectSpell,
     makeMove,

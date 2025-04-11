@@ -45,10 +45,10 @@ export class ComputerPlayer {
   }
 
   /**
-   * Makes a move as the computer player
-   * @returns boolean indicating success
+   * Asynchronously makes a move as the computer player (spell and/or standard move).
+   * @returns Promise<boolean> indicating if a primary action (spell or move) was successfully initiated.
    */
-  makeMove(): boolean {
+  async makeMove(): Promise<boolean> {
     // Check if it's the computer's turn
     if (this.gameManager.getCurrentPlayer() !== this.color) {
       console.log("Not computer's turn");
@@ -89,65 +89,39 @@ export class ComputerPlayer {
 
         if (success) {
           console.log("Computer successfully cast spell");
-          // Don't end turn here - the game manager does that for us
-          return true;
+          // CRITICAL CHECK: Did the spell end the turn?
+          if (this.gameManager.getCurrentPlayer() === this.color) {
+            console.log(
+              "Spell did not end turn. Computer attempting standard move..."
+            );
+            // Get fresh possible moves AFTER the spell potentially changed the board
+            const movesAfterSpell = this.getAllPossibleMoves();
+
+            // Add a delay before making the standard move
+            await new Promise((resolve) => setTimeout(resolve, 750)); // 750ms delay
+
+            console.log("Executing delayed standard move after spell.");
+            if (this.gameManager.getCurrentPlayer() === this.color) {
+              // Wait for the standard move to complete as well
+              await this._makeStandardMove(movesAfterSpell);
+            } else {
+              console.warn(
+                "Computer turn ended before delayed move could execute."
+              );
+            }
+          } else {
+            console.log("Spell ended the turn.");
+          }
+          return true; // Spell cast was the main action, return true
         }
       } catch (error) {
         console.error("Error while computer casting spell:", error);
       }
     }
 
-    // If we didn't cast a spell or it failed, make a regular move
-    let moveDecision;
-
-    try {
-      // Select move based on difficulty
-      switch (this.difficulty) {
-        case "easy":
-          moveDecision = this.getRandomMove(possibleMoves);
-          break;
-        case "medium":
-          moveDecision = this.getBasicTacticalMove(possibleMoves);
-          break;
-        case "hard":
-          moveDecision = this.getAdvancedStrategicMove(possibleMoves);
-          break;
-      }
-
-      if (moveDecision) {
-        console.log(
-          `Computer moving from ${moveDecision.from} to ${moveDecision.to}`
-        );
-
-        // Try to make the move using the game manager
-        const success = this.gameManager.makeMove(
-          moveDecision.from,
-          moveDecision.to
-        );
-
-        if (success) {
-          console.log("Computer successfully made move");
-          // Don't end turn here - the game manager does that for us
-          return true;
-        } else {
-          console.warn("Computer move failed - trying random move instead");
-          // Try a random move as fallback
-          const randomMove = this.getRandomMove(possibleMoves);
-          if (randomMove) {
-            const fallbackSuccess = this.gameManager.makeMove(
-              randomMove.from,
-              randomMove.to
-            );
-            return fallbackSuccess;
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error during computer move:", error);
-    }
-
-    console.warn("Computer failed to make a move");
-    return false;
+    // If we didn't cast a spell, or spell failed, make a standard move
+    console.log("Computer attempting standard move (no spell cast).");
+    return this._makeStandardMove(possibleMoves);
   }
 
   /**
@@ -665,5 +639,71 @@ export class ComputerPlayer {
    */
   setDifficulty(difficulty: "easy" | "medium" | "hard"): void {
     this.difficulty = difficulty;
+  }
+
+  /**
+   * Asynchronously attempts to make a standard chess move based on difficulty.
+   * @param possibleMoves - List of available legal moves.
+   * @returns Promise<boolean> indicating if a move was successfully made.
+   */
+  private async _makeStandardMove(
+    possibleMoves: Array<{ from: Square; to: Square }>
+  ): Promise<boolean> {
+    if (possibleMoves.length === 0) {
+      console.log("Computer has no standard moves available.");
+      return false;
+    }
+
+    let moveDecision;
+
+    try {
+      // Select move based on difficulty
+      switch (this.difficulty) {
+        case "easy":
+          moveDecision = this.getRandomMove(possibleMoves);
+          break;
+        case "medium":
+          moveDecision = this.getBasicTacticalMove(possibleMoves);
+          break;
+        case "hard":
+          moveDecision = this.getAdvancedStrategicMove(possibleMoves);
+          break;
+        default:
+          moveDecision = this.getRandomMove(possibleMoves); // Fallback
+          break;
+      }
+
+      if (moveDecision) {
+        console.log(
+          `Computer attempting standard move: ${moveDecision.from} to ${moveDecision.to}`
+        );
+
+        // Try to make the move using the game manager (assuming makeMove is synchronous)
+        const success = this.gameManager.makeMove(
+          moveDecision.from,
+          moveDecision.to
+        );
+
+        if (success) {
+          console.log("Computer successfully made standard move");
+          return true;
+        } else {
+          console.warn(
+            "Computer standard move failed (potentially invalid after spell?)"
+          );
+          // Optionally, could try a random move as fallback, but might be complex if state changed mid-turn
+        }
+      } else {
+        console.warn("Could not decide on a standard move.");
+      }
+    } catch (error) {
+      console.error(
+        "Error during computer standard move selection/execution:",
+        error
+      );
+    }
+
+    console.warn("Computer failed to execute a standard move this attempt.");
+    return false;
   }
 }
