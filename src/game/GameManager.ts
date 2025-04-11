@@ -188,6 +188,19 @@ class GameManager {
     return moves.map((move) => move.to as Square);
   }
 
+  // Initialize player color - this doesn't change the game state
+  // but helps track which color the human player has chosen
+  initializePlayerColor(color: Color): void {
+    // This is primarily used to indicate the player's preference
+    // for board orientation in the UI, not changing game logic
+    console.log(
+      `Initializing player perspective as ${color === "w" ? "White" : "Black"}`
+    );
+
+    // We don't actually change the game's turn or board state here
+    // The board rendering will use this information to flip the board if needed
+  }
+
   // Make a chess move
   makeMove(from: Square, to: Square, promotionPiece?: PieceSymbol): boolean {
     try {

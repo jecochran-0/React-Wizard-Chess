@@ -7,6 +7,7 @@ import "../styles/SpellCard.css";
 import gameBackgroundImage from "/assets/Game_Background.png";
 import { useGame } from "../context/GameContext";
 import { SoundProvider, useSound } from "../context/SoundContext";
+import { Color } from "chess.js";
 
 // Settings Panel Component
 const SettingsPanel: React.FC<{
@@ -288,7 +289,7 @@ const spellImageMapping: Record<string, string> = {
   bonewalker: "/assets/Chess_Spells/Raise_The_Bonewalker.png",
 };
 
-const GameContent: React.FC = () => {
+const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
   const {
     currentPlayer,
     playerMana,
@@ -752,22 +753,17 @@ const GameContent: React.FC = () => {
             
             @keyframes expand-fade {
               0% { transform: scale(1); opacity: 1; }
-              50% { transform: scale(1.5); opacity: 0.7; }
-              100% { transform: scale(3); opacity: 0; }
+              50% { transform: scale(2.5); opacity: 0; }
             }
             
             @keyframes flow-to-center {
-              0% { transform: scale(1); }
-              100% { 
-                transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)) scale(0.5);
-                opacity: 0;
-              }
+              0% { transform: translateX(0) translateY(0); opacity: 0.8; }
+              100% { transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)); opacity: 0; }
             }
             
             @keyframes burst-out {
-              0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-              50% { opacity: 0.8; }
-              100% { transform: translate(-50%, -50%) scale(20) rotate(180deg); opacity: 0; }
+              0% { transform: scale(1); opacity: 1; }
+              100% { transform: scale(3); opacity: 0; }
             }
           `}
         </style>
@@ -1255,7 +1251,7 @@ const GameContent: React.FC = () => {
                   transformOrigin: "center center",
                 }}
               >
-                <ChessBoard />
+                <ChessBoard playerPerspective={playerColor} />
               </div>
             </div>
           </div>
@@ -1560,7 +1556,8 @@ const spellSoundMap: Record<string, string> = {
 const GameWithSpells: React.FC<{ selectedGameSpells: Spell[] }> = ({
   selectedGameSpells,
 }) => {
-  const { setPlayerSpells } = useChess();
+  const { setPlayerSpells, initializePlayerColor } = useChess();
+  const { gameConfig } = useGame(); // Access gameConfig to get the player's color choice
 
   const hasProcessedSpells = React.useRef(false);
 
@@ -1582,14 +1579,27 @@ const GameWithSpells: React.FC<{ selectedGameSpells: Spell[] }> = ({
 
       const validSpellIds = spellIds.slice(0, 5);
 
+      // When initializing for a game as black, we should set the initial player to white
+      // but make sure the board is rendered from black's perspective
       setPlayerSpells({
         w: validSpellIds,
         b: validSpellIds,
       });
-    }
-  }, [selectedGameSpells, setPlayerSpells]);
 
-  return <GameContent />;
+      // Initialize the board orientation based on the player's color choice
+      console.log(
+        `Initializing game with player color: ${gameConfig.playerColor}`
+      );
+      initializePlayerColor(gameConfig.playerColor as Color);
+    }
+  }, [
+    selectedGameSpells,
+    setPlayerSpells,
+    gameConfig.playerColor,
+    initializePlayerColor,
+  ]);
+
+  return <GameContent playerColor={gameConfig.playerColor} />;
 };
 
 export default Game;

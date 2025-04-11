@@ -25,7 +25,11 @@ interface FromToTarget {
 // Type for tracking targeting mode
 type TargetingMode = SpellTargetType | null;
 
-const ChessBoard: React.FC = () => {
+interface ChessBoardProps {
+  playerPerspective?: string; // Optional prop for determining board orientation
+}
+
+const ChessBoard: React.FC<ChessBoardProps> = ({ playerPerspective }) => {
   const {
     boardState,
     currentPlayer,
@@ -1071,8 +1075,20 @@ const ChessBoard: React.FC = () => {
   // Render the chessboard
   const renderBoard = () => {
     const board = [];
-    const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
-    const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    // Determine ranks order based on player perspective to flip the board
+    // Use playerPerspective if provided, otherwise fallback to currentPlayer
+    const perspectiveColor = playerPerspective || currentPlayer;
+
+    const ranks =
+      perspectiveColor === "b"
+        ? [1, 2, 3, 4, 5, 6, 7, 8] // Reversed for Black perspective
+        : [8, 7, 6, 5, 4, 3, 2, 1]; // Standard for White perspective
+
+    // Optionally flip files as well for a complete 180° rotation
+    const files =
+      perspectiveColor === "b"
+        ? ["h", "g", "f", "e", "d", "c", "b", "a"] // Reversed for Black perspective
+        : ["a", "b", "c", "d", "e", "f", "g", "h"]; // Standard for White perspective
 
     // Add an overlay for Veil of Shadows
     const veilOfShadowsOverlay =

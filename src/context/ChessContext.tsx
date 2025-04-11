@@ -44,6 +44,7 @@ export interface ChessContextType {
 
   // Game setup
   setPlayerSpells: (playerSpells: PlayerSpells) => void;
+  initializePlayerColor: (color: Color) => void;
 }
 
 // Create the context with a default value
@@ -348,6 +349,16 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     setPlayerSpells(newSpells);
   };
 
+  // Initialize player color
+  const initializePlayerColor = (color: Color) => {
+    gameManager.initializePlayerColor(color);
+    setCurrentPlayer(color);
+    setPlayerMana(gameManager.getPlayerMana());
+    setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
+    setGameLog(gameManager.getGameLog());
+    setBoardGlyphs(gameManager.getGlyphs());
+  };
+
   // Context value
   const contextValue: ChessContextType = {
     currentPlayer,
@@ -365,6 +376,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     castSpell,
     endTurn,
     setPlayerSpells: updatePlayerSpells,
+    initializePlayerColor,
   };
 
   return (
