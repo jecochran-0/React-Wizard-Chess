@@ -1185,21 +1185,7 @@ const ChessBoard: React.FC = () => {
         break;
     }
 
-    return (
-      <div
-        className="targeting-instructions"
-        style={{
-          backgroundColor: "rgba(59, 130, 246, 0.2)",
-          padding: "8px",
-          borderRadius: "4px",
-          marginBottom: "10px",
-          textAlign: "center",
-          fontWeight: "bold",
-        }}
-      >
-        {instruction}
-      </div>
-    );
+    return instruction;
   };
 
   // Add helper function to reset UI state
@@ -1210,25 +1196,66 @@ const ChessBoard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center w-full">
-      {renderTargetingInstructions()}
+    <div className="flex flex-col items-center w-full relative">
+      {/* Targeting instructions - Now positioned absolutely */}
+      {(() => {
+        const instructionText = renderTargetingInstructions();
+        return instructionText ? (
+          <div
+            style={{
+              position: "absolute",
+              top: "-50px",
+              left: "0",
+              right: "0",
+              zIndex: 100,
+            }}
+          >
+            <div
+              className="targeting-instructions"
+              style={{
+                backgroundColor: "rgba(59, 130, 246, 0.2)",
+                padding: "8px",
+                borderRadius: "4px",
+                textAlign: "center",
+                fontWeight: "bold",
+                margin: "0 auto",
+                maxWidth: "90%",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              {instructionText}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
-      {/* Status message indicator */}
+      {/* Status message indicator - Now positioned absolutely */}
       {showStatus && (
         <div
-          className="status-message"
           style={{
-            backgroundColor: "rgba(79, 70, 229, 0.2)",
-            padding: "10px",
-            marginBottom: "15px",
-            borderRadius: "4px",
-            textAlign: "center",
-            fontWeight: "bold",
-            border: "1px solid rgba(79, 70, 229, 0.4)",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+            position: "absolute",
+            top: "-50px",
+            left: "0",
+            right: "0",
+            zIndex: 100,
           }}
         >
-          {statusMessage}
+          <div
+            className="status-message"
+            style={{
+              backgroundColor: "rgba(79, 70, 229, 0.2)",
+              padding: "10px",
+              borderRadius: "4px",
+              textAlign: "center",
+              fontWeight: "bold",
+              border: "1px solid rgba(79, 70, 229, 0.4)",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              margin: "0 auto",
+              maxWidth: "90%",
+            }}
+          >
+            {statusMessage}
+          </div>
         </div>
       )}
 

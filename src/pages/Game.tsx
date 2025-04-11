@@ -1336,11 +1336,14 @@ const GameContent: React.FC = () => {
                   opacity: isGameLoaded ? 1 : 0,
                   transition: "opacity 0.5s ease-out",
                   transitionDelay: "1s",
-                  height: "100%",
+                  maxHeight: "400px", // Add fixed maximum height
+                  height: "calc(100vh - 300px)", // Responsive height based on viewport
                   scrollbarWidth: "thin",
                   scrollbarColor: "rgba(138, 43, 226, 0.3) transparent",
                   padding: "0 4px",
+                  overflowX: "hidden", // Prevent horizontal overflow
                 }}
+                className="custom-scrollbar" // Add class for custom scrollbar styling
               >
                 {gameLog.length === 0 ? (
                   <div
@@ -1377,6 +1380,7 @@ const GameContent: React.FC = () => {
                             : "2px solid rgba(65, 105, 225, 0.4)",
                         boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                         marginBottom: "2px",
+                        wordBreak: "break-word", // Ensures long text wraps
                       }}
                     >
                       {log}
@@ -1406,6 +1410,36 @@ const GameContent: React.FC = () => {
             0% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
             50% { box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); }
             100% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
+          }
+          
+          @keyframes scale-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          
+          @keyframes fade-in {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes slide-in-right {
+            0% { transform: translateX(-50px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          
+          @keyframes expand-fade {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+          }
+          
+          @keyframes flow-to-center {
+            0% { transform: translateX(0) translateY(0); opacity: 0.8; }
+            100% { transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)); opacity: 0; }
+          }
+          
+          @keyframes burst-out {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
           }
           
           .spell-card-hover {
@@ -1446,6 +1480,32 @@ const GameContent: React.FC = () => {
           @keyframes shine {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
+          }
+          
+          /* Custom scrollbar styling */
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 10px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(138, 43, 226, 0.4);
+            border-radius: 10px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(138, 43, 226, 0.6);
+          }
+          
+          /* For Firefox */
+          .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(138, 43, 226, 0.4) rgba(15, 23, 42, 0.3);
           }
         `}
       </style>

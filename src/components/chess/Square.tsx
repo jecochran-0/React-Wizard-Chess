@@ -340,30 +340,6 @@ const Square: React.FC<SquareProps> = ({
         {/* Add purple curse effect for Cursed Glyph */}
         {hasCursedGlyphEffect && <div className="cursed-piece-effect" />}
 
-        {/* Add ember queen icon for ember crown pieces */}
-        {hasEmberCrownEffect && (
-          <div
-            style={{
-              position: "absolute",
-              top: "-6px",
-              right: "-6px",
-              fontSize: "16px",
-              color: "#f97316",
-              textShadow: "0 0 3px #000",
-              background: "rgba(0,0,0,0.5)",
-              borderRadius: "50%",
-              width: "18px",
-              height: "18px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 5,
-            }}
-          >
-            🔥
-          </div>
-        )}
-
         {/* Add anchor icon for arcane armor pieces */}
         {hasArcaneArmorEffect && (
           <div
@@ -441,35 +417,7 @@ const Square: React.FC<SquareProps> = ({
     if (hasArcaneArmor) console.log("Piece has arcane armor!");
     if (hasCursedGlyph) console.log("Piece has cursed glyph!");
 
-    return (
-      <>
-        {hasArcaneArmor && (
-          <div
-            className="arcane-anchor-glow"
-            style={{
-              position: "absolute",
-              width: "24px",
-              height: "24px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              border: "2px solid #00ffff",
-              backgroundColor: "rgba(0, 255, 255, 0.2)",
-              animation: "anchor-glow 1.5s alternate infinite",
-              zIndex: 2,
-              top: "-5px",
-              right: "-5px",
-              fontSize: "14px",
-              fontWeight: "bold",
-              color: "#00ffff",
-            }}
-          >
-            ⚓
-          </div>
-        )}
-      </>
-    );
+    return <></>;
   };
 
   return (
