@@ -396,93 +396,13 @@ private castDarkConversion(targets: MultiTarget, newPieceType: "n" | "b"): boole
 }
 ```
 
-10. Spirit Link (5 Mana)
-
-Selection: ONE indicator prompts the user to select 1 piece as the primary piece to be linked (This can be any piece EXCEPT the king). With the same indicator the user is then prompted to select as many pieces as they want to be backup pieces for the spirit link, the user much select backup pieces until their combined "backup value" is equal to or exceeds the value of the primary piece. The user can then cast the spell when a valid combination of pieces is selected. The user can cancel this spell at any time to reset the selections.
-
-Functionality: The spirit link effect lasts 3 turns, a turn is decremented when the user's side that cast the spell moves a piece. If the primary piece is captured while the effect is active, then ALL backup pieces linked to it die and get removed from the game state. This can happen the other way around, if a backup piece is captured, the total "backup value" of all backup pieces is re-evaluated, if at any point the total backup value of all backup pieces drops below the value of the primary piece, the spirit link effect gets removed from all pieces immidiately.
-
-Other things: I would like the primary piece to have the "Link_Heart.png" image in the assets folder as an icon for UX. I would like backup pieces to have the "Link_Skull.png" image also in the assets folder as an icon for UX. During the selection process, these images are also shown on the corresponding selected pieces to make clear which pieces they have selected for the backup pieces, as well as the primary piece.
-
-Implementation:
-
-11. Second Wind (8 Mana)
-    Move two pieces (no capture or check)
-
-Implementation:
-
-```typescript
-private castSecondWind(): boolean {
-  // Create an effect that allows for a second piece move
-  const effect = this.createEffect("modifier", 1, "secondWind", {
-    allowSecondMove: true,
-    removeOnExpire: true,
-  });
-
-  // Add the effect to the global game state
-  this.gameManager.addGlobalEffect(effect);
-
-  console.log("Second Wind cast - you can move another piece this turn");
-  return true;
-}
-
 // Implementation will also require tracking in the ChessBoard component:
 // After a piece move, if secondWind effect is active, don't end turn
 // and allow another piece to be moved.
-```
 
-12. Pressure Field (3 Mana)
-    Prevent ending adjacent to Rooks
+````
 
-Implementation:
 
-```typescript
-private castPressureField(): boolean {
-  // Create a global effect that prevents pieces from ending adjacent to rooks
-  const effect = this.createEffect("field", 2, "pressureField", {
-    preventAdjacentToRook: true,
-    removeOnExpire: true,
-  });
-
-  // Add the effect to the global game state
-  this.gameManager.addGlobalEffect(effect);
-
-  console.log("Pressure Field cast - pieces cannot end adjacent to Rooks for 2 turns");
-  return true;
-}
-
-// Must also implement a check in the move validation logic:
-private isValidMove(from: Square, to: Square): boolean {
-  // ... normal move validation ...
-
-  // If pressure field is active, check if destination is adjacent to any rook
-  const pressureFieldEffect = this.gameManager.getGlobalEffects()
-    .find(e => e.source === "pressureField" && e.modifiers?.preventAdjacentToRook);
-
-  if (pressureFieldEffect) {
-    const isAdjacentToRook = this.isSquareAdjacentToRook(to);
-    if (isAdjacentToRook) {
-      console.error("Cannot move adjacent to a Rook while Pressure Field is active");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-private isSquareAdjacentToRook(square: Square): boolean {
-  const adjacentSquares = this.getAdjacentSquares(square);
-
-  for (const adjSquare of adjacentSquares) {
-    const piece = this.gameManager.getPieceAt(adjSquare);
-    if (piece && piece.type === "r") {
-      return true;
-    }
-  }
-
-  return false;
-}
-```
 
 13. Nullfield (5 Mana)
     Remove any spell effect.
@@ -510,7 +430,7 @@ private castNullfield(target: Square): boolean {
   console.log(`Successfully removed all spell effects from ${target}`);
   return true;
 }
-```
+````
 
 14. Veil of Shadows (4 Mana)
     if used every active effect gets removed. Ember queens get turned back into pawns, pieces with arcane armor lose the effect, all mist knights get removed from the board, any glyphs on the board are removed, any pieces that are cursed lose the effect, veil of shadows is removed if active.
@@ -534,63 +454,6 @@ private castVeilOfShadows(): boolean {
 
 // Implementation will also require updates to the rendering logic in Square.tsx:
 // If veilOfShadows is active and it's the opponent's turn, hide pieces unless they've been seen
-```
-
-15. Raise the Bonewalker (6 Mana)
-    Summon pawn → auto-promote in 6 turns.
-
-Implementation:
-
-```typescript
-private castRaiseBonewalker(target: Square): boolean {
-  // Verify target square is empty
-  if (this.gameManager.getPieceAt(target)) {
-    console.error("Target square must be empty");
-    return false;
-  }
-
-  const currentPlayer = this.gameManager.getCurrentPlayer();
-
-  // Create a bonewalker effect that will transform the pawn to a rook after 6 turns
-  const bonewalkerEffect = this.createEffect("transform", 6, "bonewalker", {
-    finalType: "r", // Will become a rook
-    removeOnExpire: false, // Don't remove the piece when the effect expires
-  });
-
-  // Add a pawn piece with the bonewalker effect
-  this.gameManager.addPiece(
-    target,
-    "p" as PieceSymbol,
-    currentPlayer as "w" | "b",
-    [bonewalkerEffect]
-  );
-
-  // Add visual effect to make the pawn look like a bonewalker
-  const visualEffect = this.createEffect("visual", 999, "bonewalker", {
-    visualType: "bonewalker",
-    removeOnExpire: false,
-  });
-
-  this.gameManager.addEffect(target, visualEffect);
-
-  console.log(`Bonewalker summoned at ${target} - will transform to a Rook in 6 turns`);
-  return true;
-}
-
-// Add this in processEndOfTurnEffects():
-private processBonewalkerEffects(): void {
-  for (const square in this.gameManager.getBoardState()) {
-    const piece = this.gameManager.getPieceAt(square as Square);
-    if (!piece) continue;
-
-    const bonewalkerEffect = piece.effects.find(e => e.source === "bonewalker" && e.duration === 0);
-    if (bonewalkerEffect) {
-      // Transform the pawn to a rook
-      this.gameManager.transformPiece(square as Square, "r", "bonewalker");
-      console.log(`Bonewalker at ${square} transformed into a Rook!`);
-    }
-  }
-}
 ```
 
 📦 Final Notes
