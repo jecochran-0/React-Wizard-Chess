@@ -29,6 +29,7 @@ class GameManager {
   private playerSpells: PlayerSpells;
   private gameLog: string[];
   private glyphs: Record<string, GlyphInfo>;
+  private turnNumber: number = 1; // Add turn counter
 
   constructor(playerSpells: PlayerSpells) {
     this.chess = new Chess();
@@ -314,6 +315,14 @@ class GameManager {
       if (move) {
         // Record the move
         this.moveHistory.push(move);
+
+        // Increment turn counter when a black piece moves
+        if (currentPlayer === "b") {
+          this.turnNumber++;
+          console.log(
+            `Black piece moved - Incrementing turn to ${this.turnNumber}`
+          );
+        }
 
         // Update the custom board state
         this.syncCustomBoardFromChess();
@@ -1746,6 +1755,11 @@ class GameManager {
       console.error("Error transforming piece to pawn:", error);
       return false;
     }
+  }
+
+  // Get the current turn number
+  getCurrentTurnNumber(): number {
+    return this.turnNumber;
   }
 }
 

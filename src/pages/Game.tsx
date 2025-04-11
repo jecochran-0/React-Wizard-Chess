@@ -298,6 +298,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
     selectSpell,
     endTurn,
     gameLog,
+    currentTurnNumber,
   } = useChess();
 
   const {
@@ -949,6 +950,70 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             </span>
           </div>
 
+          {/* Turn counter in the center showing current turn and spell unlock status */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "3px",
+              padding: "6px 15px",
+              background:
+                "linear-gradient(135deg, rgba(20, 83, 136, 0.85) 0%, rgba(30, 128, 210, 0.85) 100%)",
+              borderRadius: "6px",
+              color: "white",
+              boxShadow: "0 0 10px rgba(30, 144, 255, 0.4)",
+              border: "1px solid rgba(100, 180, 255, 0.2)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Magical rune background */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='50' height='50' viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='25' cy='25' r='20' stroke='rgba(255,255,255,0.1)' fill='none'/%3E%3Cpath d='M25 5 L45 25 L25 45 L5 25 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E")`,
+                backgroundSize: "25px 25px",
+                opacity: 0.5,
+                mixBlendMode: "overlay",
+                zIndex: 0,
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontWeight: "bold",
+                fontSize: "18px",
+                position: "relative",
+                zIndex: 1,
+                background: "linear-gradient(to right, #60a5fa, #93c5fd)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                textShadow: "0 0 5px rgba(59, 130, 246, 0.7)",
+              }}
+            >
+              Turn {currentTurnNumber}
+            </span>
+            <span
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: "10px",
+                position: "relative",
+                zIndex: 1,
+                color: currentTurnNumber > 5 ? "#6ee7b7" : "#fcd34d",
+                textShadow:
+                  currentTurnNumber > 5
+                    ? "0 0 5px rgba(110, 231, 183, 0.7)"
+                    : "0 0 5px rgba(252, 211, 77, 0.7)",
+                fontWeight: "bold",
+              }}
+            >
+              {currentTurnNumber > 5 ? "Spells Unlocked" : `Spells unlock T6`}
+            </span>
+          </div>
+
           <div
             style={{
               display: "flex",
@@ -1074,16 +1139,26 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
               {spells.map((spell, index) => {
                 if (!spell) return null;
 
+                // Check if player has enough mana
+                const hasEnoughMana =
+                  playerMana[currentPlayer] >= spell.manaCost;
+                // Check if spells are allowed yet (after turn 5)
+                const spellsAllowed = currentTurnNumber > 5;
+                // Determine if the card is usable
+                const isUsable = hasEnoughMana && spellsAllowed;
+
                 return (
                   <div
                     key={spell.id}
-                    onClick={() => handleSpellSelect(spell.id)}
+                    onClick={() =>
+                      isUsable ? handleSpellSelect(spell.id) : null
+                    }
                     style={{
                       opacity: isGameLoaded ? 1 : 0,
                       transition:
                         "opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.3s ease",
                       transitionDelay: `${0.6 + index * 0.1}s`,
-                      cursor: "pointer",
+                      cursor: isUsable ? "pointer" : "not-allowed",
                       position: "relative",
                       width: "100px", // Reduced width to fit better
                       boxShadow:
@@ -1101,6 +1176,9 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                       transformOrigin: "center center",
                     }}
                     className="spell-card-hover"
+                    title={`${spell.name}: ${spell.description} (Cost: ${
+                      spell.manaCost
+                    }${!spellsAllowed ? " - Spells unlock after turn 5" : ""})`}
                   >
                     <img
                       src={
@@ -1112,6 +1190,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                         width: "100%",
                         height: "auto",
                         display: "block",
+                        opacity: isUsable ? 1 : 0.7,
                       }}
                       onError={(e) => {
                         // If image fails to load, show a colored placeholder with spell name
@@ -1171,8 +1250,8 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                       {spell.manaCost}
                     </div>
 
-                    {/* Add a disabled overlay when not enough mana */}
-                    {playerMana[currentPlayer] < spell.manaCost && (
+                    {/* Add a disabled overlay when spell can't be cast */}
+                    {!isUsable && (
                       <div
                         style={{
                           position: "absolute",
@@ -1189,7 +1268,11 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                           fontWeight: "bold",
                         }}
                       >
-                        Need Mana
+                        {!hasEnoughMana
+                          ? "Need Mana"
+                          : !spellsAllowed
+                          ? "Unlock T6"
+                          : "Cannot Cast"}
                       </div>
                     )}
                   </div>

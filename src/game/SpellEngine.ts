@@ -28,6 +28,17 @@ export class SpellEngine {
     console.log(`Casting spell ${spellId} with targets:`, targetInfo);
 
     try {
+      // Get the current turn number
+      const currentTurnNumber = this.gameManager.getCurrentTurnNumber();
+
+      // Check if spells are allowed yet (after turn 5)
+      if (currentTurnNumber <= 5) {
+        console.log(
+          `Spells are not available until after turn 5. Current turn: ${currentTurnNumber}`
+        );
+        return false;
+      }
+
       let success = false;
       const mana = this.getSpellCost(spellId as SpellId);
 

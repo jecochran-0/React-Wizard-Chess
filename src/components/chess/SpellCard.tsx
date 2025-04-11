@@ -30,6 +30,7 @@ interface SpellCardProps {
   playerMana: number;
   onSelect: (spellId: string) => void;
   showText?: boolean;
+  currentTurn?: number; // Add current turn number prop
 }
 
 const SpellCard: React.FC<SpellCardProps> = ({
@@ -39,11 +40,14 @@ const SpellCard: React.FC<SpellCardProps> = ({
   playerMana,
   onSelect,
   showText = true,
+  currentTurn = 0, // Default to 0
 }) => {
   // Check if player has enough mana
   const hasEnoughMana = playerMana >= spell.manaCost;
+  // Check if spells are allowed yet (after turn 5)
+  const spellsAllowed = currentTurn > 5;
   // Determine if the card is usable
-  const isUsable = !isDisabled && hasEnoughMana;
+  const isUsable = !isDisabled && hasEnoughMana && spellsAllowed;
 
   // Handle click on spell card
   const handleClick = () => {
@@ -99,7 +103,9 @@ const SpellCard: React.FC<SpellCardProps> = ({
         !isUsable ? "disabled" : ""
       }`}
       onClick={handleClick}
-      title={`${spell.name}: ${spell.description} (Cost: ${spell.manaCost})`}
+      title={`${spell.name}: ${spell.description} (Cost: ${spell.manaCost}${
+        !spellsAllowed ? " - Spells unlock after turn 5" : ""
+      })`}
     >
       <div className="spell-card-inner">
         {getSpellImage()}
@@ -123,7 +129,11 @@ const SpellCard: React.FC<SpellCardProps> = ({
               borderRadius: "0px",
             }}
           >
-            {!hasEnoughMana ? "Need Mana" : "Cannot Cast"}
+            {!hasEnoughMana
+              ? "Need Mana"
+              : !spellsAllowed
+              ? "Unlock T5"
+              : "Cannot Cast"}
           </div>
         )}
       </div>

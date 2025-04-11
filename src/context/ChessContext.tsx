@@ -25,6 +25,7 @@ export interface ChessContextType {
   boardState: Record<Square, PieceMeta>;
   gameLog: string[];
   boardGlyphs: Record<string, { effect: Effect }>;
+  currentTurnNumber: number;
 
   // Selected items
   selectedPiece: Square | null;
@@ -77,6 +78,9 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   const [boardGlyphs, setBoardGlyphs] = useState<
     Record<string, { effect: Effect }>
   >(gameManager.getGlyphs());
+  const [currentTurnNumber, setCurrentTurnNumber] = useState<number>(
+    gameManager.getCurrentTurnNumber()
+  );
 
   // Selected state
   const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
@@ -195,7 +199,10 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
 
     // Update game log
     setGameLog(gameManager.getGameLog());
-  }, [gameManager]);
+
+    // Update current turn number
+    setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
+  }, [gameManager, boardState]);
 
   // Select a piece
   const selectPiece = (square: Square | null) => {
@@ -256,6 +263,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
         setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
         setPlayerMana(gameManager.getPlayerMana());
         setGameLog(gameManager.getGameLog());
+        // Also update the turn number
+        setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
 
         // Explicitly update the glyphs after the move to ensure triggered glyphs are removed from UI
         const updatedGlyphs = gameManager.getGlyphs();
@@ -292,6 +301,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
         setPlayerMana(gameManager.getPlayerMana());
         setGameLog(gameManager.getGameLog());
         setBoardGlyphs(gameManager.getGlyphs());
+        // Also update the turn number
+        setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
 
         // Clear spell selection
         setSelectedSpell(null);
@@ -309,6 +320,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
       setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
       setPlayerMana(gameManager.getPlayerMana());
       setGameLog(gameManager.getGameLog());
+      // Also update the turn number
+      setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
 
       // Explicitly update the glyphs after casting a spell
       setBoardGlyphs(gameManager.getGlyphs());
@@ -338,6 +351,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
     setPlayerMana(gameManager.getPlayerMana());
     setGameLog(gameManager.getGameLog());
+    setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
 
     // Clear selections
     setSelectedPiece(null);
@@ -370,6 +384,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     selectedPiece,
     selectedSpell,
     legalMoves,
+    currentTurnNumber,
     selectPiece,
     selectSpell,
     makeMove,
