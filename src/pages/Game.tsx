@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import ChessBoard from "../components/chess/ChessBoard";
 import { ChessProvider, useChess } from "../context/ChessContext";
 import { getSpellById } from "../utils/spells";
-import { Spell, SpellId } from "../types/types";
+import { SpellId } from "../types/types";
 import "../styles/SpellCard.css";
 import gameBackgroundImage from "/assets/Game_Background.png";
 import { useGame } from "../context/GameContext";
 import { SoundProvider, useSound } from "../context/SoundContext";
 import { Color } from "chess.js";
+import { Spell as GameSpell } from "../types/game"; // Alias the Spell type from types/game
+import { ChessGameStatus } from "../types/game"; // Import game status type
 
 // Settings Panel Component
 const SettingsPanel: React.FC<{
@@ -299,6 +301,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
     endTurn,
     gameLog,
     currentTurnNumber,
+    gameStatus, // Get game status from context
   } = useChess();
 
   const {
@@ -790,6 +793,13 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
     >
       {/* Settings Panel */}
       <SettingsPanel bgAudioRef={audioRef} />
+
+      {/* Conditionally render Game Over Modal */}
+      {(gameStatus === "checkmate" ||
+        gameStatus === "stalemate" ||
+        gameStatus === "draw") && (
+        <GameOverModal status={gameStatus} currentPlayer={currentPlayer} />
+      )}
 
       <div
         className="game-entrance-animation"
@@ -1694,7 +1704,7 @@ const spellSoundMap: Record<string, string> = {
   veilOfShadows: "VeilOfShadows_effect.mp3",
 };
 
-const GameWithSpells: React.FC<{ selectedGameSpells: Spell[] }> = ({
+const GameWithSpells: React.FC<{ selectedGameSpells: GameSpell[] }> = ({
   selectedGameSpells,
 }) => {
   const { setPlayerSpells, initializePlayerColor } = useChess();
@@ -1744,3 +1754,126 @@ const GameWithSpells: React.FC<{ selectedGameSpells: Spell[] }> = ({
 };
 
 export default Game;
+
+// --- Start Game Over Modal Component Definition ---
+// (Paste the GameOverModal component code here as defined previously)
+interface GameOverModalProps {
+  status: ChessGameStatus;
+  currentPlayer: "w" | "b"; // Add current player to determine winner
+}
+
+const GameOverModal: React.FC<GameOverModalProps> = ({
+  status,
+  currentPlayer,
+}) => {
+  const { resetGame } = useGame();
+
+  let message = "";
+  let title = "Game Over";
+
+  switch (status) {
+    case "checkmate": {
+      // The player whose turn it *is* when checkmate occurs is the loser.
+      const winner = currentPlayer === "w" ? "Black" : "White";
+      message = `${winner} wins by Checkmate!`;
+      title = "Checkmate!";
+      break;
+    }
+    case "stalemate":
+      message = "The game is a stalemate!";
+      title = "Stalemate";
+      break;
+    case "draw":
+      message = "The game ended in a draw.";
+      title = "Draw";
+      break;
+    default:
+      return null; // Don't render if game isn't over
+  }
+
+  const handleMainMenu = () => {
+    resetGame(); // Use GameContext's reset to go back to main menu
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.75)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 5000, // Ensure it's above everything
+        fontFamily: "'Cinzel', serif",
+      }}
+    >
+      <div
+        style={{
+          background: "linear-gradient(145deg, #1e293b, #0f172a)",
+          padding: "40px",
+          borderRadius: "15px",
+          textAlign: "center",
+          color: "white",
+          border: "2px solid rgba(255, 215, 0, 0.5)",
+          boxShadow:
+            "0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3)",
+          animation: "fadeInScaleUp 0.5s ease-out",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "2.5rem",
+            margin: "0 0 15px 0",
+            color: "#ffd700",
+            textShadow: "0 0 10px rgba(255, 215, 0, 0.7)",
+          }}
+        >
+          {title}
+        </h2>
+        <p
+          style={{ fontSize: "1.2rem", margin: "0 0 30px 0", color: "#e2e8f0" }}
+        >
+          {message}
+        </p>
+        <button
+          onClick={handleMainMenu}
+          style={{
+            padding: "12px 25px",
+            fontSize: "1rem",
+            color: "#0f172a",
+            backgroundColor: "#ffd700",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+            boxShadow: "0 4px 10px rgba(255, 215, 0, 0.4)",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+            e.currentTarget.style.boxShadow =
+              "0 6px 15px rgba(255, 215, 0, 0.6)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 10px rgba(255, 215, 0, 0.4)";
+          }}
+        >
+          Return to Main Menu
+        </button>
+      </div>
+      {/* Keep keyframes local to the component */}
+      <style>
+        {
+          "@keyframes fadeInScaleUp {\n            from {\n              opacity: 0;\n              transform: scale(0.8);\n            }\n            to {\n              opacity: 1;\n              transform: scale(1);\n            }\n          }"
+        }
+      </style>
+    </div>
+  );
+};
+// --- End Game Over Modal Component Definition ---

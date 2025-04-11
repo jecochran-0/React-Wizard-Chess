@@ -1,6 +1,7 @@
 import GameManager from "./GameManager";
-import { Color, Square } from "chess.js";
+import { Color, Square, Piece } from "chess.js";
 import { SpellId, Effect } from "../types/types";
+import { Chess } from "chess.js";
 
 // Type for spell targets
 type SingleTarget = Square;
@@ -29,6 +30,24 @@ const PIECE_VALUES: Record<string, number> = {
   k: 20000, // king - artificially high to prioritize king safety
 };
 
+// --- Evaluation Constants ---
+const CENTER_SQUARES = ["d4", "e4", "d5", "e5"];
+const SEMI_CENTER_SQUARES = [
+  "c3",
+  "d3",
+  "e3",
+  "f3",
+  "c4",
+  "f4",
+  "c5",
+  "f5",
+  "c6",
+  "d6",
+  "e6",
+  "f6",
+];
+const REPETITION_PENALTY = -1000;
+
 export class ComputerPlayer {
   private gameManager: GameManager;
   private difficulty: "easy" | "medium" | "hard";
@@ -49,6 +68,17 @@ export class ComputerPlayer {
    * @returns Promise<boolean> indicating if a primary action (spell or move) was successfully initiated.
    */
   async makeMove(): Promise<boolean> {
+    // Check game status first
+    const currentStatus = this.gameManager.getGameStatus();
+    if (
+      currentStatus === "checkmate" ||
+      currentStatus === "stalemate" ||
+      currentStatus === "draw"
+    ) {
+      console.log(`Game over (${currentStatus}). Computer cannot move.`);
+      return false;
+    }
+
     // Check if it's the computer's turn
     if (this.gameManager.getCurrentPlayer() !== this.color) {
       console.log("Not computer's turn");
@@ -68,8 +98,14 @@ export class ComputerPlayer {
     const possibleMoves = this.getAllPossibleMoves();
     console.log(`Found ${possibleMoves.length} possible moves`);
 
-    if (possibleMoves.length === 0) {
-      console.error("Computer has no legal moves available");
+    // Check again if moves are possible, though checkmate/stalemate should cover this
+    if (
+      possibleMoves.length === 0 &&
+      this.gameManager.getGameStatus() === "active"
+    ) {
+      console.warn(
+        "Computer has no legal moves, but game is not over? This might indicate an issue."
+      );
       return false;
     }
 
@@ -191,22 +227,21 @@ export class ComputerPlayer {
     from: Square;
     to: Square;
   } {
-    // Create a copy for evaluation
-    const evaluatedMoves = [...moves].map((move) => ({
-      ...move,
-      score: 0,
-    }));
-
-    // Evaluate each move
-    for (const move of evaluatedMoves) {
-      const boardState = this.gameManager.getBoardState();
-      const toPiece = boardState[move.to];
-
-      // Prioritize captures based on piece value
-      if (toPiece && toPiece.color !== this.color) {
-        move.score += PIECE_VALUES[toPiece.type] || 0;
-      }
-    }
+    // Evaluate moves based on resulting board state score
+    const evaluatedMoves = moves
+      .map((move) => {
+        let score = -Infinity; // Default to worst score
+        const tempChess = this.simulateChessMove(move.from, move.to);
+        if (tempChess) {
+          score = this.evaluateBoardState(tempChess.board()); // Evaluate the simulated board
+          const resultingFEN = tempChess.fen();
+          if (this.gameManager.isPositionRepeated(resultingFEN)) {
+            score += REPETITION_PENALTY;
+          }
+        }
+        return { ...move, score };
+      })
+      .filter((move) => move.score > -Infinity); // Filter out failed simulations
 
     // Sort by score (highest first)
     evaluatedMoves.sort((a, b) => b.score - a.score);
@@ -233,43 +268,21 @@ export class ComputerPlayer {
   private getAdvancedStrategicMove(
     moves: Array<{ from: Square; to: Square }>
   ): { from: Square; to: Square } {
-    // Create a copy for evaluation
-    const evaluatedMoves = [...moves].map((move) => ({
-      ...move,
-      score: 0,
-    }));
-
-    // Evaluate each move
-    for (const move of evaluatedMoves) {
-      const boardState = this.gameManager.getBoardState();
-      const fromPiece = boardState[move.from];
-      const toPiece = boardState[move.to];
-
-      // Base score
-      let score = 0;
-
-      // Prioritize captures based on piece value
-      if (toPiece && toPiece.color !== this.color) {
-        score += PIECE_VALUES[toPiece.type] || 0;
-      }
-
-      // Prioritize center control for knights and bishops
-      if (fromPiece && (fromPiece.type === "n" || fromPiece.type === "b")) {
-        const centerValue = this.evaluateCentralControl(move.to);
-        score += centerValue;
-      }
-
-      // Prioritize piece development in early game
-      if (
-        fromPiece &&
-        !fromPiece.hasMoved &&
-        (fromPiece.type === "n" || fromPiece.type === "b")
-      ) {
-        score += 50;
-      }
-
-      move.score = score;
-    }
+    // Use the same evaluation logic as medium for now, just potentially pick differently
+    const evaluatedMoves = moves
+      .map((move) => {
+        let score = -Infinity;
+        const tempChess = this.simulateChessMove(move.from, move.to);
+        if (tempChess) {
+          score = this.evaluateBoardState(tempChess.board()); // Evaluate the simulated board
+          const resultingFEN = tempChess.fen();
+          if (this.gameManager.isPositionRepeated(resultingFEN)) {
+            score += REPETITION_PENALTY;
+          }
+        }
+        return { ...move, score };
+      })
+      .filter((move) => move.score > -Infinity);
 
     // Sort by score (highest first)
     evaluatedMoves.sort((a, b) => b.score - a.score);
@@ -380,55 +393,39 @@ export class ComputerPlayer {
     targets: SpellTargetData;
     pieceType?: "n" | "b";
   } | null {
-    // For each spell, calculate a priority score
-    const evaluatedSpells = spells.map((spellId) => {
-      let score = 0;
+    // Evaluate potential spells by scoring the board state *after* the spell is cast
+    const evaluatedSpells = [];
+    for (const spellId of spells) {
+      const targets = this.findValidTargetsForSpell(spellId);
+      if (!targets && spellId !== "secondWind") continue; // Skip if no valid target (except self-target)
 
-      // Calculate score based on spell type and board state
-      switch (spellId) {
-        case "emberCrown":
-          // Prioritize Ember Crown on advanced pawns
-          score = this.evaluateEmberCrownScore();
-          break;
-        case "arcaneAnchor":
-          // Prioritize Arcane Anchor on valuable pieces under threat
-          score = this.evaluateArcaneAnchorScore();
-          break;
-        // Add more cases for other spells
+      const pieceType =
+        spellId === "darkConversion"
+          ? Math.random() < 0.5
+            ? "n"
+            : "b"
+          : undefined;
 
-        default:
-          // Base score for other spells
-          score = 50;
-      }
-
-      return {
-        spellId: spellId,
-        score: score,
-      };
-    });
+      // Evaluate the *current* board state as a proxy
+      const score = this.getHeuristicSpellScore(spellId);
+      evaluatedSpells.push({ spellId, targets, pieceType, score });
+    }
 
     // Sort by score (highest first)
     evaluatedSpells.sort((a, b) => b.score - a.score);
 
-    // Try spells in order of priority
-    for (const evalSpell of evaluatedSpells) {
-      const targets = this.findValidTargetsForSpell(evalSpell.spellId);
-
-      if (targets) {
-        return {
-          spellId: evalSpell.spellId,
-          targets: targets,
-          pieceType:
-            evalSpell.spellId === "darkConversion"
-              ? Math.random() < 0.5
-                ? "n"
-                : "b"
-              : undefined,
-        };
-      }
+    // Return the best evaluated spell decision
+    if (evaluatedSpells.length > 0 && evaluatedSpells[0].score > -Infinity) {
+      // TODO: Compare best spell score with best move score before deciding
+      const bestSpell = evaluatedSpells[0];
+      return {
+        spellId: bestSpell.spellId,
+        targets: bestSpell.targets as SpellTargetData,
+        pieceType: bestSpell.pieceType as "n" | "b" | undefined,
+      };
+    } else {
+      return null;
     }
-
-    return null;
   }
 
   /**
@@ -438,7 +435,9 @@ export class ComputerPlayer {
     const boardState = this.gameManager.getBoardState();
     const pieces = this.gameManager.getAllPieces();
     const computerPieces = pieces.filter(
-      (p: PieceWithSquare) => p.piece.color === this.color
+      (p: PieceWithSquare) =>
+        p.piece.color === this.color &&
+        !p.piece.effects?.some((e) => e.source === "cursedGlyph") // Exclude cursed pieces
     );
 
     switch (spellId) {
@@ -511,9 +510,171 @@ export class ComputerPlayer {
 
       // Add more cases for other spells
 
-      default:
-        // For spells without specific targeting strategy, return null
-        return null;
+      default: {
+        // Find computer's pieces
+        const allComputerPieces = pieces.filter(
+          (p: PieceWithSquare) =>
+            p.piece.color === this.color &&
+            !p.piece.effects?.some((e) => e.source === "cursedGlyph") // Exclude cursed pieces
+        );
+        if (allComputerPieces.length === 0) return null; // No pieces to target
+
+        // const enemyPieces = pieces.filter(p => p.piece.color !== this.color); // Unused for now
+
+        // Find all empty squares
+        const allSquares = Array.from({ length: 8 }, (_, i) =>
+          Array.from(
+            { length: 8 },
+            (_, j) => `${String.fromCharCode(97 + j)}${i + 1}`
+          )
+        ).flat();
+        const occupiedSquares = pieces.map((p: PieceWithSquare) => p.square);
+        const emptySquares = allSquares.filter(
+          (sq) => !occupiedSquares.includes(sq)
+        );
+
+        switch (spellId) {
+          case "astralSwap": {
+            if (allComputerPieces.length < 2) return null;
+            const indices = Array.from(allComputerPieces.keys());
+            const i1 = indices.splice(
+              Math.floor(Math.random() * indices.length),
+              1
+            )[0];
+            const i2 = indices[Math.floor(Math.random() * indices.length)];
+            return [
+              allComputerPieces[i1].square,
+              allComputerPieces[i2].square,
+            ] as Square[];
+          }
+          case "mistformKnight": {
+            const kingSquare = allComputerPieces.find(
+              (p) => p.piece.type === "k"
+            )?.square;
+            if (!kingSquare) return null;
+            const kingRank = parseInt(kingSquare[1]);
+            const kingFile = kingSquare[0];
+            const adjacentSquares = [
+              `${kingFile}${kingRank + 1}`,
+              `${kingFile}${kingRank - 1}`,
+              `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${kingRank}`,
+              `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${kingRank}`,
+              `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${
+                kingRank + 1
+              }`,
+              `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${
+                kingRank - 1
+              }`,
+              `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${
+                kingRank + 1
+              }`,
+              `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${
+                kingRank - 1
+              }`,
+            ].filter(
+              (sq) =>
+                sq[0] >= "a" &&
+                sq[0] <= "h" &&
+                parseInt(sq[1]) >= 1 &&
+                parseInt(sq[1]) <= 8
+            );
+            const validEmptyAdjacent = adjacentSquares.filter((sq) =>
+              emptySquares.includes(sq)
+            );
+            return validEmptyAdjacent.length > 0
+              ? (validEmptyAdjacent[
+                  Math.floor(Math.random() * validEmptyAdjacent.length)
+                ] as Square)
+              : null;
+          }
+          case "chronoRecall": {
+            // Find a piece that has moved and can return to a safer/better previous square
+            const candidates = allComputerPieces.filter(
+              (p) =>
+                p.piece.hasMoved &&
+                p.piece.prevPositions &&
+                p.piece.prevPositions.length > 1
+            );
+            if (candidates.length === 0) return null;
+
+            // Simple logic: pick a random candidate for now
+            // TODO: Evaluate if previous positions are actually better/safer
+            const targetPiece =
+              candidates[Math.floor(Math.random() * candidates.length)];
+            return targetPiece.square as Square;
+          }
+          case "cursedGlyph":
+          case "pressureField":
+          case "nullfield": {
+            return emptySquares.length > 0
+              ? (emptySquares[
+                  Math.floor(Math.random() * emptySquares.length)
+                ] as Square)
+              : null;
+          }
+          case "kingsGambit": {
+            const king = allComputerPieces.find((p) => p.piece.type === "k");
+            // Ensure king has legal moves available after the spell would be cast (potential first move)
+            if (!king) return null;
+            const kingMoves = this.gameManager.getLegalMovesFrom(
+              king.square as Square
+            );
+            return kingMoves.length > 0 ? (king.square as Square) : null;
+          }
+          case "darkConversion": {
+            // Prefer pawns that are closer to promotion or can attack something valuable after conversion
+            const pawns = allComputerPieces.filter((p) => p.piece.type === "p");
+            if (pawns.length === 0) return null;
+            // Simple logic: pick a random pawn for now
+            // TODO: Add evaluation for best pawn to convert
+            const targetPawn = pawns[Math.floor(Math.random() * pawns.length)];
+            return targetPawn.square as Square;
+          }
+          case "spiritLink": {
+            if (allComputerPieces.length < 2) return null;
+            const indices = Array.from(allComputerPieces.keys());
+            const i1 = indices.splice(
+              Math.floor(Math.random() * indices.length),
+              1
+            )[0];
+            const i2 = indices[Math.floor(Math.random() * indices.length)];
+            return [
+              allComputerPieces[i1].square,
+              allComputerPieces[i2].square,
+            ] as Square[];
+          }
+          case "veilOfShadows": {
+            return allComputerPieces.length > 0
+              ? (allComputerPieces[
+                  Math.floor(Math.random() * allComputerPieces.length)
+                ].square as Square)
+              : null;
+          }
+          case "raiseBonewalker": {
+            const targetRank1 = this.color === "w" ? 1 : 8;
+            const targetRank2 = this.color === "w" ? 2 : 7;
+            const validSquares = emptySquares.filter(
+              (sq) =>
+                parseInt(sq[1]) === targetRank1 ||
+                parseInt(sq[1]) === targetRank2
+            );
+            return validSquares.length > 0
+              ? (validSquares[
+                  Math.floor(Math.random() * validSquares.length)
+                ] as Square)
+              : null;
+          }
+          case "secondWind": {
+            // Self-targeted, no specific square needed by findValidTargetsForSpell
+            return null;
+          }
+          default:
+            console.warn(
+              `Computer does not know how to find targets for spell: ${spellId}`
+            );
+            return null;
+        }
+      } // End of default block scope
     }
   }
 
@@ -602,6 +763,47 @@ export class ComputerPlayer {
       const pieceValue = PIECE_VALUES[piece.piece.type] || 0;
       return Math.max(maxScore, pieceValue / 10);
     }, 0);
+  }
+
+  /**
+   * Evaluate score for Dark Conversion spell
+   */
+  private evaluateDarkConversionScore(): number {
+    // Check if converting a pawn could lead to immediate capture or check
+    // Basic score for now
+    return 60; // Moderate priority
+  }
+
+  /**
+   * Evaluate score for Chrono Recall spell
+   */
+  private evaluateChronoRecallScore(): number {
+    // Check if a valuable piece is currently threatened
+    // Basic score for now
+    return 70; // Moderate-high priority if a piece is threatened
+  }
+
+  /**
+   * Evaluate score for Kings Gambit spell
+   */
+  private evaluateKingsGambitScore(): number {
+    // Check if king has safe moves available after the spell
+    const king = this.gameManager
+      .getAllPieces()
+      .find((p) => p.piece.color === this.color && p.piece.type === "k");
+    if (!king) return 0;
+    const kingMoves = this.gameManager.getLegalMovesFrom(king.square as Square);
+    // TODO: Check safety of potential second move
+    return kingMoves.length > 0 ? 40 : 0; // Low-moderate priority, depends on safety
+  }
+
+  /**
+   * Evaluate score for Astral Swap spell
+   */
+  private evaluateAstralSwapScore(): number {
+    // Check if swapping could save a threatened piece or improve position
+    // Basic score for now
+    return 55; // Moderate priority
   }
 
   /**
@@ -705,5 +907,114 @@ export class ComputerPlayer {
 
     console.warn("Computer failed to execute a standard move this attempt.");
     return false;
+  }
+
+  // --- Simulation Helpers ---
+
+  /**
+   * Simulates a standard move on a temporary chess instance.
+   * IMPORTANT: This is a simplified simulation and does NOT account for
+   * spell effects or custom game logic changes from the move.
+   * It primarily helps evaluate basic captures and resulting checks/FEN.
+   * @returns A new Chess instance representing the state after the move, or null.
+   */
+  private simulateChessMove(from: Square, to: Square): Chess | null {
+    try {
+      const tempChess = new Chess(this.gameManager.getFEN());
+      const moveResult = tempChess.move({ from, to });
+      return moveResult ? tempChess : null;
+    } catch {
+      // Ignore errors during simulation (e.g., illegal move attempts)
+      return null;
+    }
+  }
+
+  /**
+   * Simulates a spell cast. NOTE: This currently lacks a proper deep copy
+   * of GameManager and relies on the real manager. This is NOT safe for complex
+   * state changes and needs a better implementation (e.g., GameManager.clone()).
+   * For now, it returns the *current* GameManager state after a *hypothetical*
+   * cast attempt (which doesn't actually happen). We use this only to get a
+   * rough idea of the board state for evaluation.
+   * @returns The *current* GameManager instance (as a placeholder for a cloned state).
+   */
+  private simulateSpellCast() {
+    // Placeholder: Returns the current manager. Needs proper cloning.
+    // We cannot safely modify and revert the main GameManager.
+    // The evaluation will be based on the state *before* the spell, which is inaccurate.
+    console.warn(
+      "Spell simulation is using current state, not a cloned future state."
+    );
+    return this; // Returns 'this' (ComputerPlayer) - needs to return a simulated GameManager
+  }
+
+  // --- Board Evaluation Logic ---
+
+  /**
+   * Evaluates a given board state represented by chess.js Pieces.
+   * Higher scores are better for the computer.
+   * @param board - The board representation from chess.js.
+   * @returns A numerical score representing the board state.
+   */
+  private evaluateBoardState(board: (Piece | null)[][]): number {
+    let score = 0;
+    // const opponentColor = this.color === "w" ? "b" : "w"; // Unused for now
+
+    // 1. Material Calculation & Positional Factors
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const piece = board[rank][file];
+        if (piece) {
+          const square = `${String.fromCharCode(97 + file)}${8 - rank}`; // Calculate square name
+          const pieceValue = PIECE_VALUES[piece.type] || 0;
+          let positionalScore = 0;
+
+          // Bonus for center control
+          if (CENTER_SQUARES.includes(square)) {
+            positionalScore += 10;
+          } else if (SEMI_CENTER_SQUARES.includes(square)) {
+            positionalScore += 5;
+          }
+
+          // Bonus for advanced pawns
+          if (piece.type === "p") {
+            if (piece.color === "w" && 8 - rank >= 5)
+              positionalScore += (8 - rank - 4) * 10;
+            if (piece.color === "b" && 8 - rank <= 4)
+              positionalScore += (5 - (8 - rank)) * 10;
+          }
+
+          if (piece.color === this.color) {
+            score += pieceValue + positionalScore;
+          } else {
+            score -= pieceValue + positionalScore;
+          }
+        }
+      }
+    }
+
+    // TODO: Add King Safety, Checks, Spell Effects evaluations
+
+    return score;
+  }
+
+  // --- Helper for placeholder spell scoring ---
+  private getHeuristicSpellScore(spellId: SpellId): number {
+    switch (spellId) {
+      case "emberCrown":
+        return this.evaluateEmberCrownScore();
+      case "arcaneAnchor":
+        return this.evaluateArcaneAnchorScore();
+      case "darkConversion":
+        return this.evaluateDarkConversionScore();
+      case "chronoRecall":
+        return this.evaluateChronoRecallScore();
+      case "kingsGambit":
+        return this.evaluateKingsGambitScore();
+      case "astralSwap":
+        return this.evaluateAstralSwapScore();
+      default:
+        return 50; // Default base score
+    }
   }
 }

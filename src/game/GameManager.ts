@@ -1,7 +1,7 @@
 import { Chess, Move, PieceSymbol, Square, Color } from "chess.js";
 import { PieceMeta, Effect, SpellId, PlayerSpells } from "../types/types";
+import { ChessGameStatus } from "../types/game";
 import { SpellEngine } from "./SpellEngine";
-import { v4 as uuidv4 } from "uuid";
 
 // Define specialized target types for the castSpell method
 type SingleTarget = Square;
@@ -30,6 +30,9 @@ class GameManager {
   private gameLog: string[];
   private glyphs: Record<string, GlyphInfo>;
   private turnNumber: number = 1; // Add turn counter
+  private positionHistory: string[] = []; // Track last few FENs
+  private currentLastMove: { from: Square; to: Square } | null = null;
+  private readonly MAX_POSITION_HISTORY = 10; // Store last 5 full moves (10 positions)
 
   constructor(playerSpells: PlayerSpells) {
     this.chess = new Chess();
@@ -156,7 +159,9 @@ class GameManager {
             effects: pieceEffects,
             hasMoved: existingPiece?.hasMoved || false,
             prevPositions:
-              positionHistory.length > 0 ? positionHistory : undefined,
+              positionHistory.length > 0
+                ? (positionHistory as Square[])
+                : undefined,
           };
 
           // Log preserved position history
@@ -453,6 +458,7 @@ class GameManager {
 
         // IMPORTANT: Count this move as a turn completion for the current player
         // This is critical for effects like Ember Crown that should count down based on player turns
+        this.updatePositionHistory(); // Update position history after a move
         let effectsUpdated = false;
 
         // Process effects on all pieces belonging to the current player
@@ -569,7 +575,7 @@ class GameManager {
                   }
                   return effect;
                 })
-                .filter(Boolean); // Remove any null effects after transformation
+                .filter((e): e is Effect => e !== null); // Type-safe filter for nulls
             }
           }
         }
@@ -680,9 +686,9 @@ class GameManager {
 
         // After the move is made and the board is updated
         // Check if destination square has a glyph effect
-        const glyphEffect = this.glyphs[to];
-        if (glyphEffect) {
-          console.log(`Piece stepped on glyph at ${to}:`, glyphEffect);
+        const glyph = this.glyphs[to];
+        if (glyph) {
+          console.log(`Piece stepped on glyph at ${to}:`, glyph);
 
           // Apply effect to the piece that stepped on the glyph
           const piece = this.customBoardState[to];
@@ -691,8 +697,8 @@ class GameManager {
 
             // If this is a cursed glyph that transforms pieces to pawns
             if (
-              glyphEffect.type === "cursedGlyph" &&
-              glyphEffect.modifiers?.transformToPawn
+              glyph.effect.source === "cursedGlyph" &&
+              glyph.effect.modifiers?.transformToPawn
             ) {
               console.log(
                 `Immediate transformation triggered for piece at ${to}`
@@ -705,10 +711,14 @@ class GameManager {
               delete this.glyphs[to];
 
               // Update UI
-              this.onboardUpdate();
+              // Rely on context state updates, remove this call
             }
           }
         }
+
+        // Store the move details
+        this.moveHistory.push(move);
+        this.currentLastMove = { from, to }; // Update last move
 
         return true;
       }
@@ -749,7 +759,7 @@ class GameManager {
     const piece = this.getPieceAt(to);
     if (piece) {
       const playerName = piece.color === "w" ? "White" : "Black";
-      const pieceType = this.getPieceTypeName(piece.type);
+      const pieceType = this.getPieceTypeName(piece.type as PieceSymbol);
       this.gameLog.push(
         `${playerName} moved ${pieceType} from ${from} to ${to}`
       );
@@ -814,6 +824,7 @@ class GameManager {
           `${targetDesc} (${pieceType === "n" ? "Knight" : "Bishop"})`
         );
 
+        this.updatePositionHistory(); // Update position history after a spell cast
         return true;
       }
 
@@ -837,6 +848,7 @@ class GameManager {
 
       this.logSpellCast(spellId, targetDesc);
 
+      this.updatePositionHistory(); // Update position history after a spell cast
       return true;
     }
 
@@ -995,6 +1007,8 @@ class GameManager {
     setTimeout(() => {
       this.logActiveEffectsSummary();
     }, 100);
+
+    this.updatePositionHistory(); // Update position history after turn ends
   }
 
   // Print a summary of all active effects on the board
@@ -1091,10 +1105,9 @@ class GameManager {
 
     if (glyph) {
       console.log(`Found glyph at ${square}: `, glyph);
-      const glyphEffect = glyph.effect;
 
       // If this is a cursed glyph, apply its effect to the piece
-      if (glyphEffect.source === "cursedGlyph") {
+      if (glyph.effect.source === "cursedGlyph") {
         console.log(`Cursed Glyph triggered at ${square}`);
 
         // Get the piece that landed on the glyph
@@ -1679,6 +1692,8 @@ class GameManager {
     this.logActiveEffectsSummary();
 
     console.log("Turn ended. New player:", newPlayer);
+
+    this.updatePositionHistory(); // Update position history after turn ends
   }
 
   // The root issue: effects need to be decremented on each player's turn,
@@ -1760,6 +1775,38 @@ class GameManager {
   // Get the current turn number
   getCurrentTurnNumber(): number {
     return this.turnNumber;
+  }
+
+  // Get the current game status
+  getGameStatus(): ChessGameStatus {
+    if (this.chess.isCheckmate()) return "checkmate";
+    if (this.chess.isStalemate()) return "stalemate";
+    if (this.chess.isDraw()) return "draw";
+    if (this.chess.isCheck()) return "check";
+    return "active"; // Default status
+  }
+
+  // Method to add current position to history
+  private updatePositionHistory(): void {
+    const currentFEN = this.chess.fen();
+    this.positionHistory.push(currentFEN);
+    // Keep history size limited
+    if (this.positionHistory.length > this.MAX_POSITION_HISTORY) {
+      this.positionHistory.shift(); // Remove the oldest position
+    }
+  }
+
+  // Method to check if a position has been repeated recently
+  public isPositionRepeated(fen: string): boolean {
+    // Check if the FEN exists in the last few positions
+    // Simple check: Look at the last 6 positions (3 full moves)
+    const recentHistory = this.positionHistory.slice(-6);
+    return recentHistory.includes(fen);
+  }
+
+  // Get the last recorded move
+  getLastMove(): { from: Square; to: Square } | null {
+    return this.currentLastMove;
   }
 }
 

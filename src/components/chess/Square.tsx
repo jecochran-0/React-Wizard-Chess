@@ -17,7 +17,10 @@ export interface SquareProps {
   isCheck: boolean;
   isTargeted: boolean;
   isValidTarget?: boolean;
-  onClick: () => void;
+  isKingInCheck?: boolean;
+  isLastMoveFrom?: boolean;
+  isLastMoveTo?: boolean;
+  onClick: (square: ChessSquare) => void;
 }
 
 // Helper function to get the display type of a piece
@@ -68,6 +71,9 @@ const Square: React.FC<SquareProps> = ({
   isCheck,
   isTargeted,
   isValidTarget,
+  isKingInCheck,
+  isLastMoveFrom,
+  isLastMoveTo,
   onClick,
 }) => {
   // Access the chess context
@@ -141,7 +147,13 @@ const Square: React.FC<SquareProps> = ({
     cursor: "pointer",
     boxSizing: "border-box",
     border: `1px solid rgba(0, 0, 0, 0.2)`, // Subtle darker border for wood
-    boxShadow: `inset 0 0 ${2 + variation * 4}px rgba(0, 0, 0, 0.3)`, // Varying inner shadow
+    boxShadow: isSelected
+      ? "inset 0 0 0 3px rgba(74, 222, 128, 0.7)"
+      : isKingInCheck
+      ? "inset 0 0 0 3px rgba(239, 68, 68, 0.7)"
+      : isLastMoveFrom || isLastMoveTo
+      ? "inset 0 0 0 3px rgba(251, 191, 36, 0.6)"
+      : "none",
   };
 
   // Apply wood grain texture selectively and with variation
@@ -424,7 +436,7 @@ const Square: React.FC<SquareProps> = ({
     <div
       className={`square ${isHidden ? "hidden" : ""}`}
       style={style}
-      onClick={onClick}
+      onClick={() => onClick(square)}
     >
       {pieceElement}
 

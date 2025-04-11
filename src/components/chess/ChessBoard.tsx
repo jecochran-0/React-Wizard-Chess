@@ -33,6 +33,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ playerPerspective }) => {
   const {
     boardState,
     currentPlayer,
+    lastMove,
     selectedPiece,
     selectedSpell,
     legalMoves,
@@ -1149,6 +1150,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ playerPerspective }) => {
             isCheck={isCheck}
             isTargeted={isTargeted}
             isValidTarget={isValidSpellTarget}
+            isLastMoveFrom={lastMove ? lastMove.from === square : false}
+            isLastMoveTo={lastMove ? lastMove.to === square : false}
             onClick={() => handleSquareClick(square)}
           />
         );

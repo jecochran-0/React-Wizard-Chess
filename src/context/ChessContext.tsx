@@ -10,6 +10,7 @@ import GameManager from "../game/GameManager";
 import { ComputerPlayer } from "../game/ComputerPlayer";
 import { useGame } from "./GameContext";
 import { PieceMeta, SpellId, PlayerSpells, Effect } from "../types/types";
+import { ChessGameStatus } from "../types/game";
 
 // Define the context type
 export interface ChessContextType {
@@ -17,10 +18,12 @@ export interface ChessContextType {
   currentPlayer: Color;
   playerMana: { w: number; b: number };
   playerSpells: PlayerSpells;
+  lastMove: { from: Square; to: Square } | null;
   boardState: Record<Square, PieceMeta>;
   gameLog: string[];
   boardGlyphs: Record<string, { effect: Effect }>;
   currentTurnNumber: number;
+  gameStatus: ChessGameStatus;
 
   // Selected items
   selectedPiece: Square | null;
@@ -80,6 +83,9 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   const [currentTurnNumber, setCurrentTurnNumber] = useState<number>(
     gameManager.getCurrentTurnNumber()
   );
+  const [gameStatus, setGameStatus] = useState<ChessGameStatus>(
+    gameManager.getGameStatus()
+  );
 
   // Selected state
   const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
@@ -93,6 +99,11 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
 
   // State to track if computer is thinking
   const [isComputerThinking, setIsComputerThinking] = useState(false);
+
+  // State for last move
+  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(
+    null
+  );
 
   // Initialize computer player based on game config
   useEffect(() => {
@@ -238,6 +249,12 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
 
     // Update current turn number
     setCurrentTurnNumber(gameManager.getCurrentTurnNumber());
+
+    // Update game status
+    setGameStatus(gameManager.getGameStatus());
+
+    // Update last move
+    setLastMove(gameManager.getLastMove());
   }, [gameManager, boardState]);
 
   // Select a piece
@@ -259,6 +276,8 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   // Function to update state after any move (player or computer)
   const updateStateAfterAction = () => {
     setCurrentPlayer(gameManager.getCurrentPlayer());
+    setLastMove(gameManager.getLastMove());
+    setGameStatus(gameManager.getGameStatus());
     setBoardState(gameManager.getBoardState() as Record<Square, PieceMeta>);
     setPlayerMana(gameManager.getPlayerMana());
     setGameLog(gameManager.getGameLog());
@@ -470,6 +489,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     selectedSpell,
     legalMoves,
     currentTurnNumber,
+    gameStatus,
     triggerComputerMove,
     selectPiece,
     selectSpell,
@@ -478,6 +498,7 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     endTurn,
     setPlayerSpells: updatePlayerSpells,
     initializePlayerColor,
+    lastMove,
   };
 
   return (
