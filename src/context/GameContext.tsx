@@ -5,7 +5,12 @@ import {
   ReactNode,
   useEffect,
 } from "react";
-import { GameConfig, PlayerColor, Spell } from "../types/game";
+import {
+  GameConfig,
+  PlayerColor,
+  Spell,
+  ComputerOpponent,
+} from "../types/game";
 import { SPELLS } from "../data/spells";
 import { shuffle } from "../utils/helpers";
 
@@ -17,6 +22,7 @@ interface GameContextType {
   availableSpells: Spell[];
   setGameState: (state: GameState) => void;
   selectPlayerColor: (color: PlayerColor) => void;
+  setComputerOpponent: (computer: ComputerOpponent | null) => void;
   toggleSpellSelection: (spell: Spell) => void;
   startGame: () => void;
   resetGame: () => void;
@@ -24,6 +30,7 @@ interface GameContextType {
 
 const defaultGameConfig: GameConfig = {
   playerColor: "w",
+  computerOpponent: null,
   selectedSpells: [],
   mana: 10,
   maxMana: 15,
@@ -43,17 +50,38 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }, [gameState, gameConfig]);
 
   const selectPlayerColor = (color: PlayerColor) => {
-    setGameConfig((prev) => ({ ...prev, playerColor: color }));
+    setGameConfig((prev: GameConfig) => {
+      const newConfig = { ...prev, playerColor: color };
+      // If computer opponent exists, ensure it takes the opposite color
+      if (newConfig.computerOpponent) {
+        newConfig.computerOpponent.color = color === "w" ? "b" : "w";
+      }
+      return newConfig;
+    });
+  };
+
+  // Function to enable/disable/configure the computer opponent
+  const setComputerOpponent = (computer: ComputerOpponent | null) => {
+    setGameConfig((prev: GameConfig) => {
+      const newConfig = { ...prev, computerOpponent: computer };
+      // If enabling the computer, assign the opposite color of the player
+      if (computer && !computer.color) {
+        computer.color = prev.playerColor === "w" ? "b" : "w";
+      }
+      return newConfig;
+    });
   };
 
   const toggleSpellSelection = (spell: Spell) => {
-    setGameConfig((prev) => {
+    setGameConfig((prev: GameConfig) => {
       const isSelected = prev.selectedSpells.some((s) => s.id === spell.id);
       let updatedSpells;
 
       if (isSelected) {
         // Remove spell
-        updatedSpells = prev.selectedSpells.filter((s) => s.id !== spell.id);
+        updatedSpells = prev.selectedSpells.filter(
+          (s: Spell) => s.id !== spell.id
+        );
       } else {
         // Add spell if less than 5 selected
         if (prev.selectedSpells.length < 5) {
@@ -101,6 +129,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         availableSpells,
         setGameState,
         selectPlayerColor,
+        setComputerOpponent,
         toggleSpellSelection,
         startGame,
         resetGame,

@@ -74,3 +74,19 @@ export interface GameState {
   kingPositions: Record<PlayerColor, Square>;
   gameLog: string[];
 }
+
+// Configuration set in the main menu
+export interface GameConfig {
+  playerColor: PlayerColor;
+  computerOpponent: ComputerOpponent | null; // Add computer opponent config
+  selectedSpells: Spell[];
+  mana: number; // Starting mana (consider if this is needed here or just in ChessContext)
+  maxMana: number;
+}
+
+// Configuration for the computer opponent
+export interface ComputerOpponent {
+  enabled: boolean;
+  color: PlayerColor; // Automatically set based on player's choice
+  difficulty: "easy" | "medium" | "hard";
+}

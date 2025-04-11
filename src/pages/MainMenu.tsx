@@ -1,5 +1,5 @@
 import { useGame } from "../context/GameContext";
-import { PlayerColor } from "../types/game";
+import { PlayerColor, ComputerOpponent } from "../types/game";
 import backgroundImage from "/assets/MainMenu_Background.png";
 import { useState, useEffect, useRef } from "react";
 import { SoundProvider, useSound } from "../context/SoundContext";
@@ -245,7 +245,8 @@ export default function MainMenuWrapper() {
 }
 
 const MainMenu = () => {
-  const { gameConfig, selectPlayerColor, startGame } = useGame();
+  const { gameConfig, selectPlayerColor, setComputerOpponent, startGame } =
+    useGame();
   const [sparklePositions, setSparklePositions] = useState<
     { x: number; y: number; delay: number; size: number }[]
   >([]);
@@ -336,6 +337,31 @@ const MainMenu = () => {
 
   const handleColorSelect = (color: PlayerColor) => {
     selectPlayerColor(color);
+  };
+
+  const handleComputerToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      // Enable computer opponent with default settings
+      setComputerOpponent({
+        enabled: true,
+        color: gameConfig.playerColor === "w" ? "b" : "w", // Assign opposite color
+        difficulty: "medium", // Default difficulty
+      });
+    } else {
+      // Disable computer opponent
+      setComputerOpponent(null);
+    }
+  };
+
+  const handleDifficultyChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    if (gameConfig.computerOpponent) {
+      setComputerOpponent({
+        ...gameConfig.computerOpponent,
+        difficulty: event.target.value as "easy" | "medium" | "hard",
+      });
+    }
   };
 
   // Handle game start with transition
@@ -604,7 +630,7 @@ const MainMenu = () => {
             overflow: "hidden",
             animation: "float 6s ease-in-out infinite",
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L90 50 L70 90 L30 90 L10 50 L30 10 L70 10 L90 50 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E")`,
-            backgroundSize: "100px 100px",
+            paddingBottom: gameConfig.computerOpponent ? "1rem" : "1.5rem", // Adjust padding if computer settings are shown
           }}
         >
           {/* Ancient rune frame border */}
@@ -892,6 +918,76 @@ const MainMenu = () => {
               )}
             </button>
           </div>
+
+          {/* --- Computer Opponent Settings --- */}
+          <div
+            style={{
+              marginTop: "1.2rem",
+              padding: "0.8rem",
+              backgroundColor: "rgba(0, 0, 0, 0.2)",
+              borderRadius: "0.5rem",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+                fontSize: "1rem",
+                fontFamily: "'Cinzel', serif",
+                color: "#eee",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={!!gameConfig.computerOpponent}
+                onChange={handleComputerToggle}
+                style={{
+                  marginRight: "10px",
+                  accentColor: "#ffb347",
+                  width: "18px",
+                  height: "18px",
+                  cursor: "pointer",
+                }}
+              />
+              Play against Computer
+            </label>
+
+            {gameConfig.computerOpponent && (
+              <div style={{ marginTop: "0.8rem", paddingLeft: "28px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "0.9rem",
+                    color: "#ccc",
+                  }}
+                >
+                  Difficulty:
+                </label>
+                <select
+                  value={gameConfig.computerOpponent.difficulty}
+                  onChange={handleDifficultyChange}
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    backgroundColor: "rgba(30, 41, 59, 0.8)",
+                    color: "white",
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            )}
+          </div>
+          {/* --- End Computer Opponent Settings --- */}
 
           <button
             onClick={handleStartGame}
