@@ -689,4 +689,11 @@ export class GameManager {
   public hasVeilOfShadows(): boolean {
     return this.spellEngine.hasVeilOfShadows();
   }
+
+  /**
+   * Get the last move made
+   */
+  public getLastMove(): { from: SquareType; to: SquareType } | null {
+    return this.lastMove;
+  }
 }
