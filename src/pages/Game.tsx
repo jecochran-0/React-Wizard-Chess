@@ -615,20 +615,11 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
 
   return (
     <div
+      className="game-container"
       style={{
-        height: "100vh",
-        width: "100vw",
-        backgroundImage: `url(${gameBackgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
         opacity: isGameLoaded ? 1 : 0,
         transition: "opacity 1.5s ease-in",
-        position: "relative",
       }}
-      className="wizard-chess-game"
     >
       {/* Settings Panel */}
       <SettingsPanel bgAudioRef={audioRef} />
@@ -693,554 +684,748 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
       />
 
       <div
+        className="game-layout"
         style={{
-          display: "flex",
-          flex: 1,
-          width: "100%",
-        }}
-        className="main-content-row"
-      >
-        {/* Spell cards column */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            padding: "10px",
-            width: "140px",
-            background: "rgba(15, 23, 42, 0.3)",
-            backdropFilter: "blur(3px)",
-            borderRadius: "8px",
-            marginRight: "15px",
-            height: "auto", // Will be sized by content
-            transform: isGameLoaded ? "translateX(0)" : "translateX(-50px)",
-            opacity: isGameLoaded ? 1 : 0,
-            transition: "transform 1s ease-out, opacity 1s ease-out",
-            transitionDelay: "0.5s",
-            borderRight: "1px solid rgba(100, 116, 139, 0.2)",
-          }}
-          className="spell-column"
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "space-around",
-              gap: "15px",
-              paddingTop: "15px",
-              paddingBottom: "15px",
-            }}
-          >
-            {spells.map((spell, index) => {
-              if (!spell) return null;
-
-              // Check if player has enough mana
-              const hasEnoughMana = playerMana[currentPlayer] >= spell.manaCost;
-              // Check if spells are allowed yet (after turn 5)
-              const spellsAllowed = currentTurnNumber > 5;
-              // Determine if the card is usable
-              const isUsable = hasEnoughMana && spellsAllowed;
-
-              return (
-                <div
-                  key={spell.id}
-                  onClick={() =>
-                    isUsable ? handleSpellSelect(spell.id) : null
-                  }
-                  style={{
-                    opacity: isGameLoaded ? 1 : 0,
-                    transition:
-                      "opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.3s ease",
-                    transitionDelay: `${0.6 + index * 0.1}s`,
-                    cursor: isUsable ? "pointer" : "not-allowed",
-                    position: "relative",
-                    width: "100px", // Reduced width to fit better
-                    boxShadow:
-                      selectedSpell === spell.id
-                        ? "0 0 15px 5px rgba(168, 85, 247, 0.7)"
-                        : "0 4px 6px rgba(0, 0, 0, 0.3)",
-                    transform:
-                      selectedSpell === spell.id
-                        ? "translateY(-5px)"
-                        : "translateY(0)",
-                    animation:
-                      selectedSpell === spell.id
-                        ? "pulse 1.5s infinite"
-                        : "none",
-                    transformOrigin: "center center",
-                  }}
-                  className="spell-card-hover"
-                  title={`${spell.name}: ${spell.description} (Cost: ${
-                    spell.manaCost
-                  }${!spellsAllowed ? " - Spells unlock after turn 5" : ""})`}
-                >
-                  <img
-                    src={
-                      spellImageMapping[spell.id] ||
-                      `/assets/Chess_Spells/${spell.id}.png`
-                    }
-                    alt={spell.name}
-                    style={{
-                      width: "100%",
-                      height: "auto",
-                      display: "block",
-                      opacity: isUsable ? 1 : 0.7,
-                    }}
-                    onError={(e) => {
-                      // If image fails to load, show a colored placeholder with spell name
-                      const target = e.target as HTMLImageElement;
-                      const canvas = document.createElement("canvas");
-                      canvas.width = 100;
-                      canvas.height = 140;
-                      const ctx = canvas.getContext("2d");
-                      if (ctx) {
-                        // Draw gradient background
-                        const gradient = ctx.createLinearGradient(
-                          0,
-                          0,
-                          0,
-                          canvas.height
-                        );
-                        gradient.addColorStop(0, "#2e1e5b");
-                        gradient.addColorStop(1, "#3a3fbd");
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                        // Draw spell name
-                        ctx.fillStyle = "#ffffff";
-                        ctx.font = "bold 12px Arial";
-                        ctx.textAlign = "center";
-                        ctx.fillText(
-                          spell.name,
-                          canvas.width / 2,
-                          canvas.height / 2
-                        );
-                      }
-                      target.src = canvas.toDataURL();
-                    }}
-                  />
-
-                  {/* Description overlay that appears on hover */}
-                  <div className="description-overlay">
-                    <div className="spell-name">{spell.name}</div>
-                    <div className="spell-description">{spell.description}</div>
-                    <div
-                      style={{
-                        marginTop: "4px",
-                        fontSize: "10px",
-                        color: "#93c5fd",
-                      }}
-                    >
-                      Cost: {spell.manaCost} mana
-                    </div>
-                  </div>
-
-                  {/* Mana cost badge */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "-5px",
-                      right: "-5px",
-                      backgroundColor: "rgba(139, 92, 246, 0.9)",
-                      color: "white",
-                      width: "20px",
-                      height: "20px",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "11px",
-                      fontWeight: "bold",
-                      border: "2px solid white",
-                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
-                      zIndex: 2,
-                    }}
-                  >
-                    {spell.manaCost}
-                  </div>
-
-                  {/* Add a disabled overlay when spell can't be cast */}
-                  {!isUsable && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        height: "100%",
-                        backgroundColor: "rgba(0, 0, 0, 0.6)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "white",
-                        fontSize: "11px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {!hasEnoughMana
-                        ? "Need Mana"
-                        : !spellsAllowed
-                        ? "Unlock T6"
-                        : "Cannot Cast"}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={handleEndTurn}
-            aria-label="End Turn"
-            title="Press to end turn"
-            style={{
-              position: "absolute",
-              width: "1px",
-              height: "1px",
-              padding: 0,
-              margin: "-1px",
-              overflow: "hidden",
-              clip: "rect(0, 0, 0, 0)",
-              whiteSpace: "nowrap",
-              border: 0,
-            }}
-          >
-            End Turn
-          </button>
-        </div>
-
-        {/* Board container - center area */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flexGrow: 1,
-            height: "auto",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(15, 23, 42, 0.3)",
-            backdropFilter: "blur(3px)",
-            borderRadius: "8px",
-            padding: "15px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-          }}
-          className="board-container"
-        >
-          {/* Chess board */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
-              opacity: isGameLoaded ? 1 : 0,
-              transition: "opacity 1s ease-out",
-              transitionDelay: "0.7s",
-            }}
-          >
-            <div
-              style={{
-                transform: "scale(1.7)",
-                transformOrigin: "center center",
-              }}
-              className="chess-board-wrapper"
-            >
-              <ChessBoard playerPerspective={playerColor} />
-            </div>
-          </div>
-        </div>
-
-        {/* Game log */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            padding: "12px",
-            background:
-              "linear-gradient(135deg, rgba(15, 23, 42, 0.5) 0%, rgba(44, 31, 75, 0.6) 100%)",
-            backdropFilter: "blur(3px)",
-            width: "260px",
-            color: "white",
-            height: "auto", // Will match sibling's height
-            transform: isGameLoaded ? "translateX(0)" : "translateX(50px)",
-            opacity: isGameLoaded ? 1 : 0,
-            transition: "transform 1s ease-out, opacity 1s ease-out",
-            transitionDelay: "0.5s",
-            borderLeft: "1px solid rgba(100, 116, 139, 0.3)",
-            boxShadow: "inset 0 0 15px rgba(138, 43, 226, 0.15)",
-            position: "relative",
-            overflow: "hidden",
-            borderRadius: "8px",
-            marginLeft: "15px",
-          }}
-          className="game-log-container"
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='40' stroke='rgba(138, 43, 226, 0.1)' fill='none' stroke-dasharray='5 3'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(138, 43, 226, 0.07)' fill='none'/%3E%3C/svg%3E")`,
-              backgroundSize: "200px 200px",
-              zIndex: -1,
-              opacity: 0.5,
-              pointerEvents: "none",
-            }}
-          />
-
-          <h2
-            style={{
-              fontSize: "14px",
-              margin: "0 0 12px 0",
-              textAlign: "center",
-              padding: "6px 0",
-              cursor: "pointer",
-              display: "flex",
-              justifyContent: "space-between",
-              color: "rgba(255, 255, 255, 0.9)",
-              fontFamily: "'Cinzel', serif",
-              background:
-                "linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.2), transparent)",
-              borderBottom: "1px solid rgba(138, 43, 226, 0.3)",
-              position: "relative",
-              textShadow: "0 0 8px rgba(138, 43, 226, 0.5)",
-            }}
-            onClick={() => setLogExpanded(!logExpanded)}
-          >
-            <span style={{ margin: "0 auto" }}>Game Log</span>
-            <span style={{ position: "absolute", right: "0" }}>
-              {logExpanded ? "▲" : "▼"}
-            </span>
-          </h2>
-
-          {logExpanded && (
-            <div
-              style={{
-                flexGrow: 1,
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "6px",
-                fontSize: "12px",
-                opacity: isGameLoaded ? 1 : 0,
-                transition: "opacity 0.5s ease-out",
-                transitionDelay: "1s",
-                maxHeight: "400px", // Add fixed maximum height
-                height: "calc(100vh - 300px)", // Responsive height based on viewport
-                scrollbarWidth: "thin",
-                scrollbarColor: "rgba(138, 43, 226, 0.3) transparent",
-                padding: "0 4px",
-                overflowX: "hidden", // Prevent horizontal overflow
-              }}
-              className="custom-scrollbar" // Add class for custom scrollbar styling
-            >
-              {gameLog.length === 0 ? (
-                <div
-                  style={{
-                    padding: "8px",
-                    color: "rgba(255, 255, 255, 0.6)",
-                    fontStyle: "italic",
-                    textAlign: "center",
-                    background: "rgba(0, 0, 0, 0.2)",
-                    borderRadius: "4px",
-                    border: "1px dashed rgba(138, 43, 226, 0.2)",
-                  }}
-                >
-                  No moves yet
-                </div>
-              ) : (
-                gameLog.map((log, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      padding: "6px 8px",
-                      borderRadius: "4px",
-                      opacity: isGameLoaded ? 1 : 0,
-                      transform: isGameLoaded
-                        ? "translateX(0)"
-                        : "translateX(10px)",
-                      transition:
-                        "opacity 0.3s ease-out, transform 0.3s ease-out",
-                      transitionDelay: `${1 + index * 0.05}s`,
-                      background: "rgba(15, 23, 42, 0.3)",
-                      borderLeft:
-                        index % 2 === 0
-                          ? "2px solid rgba(138, 43, 226, 0.4)"
-                          : "2px solid rgba(65, 105, 225, 0.4)",
-                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-                      marginBottom: "2px",
-                      wordBreak: "break-word", // Ensures long text wraps
-                    }}
-                  >
-                    {log}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Game status bar - now at the top of the entire layout */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 20px",
-          width: "calc(100% - 430px)", // Adjust width to match board container width
-          marginBottom: "15px",
-          backgroundColor: "rgba(15, 23, 42, 0.5)",
-          backdropFilter: "blur(3px)",
-          borderRadius: "8px",
-          transform: isGameLoaded ? "translateY(0)" : "translateY(-20px)",
           opacity: isGameLoaded ? 1 : 0,
-          transition: "transform 1s ease-out, opacity 1s ease-out",
-          transitionDelay: "0.4s",
-          borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-          borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRight: "1px solid rgba(30, 30, 60, 0.4)",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L70 30 L30 30 Z' stroke='rgba(255,255,255,0.05)' fill='none'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(255,255,255,0.03)' fill='none'/%3E%3C/svg%3E")`,
-          backgroundSize: "100px 100px",
-          marginLeft: "155px", // Align with board container
+          transform: isGameLoaded ? "scale(1)" : "scale(0.95)",
+          transition: "opacity 1.2s ease-out, transform 1.2s ease-out",
+          transitionDelay: "0.3s",
         }}
-        className="game-status-bar"
       >
-        {/* Game status bar content */}
+        {/* Game status bar */}
+        <div
+          className="game-status-bar"
+          style={{
+            transform: isGameLoaded ? "translateY(0)" : "translateY(-20px)",
+            opacity: isGameLoaded ? 1 : 0,
+            transition: "transform 1s ease-out, opacity 1s ease-out",
+            transitionDelay: "0.4s",
+          }}
+        >
+          <div className="status-left">
+            <span style={{ fontFamily: "'Cinzel', serif", fontWeight: "bold" }}>
+              Turn:
+            </span>
+            <span
+              style={{
+                fontWeight: "bold",
+                backgroundColor: currentPlayer === "w" ? "#d1d5db" : "#111827",
+                backgroundImage:
+                  currentPlayer === "w"
+                    ? "linear-gradient(135deg, #d1d5db 0%, #f9fafb 100%)"
+                    : "linear-gradient(135deg, #111827 0%, #1f2937 100%)",
+                color: currentPlayer === "w" ? "#1e293b" : "white",
+                padding: "3px 10px",
+                borderRadius: "4px",
+                fontFamily: "'Cinzel', serif",
+                boxShadow:
+                  currentPlayer === "w"
+                    ? "0 0 8px rgba(255, 255, 255, 0.5)"
+                    : "0 0 8px rgba(0, 0, 0, 0.5)",
+                border:
+                  currentPlayer === "w"
+                    ? "1px solid rgba(255, 255, 255, 0.7)"
+                    : "1px solid rgba(50, 50, 50, 0.7)",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              {currentPlayer === "w" ? "White" : "Black"}
+            </span>
+          </div>
+
+          <div className="status-center">
+            <span
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontWeight: "bold",
+                fontSize: "18px",
+                position: "relative",
+                zIndex: 1,
+                background: "linear-gradient(to right, #60a5fa, #93c5fd)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                textShadow: "0 0 5px rgba(59, 130, 246, 0.7)",
+              }}
+            >
+              Turn {currentTurnNumber}
+            </span>
+            <span
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: "10px",
+                position: "relative",
+                zIndex: 1,
+                color: currentTurnNumber > 5 ? "#6ee7b7" : "#fcd34d",
+                textShadow:
+                  currentTurnNumber > 5
+                    ? "0 0 5px rgba(110, 231, 183, 0.7)"
+                    : "0 0 5px rgba(252, 211, 77, 0.7)",
+                fontWeight: "bold",
+              }}
+            >
+              {currentTurnNumber > 5 ? "Spells Unlocked" : `Spells unlock T6`}
+            </span>
+          </div>
+
+          <div className="status-right">
+            <span style={{ fontFamily: "'Cinzel', serif", fontWeight: "bold" }}>
+              Mana:
+            </span>
+            <span
+              style={{
+                background: "linear-gradient(to right, #a855f7, #d8b4fe)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                fontWeight: "bold",
+                fontFamily: "'Cinzel', serif",
+                textShadow: "0 0 5px rgba(168, 85, 247, 0.7)",
+                fontSize: "16px",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              {playerMana[currentPlayer]}/10
+            </span>
+
+            <button
+              onClick={toggleMute}
+              style={{
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                borderRadius: "4px",
+                color: "rgba(255, 255, 255, 0.7)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                padding: 0,
+                fontSize: "16px",
+                boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                background:
+                  "linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(51, 65, 85, 0.85) 100%)",
+              }}
+              title="Toggle Sound"
+            >
+              {isMuted ? "🔇" : "🔊"}
+            </button>
+          </div>
+        </div>
+
+        {/* Main content row */}
+        <div className="main-content-row">
+          {/* Spell cards column */}
+          <div
+            className="spell-column"
+            style={{
+              transform: isGameLoaded ? "translateX(0)" : "translateX(-50px)",
+              opacity: isGameLoaded ? 1 : 0,
+              transition: "transform 1s ease-out, opacity 1s ease-out",
+              transitionDelay: "0.5s",
+            }}
+          >
+            <div className="spells-container">
+              {spells.map((spell, index) => {
+                if (!spell) return null;
+
+                // Check if player has enough mana
+                const hasEnoughMana =
+                  playerMana[currentPlayer] >= spell.manaCost;
+                // Check if spells are allowed yet (after turn 5)
+                const spellsAllowed = currentTurnNumber > 5;
+                // Determine if the card is usable
+                const isUsable = hasEnoughMana && spellsAllowed;
+
+                return (
+                  <div
+                    key={spell.id}
+                    onClick={() =>
+                      isUsable ? handleSpellSelect(spell.id) : null
+                    }
+                    className={`spell-card ${
+                      selectedSpell === spell.id ? "selected" : ""
+                    } ${!isUsable ? "disabled" : ""}`}
+                    style={{
+                      opacity: isGameLoaded ? 1 : 0,
+                      transitionDelay: `${0.6 + index * 0.1}s`,
+                    }}
+                    title={`${spell.name}: ${spell.description} (Cost: ${
+                      spell.manaCost
+                    }${!spellsAllowed ? " - Spells unlock after turn 5" : ""})`}
+                  >
+                    <img
+                      src={
+                        spellImageMapping[spell.id] ||
+                        `/assets/Chess_Spells/${spell.id}.png`
+                      }
+                      alt={spell.name}
+                      style={{
+                        opacity: isUsable ? 1 : 0.7,
+                      }}
+                      onError={(e) => {
+                        // If image fails to load, show a colored placeholder with spell name
+                        const target = e.target as HTMLImageElement;
+                        const canvas = document.createElement("canvas");
+                        canvas.width = 100;
+                        canvas.height = 140;
+                        const ctx = canvas.getContext("2d");
+                        if (ctx) {
+                          // Draw gradient background
+                          const gradient = ctx.createLinearGradient(
+                            0,
+                            0,
+                            0,
+                            canvas.height
+                          );
+                          gradient.addColorStop(0, "#2e1e5b");
+                          gradient.addColorStop(1, "#3a3fbd");
+                          ctx.fillStyle = gradient;
+                          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                          // Draw spell name
+                          ctx.fillStyle = "#ffffff";
+                          ctx.font = "bold 12px Arial";
+                          ctx.textAlign = "center";
+                          ctx.fillText(
+                            spell.name,
+                            canvas.width / 2,
+                            canvas.height / 2
+                          );
+                        }
+                        target.src = canvas.toDataURL();
+                      }}
+                    />
+
+                    {/* Description overlay that appears on hover */}
+                    <div className="description-overlay">
+                      <div className="spell-name">{spell.name}</div>
+                      <div className="spell-description">
+                        {spell.description}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          fontSize: "10px",
+                          color: "#93c5fd",
+                        }}
+                      >
+                        Cost: {spell.manaCost} mana
+                      </div>
+                    </div>
+
+                    {/* Mana cost badge */}
+                    <div className="mana-badge">{spell.manaCost}</div>
+
+                    {/* Add a disabled overlay when spell can't be cast */}
+                    {!isUsable && (
+                      <div className="disabled-overlay">
+                        {!hasEnoughMana
+                          ? "Need Mana"
+                          : !spellsAllowed
+                          ? "Unlock T6"
+                          : "Cannot Cast"}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={handleEndTurn}
+              aria-label="End Turn"
+              title="Press to end turn"
+              style={{
+                position: "absolute",
+                width: "1px",
+                height: "1px",
+                padding: 0,
+                margin: "-1px",
+                overflow: "hidden",
+                clip: "rect(0, 0, 0, 0)",
+                whiteSpace: "nowrap",
+                border: 0,
+              }}
+            >
+              End Turn
+            </button>
+          </div>
+
+          {/* Board container */}
+          <div className="board-container">
+            {/* Chess board */}
+            <div
+              className="chess-board-wrapper"
+              style={{
+                opacity: isGameLoaded ? 1 : 0,
+                transition: "opacity 1s ease-out",
+                transitionDelay: "0.7s",
+              }}
+            >
+              <div className="chess-board-scale">
+                <ChessBoard playerPerspective={playerColor} />
+              </div>
+            </div>
+          </div>
+
+          {/* Game log */}
+          <div
+            className="game-log-container"
+            style={{
+              transform: isGameLoaded ? "translateX(0)" : "translateX(50px)",
+              opacity: isGameLoaded ? 1 : 0,
+              transition: "transform 1s ease-out, opacity 1s ease-out",
+              transitionDelay: "0.5s",
+            }}
+          >
+            <h2
+              className="log-title"
+              onClick={() => setLogExpanded(!logExpanded)}
+            >
+              <span style={{ margin: "0 auto" }}>Game Log</span>
+              <span style={{ position: "absolute", right: "0" }}>
+                {logExpanded ? "▲" : "▼"}
+              </span>
+            </h2>
+
+            {logExpanded && (
+              <div
+                className="log-content custom-scrollbar"
+                style={{
+                  opacity: isGameLoaded ? 1 : 0,
+                  transition: "opacity 0.5s ease-out",
+                  transitionDelay: "1s",
+                }}
+              >
+                {gameLog.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "8px",
+                      color: "rgba(255, 255, 255, 0.6)",
+                      fontStyle: "italic",
+                      textAlign: "center",
+                      background: "rgba(0, 0, 0, 0.2)",
+                      borderRadius: "4px",
+                      border: "1px dashed rgba(138, 43, 226, 0.2)",
+                    }}
+                  >
+                    No moves yet
+                  </div>
+                ) : (
+                  gameLog.map((log, index) => (
+                    <div
+                      key={index}
+                      className="log-entry"
+                      style={{
+                        opacity: isGameLoaded ? 1 : 0,
+                        transform: isGameLoaded
+                          ? "translateX(0)"
+                          : "translateX(10px)",
+                        transition:
+                          "opacity 0.3s ease-out, transform 0.3s ease-out",
+                        transitionDelay: `${1 + index * 0.05}s`,
+                      }}
+                    >
+                      {log}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <style>
         {`
-          @keyframes pulse-glow {
-            0%, 100% { opacity: 0.9; filter: brightness(1); }
-            50% { opacity: 1; filter: brightness(1.2); }
-          }
-          
-          @keyframes scale-in {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-          }
-          
-          @keyframes fade-in {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
-          }
-          
-          @keyframes slide-in-right {
-            0% { transform: translateX(-50px); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-          }
-          
-          @keyframes float-particle {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.2); }
-          }
-          
-          @keyframes expand-fade {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(2.5); opacity: 0; }
-          }
-          
-          @keyframes flow-to-center {
-            0% { transform: translateX(0) translateY(0); opacity: 0.8; }
-            100% { transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)); opacity: 0; }
-          }
-          
-          @keyframes burst-out {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(3); opacity: 0; }
-          }
-          
-          @keyframes game-entrance-particle {
-            0% { transform: scale(0) rotate(0deg); opacity: 0; }
-            50% { opacity: 0.8; }
-            100% { transform: scale(3) rotate(360deg); opacity: 0; }
-          }
-          
-          @keyframes rotate-magic {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          
-          @keyframes pulse {
-            0% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
-            50% { box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); }
-            100% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
-          }
-          
-          @keyframes shine {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-          
-          .spell-card-hover {
-            transition: all 0.3s ease;
-            overflow: visible;
+          /* Base styles for all screen sizes */
+          .game-container {
+            min-height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            background-image: url(${gameBackgroundImage});
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
             position: relative;
+            padding: 20px;
+            box-sizing: border-box;
           }
-          
-          .spell-card-hover:hover {
-            transform: translateY(-2px) scale(1.05);
-            z-index: 10;
+
+          .game-layout {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 60px);
+            width: 100%;
+            opacity: 1;
+            position: relative;
+            z-index: 2;
           }
-          
-          /* Description overlay that appears on hover */
-          .spell-card-hover .description-overlay {
+
+          .game-status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(3px);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid rgba(30, 30, 60, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          }
+
+          .status-left, .status-center, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(51, 65, 85, 0.85) 100%);
+            border-radius: 6px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .main-content-row {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            gap: 15px;
+          }
+
+          .spell-column {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 10px;
+            width: 140px;
+            background: rgba(15, 23, 42, 0.3);
+            backdrop-filter: blur(3px);
+            border-radius: 8px;
+            height: auto;
+            border-right: 1px solid rgba(100, 116, 139, 0.2);
+          }
+
+          .spells-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            gap: 15px;
+            padding: 15px 0;
+          }
+
+          .board-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: auto;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.3);
+            backdrop-filter: blur(3px);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          }
+
+          .chess-board-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+          }
+
+          .chess-board-scale {
+            transform: scale(1.7);
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+          }
+
+          .game-log-container {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.5) 0%, rgba(44, 31, 75, 0.6) 100%);
+            backdrop-filter: blur(3px);
+            width: 260px;
+            color: white;
+            height: auto;
+            border-left: 1px solid rgba(100, 116, 139, 0.3);
+            box-shadow: inset 0 0 15px rgba(138, 43, 226, 0.15);
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+          }
+
+          .log-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            max-height: 400px;
+            height: calc(100vh - 300px);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(138, 43, 226, 0.3) transparent;
+            padding: 0 4px;
+            overflow-x: hidden;
+          }
+
+          .log-title {
+            font-size: 14px;
+            margin: 0 0 12px 0;
+            text-align: center;
+            padding: 6px 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: 'Cinzel', serif;
+            background: linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.2), transparent);
+            border-bottom: 1px solid rgba(138, 43, 226, 0.3);
+            position: relative;
+            text-shadow: 0 0 8px rgba(138, 43, 226, 0.5);
+          }
+
+          .log-entry {
+            padding: 6px 8px;
+            border-radius: 4px;
+            background: rgba(15, 23, 42, 0.3);
+            border-left: 2px solid rgba(138, 43, 226, 0.4);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2px;
+            word-break: break-word;
+          }
+
+          .log-entry:nth-child(even) {
+            border-left: 2px solid rgba(65, 105, 225, 0.4);
+          }
+
+          .spell-card {
+            width: 100px;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transform-origin: center center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+          }
+
+          .spell-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+          }
+
+          .spell-card.selected {
+            box-shadow: 0 0 15px 5px rgba(168, 85, 247, 0.7);
+            transform: translateY(-5px);
+            animation: pulse 1.5s infinite;
+          }
+
+          .spell-card.disabled {
+            cursor: not-allowed;
+          }
+
+          .spell-card.disabled img {
+            opacity: 0.7;
+          }
+
+          .mana-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: rgba(139, 92, 246, 0.9);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            z-index: 2;
+          }
+
+          .disabled-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(15, 23, 42, 0.85);
-            color: white;
-            padding: 8px;
-            font-size: 10px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
+            background-color: rgba(0, 0, 0, 0.6);
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            text-align: center;
-            z-index: 5;
-            border: 1px solid rgba(138, 43, 226, 0.5);
-            overflow: hidden;
-          }
-          
-          .spell-card-hover:hover .description-overlay {
-            opacity: 1;
-          }
-          
-          .description-overlay .spell-name {
-            font-weight: bold;
-            margin-bottom: 4px;
+            justify-content: center;
+            color: white;
             font-size: 11px;
-            color: #93c5fd;
-            font-family: 'Cinzel', serif;
+            font-weight: bold;
           }
-          
-          .description-overlay .spell-description {
-            line-height: 1.3;
+
+          /* Responsive styles for tablets */
+          @media (max-width: 1024px) {
+            .game-container {
+              padding: 15px;
+            }
+            
+            .spell-column {
+              width: 120px;
+            }
+            
+            .game-log-container {
+              width: 220px;
+            }
+            
+            .chess-board-scale {
+              transform: scale(1.4);
+            }
+            
+            .spell-card {
+              width: 90px;
+            }
           }
-          
-          .spell-card-hover:hover::before {
-            content: '';
-            position: absolute;
-            top: -8px;
-            left: -8px;
-            right: -8px;
-            bottom: -8px;
-            background: linear-gradient(45deg, rgba(138, 43, 226, 0), rgba(138, 43, 226, 0.5), rgba(138, 43, 226, 0));
-            background-size: 200% 200%;
-            animation: shine 1.5s linear infinite;
-            border-radius: 5px;
-            z-index: -1;
-            opacity: 0.7;
+
+          /* Responsive styles for mobile landscape */
+          @media (max-width: 768px) {
+            .game-container {
+              padding: 10px;
+            }
+            
+            .main-content-row {
+              flex-direction: column;
+              gap: 10px;
+            }
+            
+            .game-status-bar {
+              padding: 8px 10px;
+              width: 100%;
+              margin-left: 0;
+              margin-bottom: 10px;
+            }
+            
+            .status-left, .status-center, .status-right {
+              padding: 4px 8px;
+              font-size: 0.9rem;
+            }
+            
+            .board-container {
+              order: 1;
+              width: 100%;
+              padding: 10px;
+            }
+            
+            .chess-board-scale {
+              transform: scale(1.05);
+            }
+            
+            .spell-column {
+              order: 2;
+              width: 100%;
+              flex-direction: row;
+              height: auto;
+              padding: 10px;
+              margin-top: 10px;
+            }
+            
+            .spells-container {
+              flex-direction: row;
+              width: 100%;
+              overflow-x: auto;
+              padding: 10px 5px;
+              gap: 10px;
+            }
+            
+            .spell-card {
+              flex-shrink: 0;
+              width: 90px;
+            }
+            
+            .game-log-container {
+              order: 3;
+              width: 100%;
+              margin-top: 10px;
+              margin-left: 0;
+            }
+            
+            .log-content {
+              max-height: 120px;
+              height: 120px;
+            }
+          }
+
+          /* Responsive styles for mobile portrait */
+          @media (max-width: 480px) {
+            .game-container {
+              padding: 5px;
+            }
+            
+            .game-layout {
+              height: calc(100vh - 20px);
+            }
+            
+            .game-status-bar {
+              padding: 5px;
+              flex-wrap: wrap;
+              justify-content: center;
+              gap: 5px;
+            }
+            
+            .status-left, .status-center, .status-right {
+              padding: 3px 6px;
+              font-size: 0.8rem;
+              flex: 0 0 auto;
+            }
+            
+            .status-center {
+              order: -1;
+              width: 100%;
+              margin-bottom: 5px;
+              justify-content: center;
+            }
+            
+            .chess-board-scale {
+              transform: scale(0.95);
+            }
+            
+            .spell-card {
+              width: 70px;
+            }
+            
+            .log-content {
+              max-height: 100px;
+              height: 100px;
+              font-size: 11px;
+            }
+            
+            .log-title {
+              font-size: 12px;
+              padding: 4px 0;
+              margin-bottom: 8px;
+            }
+            
+            .log-entry {
+              padding: 4px 6px;
+            }
+          }
+
+          /* Animation keyframes */
+          @keyframes pulse {
+            0% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
+            50% { box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); }
+            100% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
           }
           
           /* Custom scrollbar styling */
@@ -1268,128 +1453,87 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             scrollbar-width: thin;
             scrollbar-color: rgba(138, 43, 226, 0.4) rgba(15, 23, 42, 0.3);
           }
-          
-          .spell-card-hover:hover::after {
-            content: '';
-            position: absolute;
-            inset: -3px;
-            background: radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.3), transparent 70%);
-            filter: blur(5px);
-            z-index: -1;
-            opacity: 0.7;
-          }
-          
-          /* Responsive mobile layouts */
-          @media (max-width: 768px) {
-            /* Game container */
-            .wizard-chess-game {
-              height: auto !important;
-              min-height: 100vh !important;
-              overflow-y: auto !important;
-            }
-            
-            /* Status bar adjustments */
-            div[style*="width: calc(100% - 430px)"] {
-              width: 100% !important;
-              margin-left: 0 !important;
-              padding: 8px 10px !important;
-              flex-wrap: wrap !important;
-              justify-content: center !important;
-              gap: 0.5rem !important;
-            }
-            
-            div[style*="width: calc(100% - 430px)"] > div {
-              margin: 0 4px !important;
-            }
-            
-            div[style*="width: calc(100% - 430px)"] span {
-              font-size: 0.9rem !important;
-            }
-            
-            /* Main content layout - Stack vertically */
-            .main-content-row {
-              flex-direction: column !important;
-              align-items: center !important;
-              gap: 0.75rem !important;
-            }
-            
-            /* Board container */
-            .board-container {
-              order: 1 !important;
-              width: 100% !important;
-              margin-bottom: 1rem !important;
-              padding: 8px !important;
-            }
-            
-            /* Chess board scaling */
-            .chess-board-wrapper {
-              transform: scale(1.05) !important;
-            }
-            
-            /* Spell column layout */
-            .spell-column {
-              order: 2 !important;
-              flex-direction: row !important;
-              width: 100% !important;
-              overflow-x: auto !important;
-              overflow-y: hidden !important;
-              margin-right: 0 !important;
-              height: auto !important;
-              min-height: 140px !important;
-              padding: 10px 5px !important;
-            }
-            
-            /* Spell cards */
-            .spell-column > div > div {
-              width: 100px !important;
-            }
-            
-            /* Game log */
-            .game-log-container {
-              order: 3 !important;
-              width: 100% !important;
-              height: 160px !important;
-              margin-left: 0 !important;
-            }
-          }
-          
-          /* Extra small screens - mobile portrait */
-          @media (max-width: 480px) {
-            .chess-board-wrapper {
-              transform: scale(0.85) !important;
-            }
-            
-            .spell-column {
-              min-height: 130px !important;
-            }
-            
-            .spell-column > div > div {
-              width: 85px !important;
-            }
-            
-            div[style*="width: calc(100% - 430px)"] {
-              padding: 6px !important;
-              font-size: 0.8rem !important;
-              gap: 0.3rem !important;
-            }
 
-            div[style*="width: calc(100% - 430px)"] > div {
-              padding: 4px 8px !important;
-            }
-            
-            div[style*="width: calc(100% - 430px)"] span {
-              font-size: 0.8rem !important;
-            }
-            
-            .game-log-container {
-              height: 140px !important;
-              font-size: 0.8rem !important;
-            }
-            
-            /* Button and interactible elements adjustments */
-            button {
-              min-height: 32px !important;
-            }
+          /* Description overlay that appears on hover */
+          .spell-card .description-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.85);
+            color: white;
+            padding: 8px;
+            font-size: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 5;
+            border: 1px solid rgba(138, 43, 226, 0.5);
+            overflow: hidden;
+          }
+          
+          .spell-card:hover .description-overlay {
+            opacity: 1;
+          }
+          
+          .description-overlay .spell-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 11px;
+            color: #93c5fd;
+            font-family: 'Cinzel', serif;
+          }
+          
+          .description-overlay .spell-description {
+            line-height: 1.3;
+          }
+
+          /* --- Additional animations from original CSS --- */
+          @keyframes game-entrance-particle {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: scale(3) rotate(360deg); opacity: 0; }
+          }
+          
+          @keyframes rotate-magic {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          @keyframes scale-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          
+          @keyframes fade-in {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes slide-in-right {
+            0% { transform: translateX(-50px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          
+          @keyframes expand-fade {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+          }
+          
+          @keyframes flow-to-center {
+            0% { transform: translateX(0) translateY(0); opacity: 0.8; }
+            100% { transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)); opacity: 0; }
+          }
+          
+          @keyframes burst-out {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
           }
         `}
       </style>
