@@ -1,4 +1,4 @@
-import { Chess, Move, Square as ChessSquare } from "chess.js";
+import { Chess, Square as ChessSquare } from "chess.js";
 import {
   BoardState,
   Square as SquareType,
@@ -15,6 +15,8 @@ import { getSpellById } from "./spells";
 interface GlyphInfo {
   square: string;
   remaining: number;
+  triggered?: boolean;
+  turnsLeft: number;
 }
 
 /**
@@ -292,7 +294,11 @@ export class GameManager {
    * Add a glyph to a square (for Cursed Glyph spell)
    */
   public addGlyph(square: SquareType) {
-    this.glyphs[square] = { turnsLeft: 1 };
+    this.glyphs[square] = {
+      square: square,
+      remaining: 1,
+      turnsLeft: 1,
+    };
   }
 
   /**
@@ -390,7 +396,10 @@ export class GameManager {
     }
 
     // Get all legal moves from chess.js
-    const moves = this.chess.moves({ square: square as any, verbose: true });
+    const moves = this.chess.moves({
+      square: square as ChessSquare,
+      verbose: true,
+    });
 
     // Convert to an array of target squares
     const validSquares = moves.map((move) => move.to as SquareType);

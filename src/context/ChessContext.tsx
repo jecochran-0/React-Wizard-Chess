@@ -25,6 +25,14 @@ export interface ChessContextType {
   currentTurnNumber: number;
   gameStatus: ChessGameStatus;
 
+  // Computer opponent state
+  isComputerOpponentEnabled: boolean;
+  computerPlayerColor: Color;
+  computerDifficulty: "easy" | "medium" | "hard";
+  toggleComputerOpponent: (enabled: boolean) => void;
+  setComputerPlayerColor: (color: Color) => void;
+  setComputerDifficulty: (difficulty: "easy" | "medium" | "hard") => void;
+
   // Selected items
   selectedPiece: Square | null;
   selectedSpell: SpellId | null;
@@ -499,6 +507,18 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     setPlayerSpells: updatePlayerSpells,
     initializePlayerColor,
     lastMove,
+    isComputerOpponentEnabled: gameConfig.computerOpponent ? true : false,
+    computerPlayerColor: gameConfig.computerOpponent?.color || "w",
+    computerDifficulty: gameConfig.computerOpponent?.difficulty || "easy",
+    toggleComputerOpponent: (enabled: boolean) => {
+      // Implementation needed
+    },
+    setComputerPlayerColor: (color: Color) => {
+      // Implementation needed
+    },
+    setComputerDifficulty: (difficulty: "easy" | "medium" | "hard") => {
+      // Implementation needed
+    },
   };
 
   return (
