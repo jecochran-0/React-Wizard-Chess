@@ -445,18 +445,12 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                     "0 0 20px rgba(255, 165, 0, 0.7), 0 0 40px rgba(255, 140, 0, 0.5)",
                   animation: "pulse-glow 2s infinite, scale-in 0.7s ease-out",
                 }}
+                className="transition-title"
               >
                 YOUR SPELLS
               </h1>
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "1rem",
-                  animation: "fade-in 0.7s ease-out",
-                }}
-              >
+              <div className="transition-spells-container">
                 {playerSpells[currentPlayer].map((spellId, index) => {
                   const spell = getSpellById(spellId);
                   return spell ? (
@@ -469,6 +463,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                         opacity: 0,
                         transform: "translateX(-50px)",
                       }}
+                      className="transition-spell-card"
                     >
                       <img
                         src={
@@ -476,11 +471,6 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                           `/assets/Chess_Spells/${spell.id}.png`
                         }
                         alt={spell.name}
-                        style={{
-                          width: "120px",
-                          borderRadius: "0.5rem",
-                          boxShadow: "0 0 20px rgba(255, 165, 0, 0.7)",
-                        }}
                         onError={(e) => {
                           // If image fails to load, show a colored placeholder with spell name
                           const target = e.target as HTMLImageElement;
@@ -606,6 +596,64 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             @keyframes burst-out {
               0% { transform: scale(1); opacity: 1; }
               100% { transform: scale(3); opacity: 0; }
+            }
+            
+            /* Responsive transition styles */
+            .transition-title {
+              font-size: 4rem;
+            }
+            
+            .transition-spells-container {
+              display: flex;
+              justify-content: center;
+              gap: 1rem;
+              animation: fade-in 0.7s ease-out;
+              flex-wrap: wrap;
+              padding: 0 1rem;
+            }
+            
+            .transition-spell-card img {
+              width: 120px;
+              border-radius: 0.5rem;
+              box-shadow: 0 0 20px rgba(255, 165, 0, 0.7);
+            }
+            
+            @media (max-width: 768px) {
+              .transition-title {
+                font-size: 3rem;
+              }
+              
+              .transition-spells-container {
+                gap: 0.75rem;
+              }
+              
+              .transition-spell-card img {
+                width: 90px;
+              }
+            }
+            
+            @media (max-width: 480px) {
+              .transition-title {
+                font-size: 2.5rem;
+              }
+              
+              .transition-spells-container {
+                gap: 0.5rem;
+              }
+              
+              .transition-spell-card img {
+                width: 70px;
+              }
+            }
+            
+            @media (max-width: 320px) {
+              .transition-title {
+                font-size: 2rem;
+              }
+              
+              .transition-spell-card img {
+                width: 55px;
+              }
             }
           `}
         </style>
@@ -1453,7 +1501,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             scrollbar-width: thin;
             scrollbar-color: rgba(138, 43, 226, 0.4) rgba(15, 23, 42, 0.3);
           }
-
+          
           /* Description overlay that appears on hover */
           .spell-card .description-overlay {
             position: absolute;
@@ -1493,7 +1541,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
           .description-overlay .spell-description {
             line-height: 1.3;
           }
-
+          
           /* --- Additional animations from original CSS --- */
           @keyframes game-entrance-particle {
             0% { transform: scale(0) rotate(0deg); opacity: 0; }
@@ -1523,7 +1571,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
           
           @keyframes expand-fade {
             0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(2.5); opacity: 0; }
+            50% { transform: scale(2.5); opacity: 0; }
           }
           
           @keyframes flow-to-center {
@@ -1534,6 +1582,60 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
           @keyframes burst-out {
             0% { transform: scale(1); opacity: 1; }
             100% { transform: scale(3); opacity: 0; }
+          }
+
+          /* Responsive styles for YOUR SPELLS transition screen */
+          .transition-spells-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            animation: fade-in 0.7s ease-out;
+            flex-wrap: wrap;
+            padding: 0 1rem;
+          }
+          
+          .transition-spell-card img {
+            width: 120px;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.7);
+          }
+          
+          @media (max-width: 768px) {
+            .transition-spells-container {
+              gap: 0.75rem;
+            }
+            
+            .transition-spell-card img {
+              width: 90px;
+            }
+            
+            h1 {
+              font-size: 3.5rem !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .transition-spells-container {
+              gap: 0.5rem;
+            }
+            
+            .transition-spell-card img {
+              width: 70px;
+            }
+            
+            h1 {
+              font-size: 2.5rem !important;
+            }
+          }
+
+          @media (max-width: 320px) {
+            .transition-spell-card img {
+              width: 55px;
+            }
+            
+            h1 {
+              font-size: 2rem !important;
+            }
           }
         `}
       </style>

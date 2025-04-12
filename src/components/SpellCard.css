@@ -1,0 +1,76 @@
+.spell-card {
+  position: relative;
+  width: 150px;
+  aspect-ratio: 7/10;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transform: scale(1);
+}
+
+@media (max-width: 1200px) {
+  .spell-card {
+    width: 140px;
+  }
+}
+
+@media (max-width: 900px) {
+  .spell-card {
+    width: 130px;
+  }
+}
+
+@media (max-width: 768px) {
+  .spell-card {
+    width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .spell-card {
+    width: 110px;
+  }
+}
+
+/* Game spell bar needs smaller cards */
+.spell-column .spell-card {
+  width: 110px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .spell-column .spell-card {
+    width: 100px;
+    margin-right: 8px;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .spell-column .spell-card {
+    width: 90px;
+    margin-right: 6px;
+  }
+}
+
+/* Transition spells container needs compact cards */
+.transition-spells-container .spell-card {
+  width: 120px;
+  margin: 5px;
+}
+
+@media (max-width: 768px) {
+  .transition-spells-container .spell-card {
+    width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .transition-spells-container .spell-card {
+    width: 85px;
+  }
+}
