@@ -47,6 +47,7 @@ const SEMI_CENTER_SQUARES = [
   "f6",
 ];
 const REPETITION_PENALTY = -1000;
+const SPELL_PREFERENCE_THRESHOLD = 75; // Spell needs to be this much better than a move to be preferred
 
 export class ComputerPlayer {
   private gameManager: GameManager;
@@ -109,18 +110,41 @@ export class ComputerPlayer {
       return false;
     }
 
-    // Decide between casting a spell or making a regular move
-    const spellDecision = this.shouldCastSpell();
+    // --- Determine Best Move and Best Spell ---
+    const bestMoveResult = this._findBestStandardMove(possibleMoves);
+    const bestSpellResult = this.shouldCastSpell(); // Gets best affordable spell + score
 
-    if (spellDecision && Math.random() < this.getSpellUsageProbability()) {
+    const bestMoveScore = bestMoveResult ? bestMoveResult.score : -Infinity;
+    const bestSpellScore = bestSpellResult ? bestSpellResult.score : -Infinity;
+
+    console.log(`Best Move Score: ${bestMoveScore}`);
+    console.log(`Best Spell Score: ${bestSpellScore}`);
+
+    // --- Decide Action: Spell vs Move ---
+    let castChosenSpell = false;
+    if (
+      bestSpellResult &&
+      bestSpellScore > bestMoveScore + SPELL_PREFERENCE_THRESHOLD && // Spell must be significantly better
+      Math.random() < this.getSpellUsageProbability() // Difficulty-based probability check
+    ) {
+      console.log("Computer decided to cast a spell.");
+      castChosenSpell = true;
+    } else {
+      console.log("Computer decided to make a standard move.");
+    }
+
+    // --- Execute Chosen Action ---
+    if (castChosenSpell && bestSpellResult) {
       // Cast the selected spell
-      console.log(`Computer casting spell: ${spellDecision.spellId}`);
+      console.log(
+        `Computer casting spell: ${bestSpellResult.decision.spellId}`
+      );
 
       try {
         const success = this.gameManager.castSpell(
-          spellDecision.spellId,
-          spellDecision.targets,
-          spellDecision.pieceType
+          bestSpellResult.decision.spellId,
+          bestSpellResult.decision.targets,
+          bestSpellResult.decision.pieceType
         );
 
         if (success) {
@@ -155,31 +179,35 @@ export class ComputerPlayer {
       }
     }
 
-    // If we didn't cast a spell, or spell failed, make a standard move
-    console.log("Computer attempting standard move (no spell cast).");
-    return this._makeStandardMove(possibleMoves);
-  }
-
-  /**
-   * Selects the best move based on difficulty level
-   */
-  private selectBestMove(): { from: Square; to: Square } | null {
-    const possibleMoves = this.getAllPossibleMoves();
-
-    if (possibleMoves.length === 0) {
-      return null;
+    // If spell wasn't chosen or failed, make the best standard move
+    if (!castChosenSpell) {
+      if (bestMoveResult) {
+        console.log("Executing best standard move.");
+        // Make the actual move using the details from the best evaluated move
+        const moveSuccess = await this._executeMove(bestMoveResult.move);
+        if (moveSuccess) return true;
+        // Fallback if the chosen best move somehow fails
+        console.warn("Best move execution failed, attempting random move.");
+      } else {
+        // Fallback if no best move was found at all
+        console.warn("No best standard move found, attempting random move.");
+      }
+      // Fallback to random move if best move wasn't found or failed
+      const randomMove = this.getRandomMove(possibleMoves);
+      if (randomMove) {
+        console.log("Executing random fallback move.");
+        return await this._executeMove(randomMove);
+      }
+    } else if (!bestSpellResult && bestMoveResult) {
+      // This case handles when spell was preferred but failed to find a valid spell decision
+      // Default to making the best standard move
+      console.log("Spell decision failed, defaulting to best standard move.");
+      return await this._executeMove(bestMoveResult.move);
     }
 
-    switch (this.difficulty) {
-      case "easy":
-        return this.getRandomMove(possibleMoves);
-      case "medium":
-        return this.getBasicTacticalMove(possibleMoves);
-      case "hard":
-        return this.getAdvancedStrategicMove(possibleMoves);
-      default:
-        return this.getRandomMove(possibleMoves);
-    }
+    // If absolutely nothing works (e.g., spell cast failed and no move possible/chosen)
+    console.error("Computer failed to execute any action.");
+    return false;
   }
 
   /**
@@ -319,9 +347,12 @@ export class ComputerPlayer {
    * Decides whether to cast a spell and which one to use
    */
   private shouldCastSpell(): {
-    spellId: SpellId;
-    targets: SpellTargetData;
-    pieceType?: "n" | "b";
+    decision: {
+      spellId: SpellId;
+      targets: SpellTargetData;
+      pieceType?: "n" | "b";
+    };
+    score: number;
   } | null {
     // Get available spells for the computer
     const playerSpells = this.gameManager.getPlayerSpells();
@@ -358,9 +389,12 @@ export class ComputerPlayer {
    * Selects a random spell and valid targets
    */
   private getRandomSpellDecision(spells: SpellId[]): {
-    spellId: SpellId;
-    targets: SpellTargetData;
-    pieceType?: "n" | "b";
+    decision: {
+      spellId: SpellId;
+      targets: SpellTargetData;
+      pieceType?: "n" | "b";
+    };
+    score: number;
   } | null {
     // Pick a random spell
     const randomIndex = Math.floor(Math.random() * spells.length);
@@ -373,29 +407,33 @@ export class ComputerPlayer {
       return null;
     }
 
-    return {
+    const decision = {
       spellId: selectedSpellId,
       targets: targets,
       pieceType:
         selectedSpellId === "darkConversion"
-          ? Math.random() < 0.5
-            ? "n"
-            : "b"
+          ? ((Math.random() < 0.5 // Cast result of ternary
+              ? "n"
+              : "b") as "n" | "b")
           : undefined,
     };
+
+    return { decision, score: 0 };
   }
 
   /**
    * Makes a strategic spell decision based on the current board state
    */
-  private getStrategicSpellDecision(spells: SpellId[]): {
-    spellId: SpellId;
-    targets: SpellTargetData;
-    pieceType?: "n" | "b";
+  private getStrategicSpellDecision(affordableSpells: SpellId[]): {
+    decision: {
+      spellId: SpellId;
+      targets: SpellTargetData;
+      pieceType?: "n" | "b";
+    };
+    score: number;
   } | null {
-    // Evaluate potential spells by scoring the board state *after* the spell is cast
     const evaluatedSpells = [];
-    for (const spellId of spells) {
+    for (const spellId of affordableSpells) {
       const targets = this.findValidTargetsForSpell(spellId);
       if (!targets && spellId !== "secondWind") continue; // Skip if no valid target (except self-target)
 
@@ -418,11 +456,12 @@ export class ComputerPlayer {
     if (evaluatedSpells.length > 0 && evaluatedSpells[0].score > -Infinity) {
       // TODO: Compare best spell score with best move score before deciding
       const bestSpell = evaluatedSpells[0];
-      return {
+      const decision = {
         spellId: bestSpell.spellId,
         targets: bestSpell.targets as SpellTargetData,
         pieceType: bestSpell.pieceType as "n" | "b" | undefined,
       };
+      return { decision, score: bestSpell.score };
     } else {
       return null;
     }
@@ -511,169 +550,198 @@ export class ComputerPlayer {
       // Add more cases for other spells
 
       default: {
-        // Find computer's pieces
-        const allComputerPieces = pieces.filter(
-          (p: PieceWithSquare) =>
-            p.piece.color === this.color &&
-            !p.piece.effects?.some((e) => e.source === "cursedGlyph") // Exclude cursed pieces
-        );
-        if (allComputerPieces.length === 0) return null; // No pieces to target
+        // Create a new scope for the default case
+        {
+          // Find computer's pieces
+          const allComputerPieces = pieces.filter(
+            (p: PieceWithSquare) =>
+              p.piece.color === this.color &&
+              !p.piece.effects?.some((e) => e.source === "cursedGlyph") // Exclude cursed pieces
+          );
+          if (allComputerPieces.length === 0) return null; // No pieces to target
 
-        // const enemyPieces = pieces.filter(p => p.piece.color !== this.color); // Unused for now
+          // const enemyPieces = pieces.filter(p => p.piece.color !== this.color); // Unused for now
 
-        // Find all empty squares
-        const allSquares = Array.from({ length: 8 }, (_, i) =>
-          Array.from(
-            { length: 8 },
-            (_, j) => `${String.fromCharCode(97 + j)}${i + 1}`
-          )
-        ).flat();
-        const occupiedSquares = pieces.map((p: PieceWithSquare) => p.square);
-        const emptySquares = allSquares.filter(
-          (sq) => !occupiedSquares.includes(sq)
-        );
+          // Find all empty squares
+          const allSquares = Array.from({ length: 8 }, (_, i) =>
+            Array.from(
+              { length: 8 },
+              (_, j) => `${String.fromCharCode(97 + j)}${i + 1}`
+            )
+          ).flat();
+          const occupiedSquares = pieces.map((p: PieceWithSquare) => p.square);
+          const emptySquares = allSquares.filter(
+            (sq) => !occupiedSquares.includes(sq)
+          );
 
-        switch (spellId) {
-          case "astralSwap": {
-            if (allComputerPieces.length < 2) return null;
-            const indices = Array.from(allComputerPieces.keys());
-            const i1 = indices.splice(
-              Math.floor(Math.random() * indices.length),
-              1
-            )[0];
-            const i2 = indices[Math.floor(Math.random() * indices.length)];
-            return [
-              allComputerPieces[i1].square,
-              allComputerPieces[i2].square,
-            ] as Square[];
-          }
-          case "mistformKnight": {
-            const kingSquare = allComputerPieces.find(
-              (p) => p.piece.type === "k"
-            )?.square;
-            if (!kingSquare) return null;
-            const kingRank = parseInt(kingSquare[1]);
-            const kingFile = kingSquare[0];
-            const adjacentSquares = [
-              `${kingFile}${kingRank + 1}`,
-              `${kingFile}${kingRank - 1}`,
-              `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${kingRank}`,
-              `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${kingRank}`,
-              `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${
-                kingRank + 1
-              }`,
-              `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${
-                kingRank - 1
-              }`,
-              `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${
-                kingRank + 1
-              }`,
-              `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${
-                kingRank - 1
-              }`,
-            ].filter(
-              (sq) =>
-                sq[0] >= "a" &&
-                sq[0] <= "h" &&
-                parseInt(sq[1]) >= 1 &&
-                parseInt(sq[1]) <= 8
-            );
-            const validEmptyAdjacent = adjacentSquares.filter((sq) =>
-              emptySquares.includes(sq)
-            );
-            return validEmptyAdjacent.length > 0
-              ? (validEmptyAdjacent[
-                  Math.floor(Math.random() * validEmptyAdjacent.length)
-                ] as Square)
-              : null;
-          }
-          case "chronoRecall": {
-            // Find a piece that has moved and can return to a safer/better previous square
-            const candidates = allComputerPieces.filter(
-              (p) =>
-                p.piece.hasMoved &&
-                p.piece.prevPositions &&
-                p.piece.prevPositions.length > 1
-            );
-            if (candidates.length === 0) return null;
+          switch (spellId) {
+            case "astralSwap": {
+              if (allComputerPieces.length < 2) return null;
+              const indices = Array.from(allComputerPieces.keys());
+              const i1 = indices.splice(
+                Math.floor(Math.random() * indices.length),
+                1
+              )[0];
+              const i2 = indices[Math.floor(Math.random() * indices.length)];
+              const targetSquares = [
+                allComputerPieces[i1].square,
+                allComputerPieces[i2].square,
+              ] as Square[];
 
-            // Simple logic: pick a random candidate for now
-            // TODO: Evaluate if previous positions are actually better/safer
-            const targetPiece =
-              candidates[Math.floor(Math.random() * candidates.length)];
-            return targetPiece.square as Square;
+              // Evaluate if the swap is strategically valuable
+              const piece1 = allComputerPieces.find(
+                (p) => p.square === targetSquares[0]
+              );
+              const piece2 = allComputerPieces.find(
+                (p) => p.square === targetSquares[1]
+              );
+
+              if (!piece1 || !piece2) return null; // Should not happen if targets are valid
+
+              // Avoid swapping identical pieces unless one is threatened (basic check)
+              // TODO: Add actual threat detection
+              if (piece1.piece.type === piece2.piece.type) {
+                // Allow swap only if it saves a piece or achieves clear positional gain
+                // Placeholder: Disallow identical swaps for now unless threat detection is added
+                console.log(
+                  "Computer avoiding Astral Swap between identical pieces."
+                );
+                return null;
+              }
+
+              return targetSquares as Square[];
+            }
+            case "mistformKnight": {
+              const kingSquare = allComputerPieces.find(
+                (p) => p.piece.type === "k"
+              )?.square;
+              if (!kingSquare) return null;
+              const kingRank = parseInt(kingSquare[1]);
+              const kingFile = kingSquare[0];
+              const adjacentSquares = [
+                `${kingFile}${kingRank + 1}`,
+                `${kingFile}${kingRank - 1}`,
+                `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${kingRank}`,
+                `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${kingRank}`,
+                `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${
+                  kingRank + 1
+                }`,
+                `${String.fromCharCode(kingFile.charCodeAt(0) + 1)}${
+                  kingRank - 1
+                }`,
+                `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${
+                  kingRank + 1
+                }`,
+                `${String.fromCharCode(kingFile.charCodeAt(0) - 1)}${
+                  kingRank - 1
+                }`,
+              ].filter(
+                (sq) =>
+                  sq[0] >= "a" &&
+                  sq[0] <= "h" &&
+                  parseInt(sq[1]) >= 1 &&
+                  parseInt(sq[1]) <= 8
+              );
+              const validEmptyAdjacent = adjacentSquares.filter((sq) =>
+                emptySquares.includes(sq)
+              );
+              return validEmptyAdjacent.length > 0
+                ? (validEmptyAdjacent[
+                    Math.floor(Math.random() * validEmptyAdjacent.length)
+                  ] as Square)
+                : null;
+            }
+            case "chronoRecall": {
+              // Find a piece that has moved and can return to a safer/better previous square
+              const candidates = allComputerPieces.filter(
+                (p) =>
+                  p.piece.hasMoved &&
+                  p.piece.prevPositions &&
+                  p.piece.prevPositions.length > 1
+              );
+              if (candidates.length === 0) return null;
+
+              // Simple logic: pick a random candidate for now
+              // TODO: Evaluate if previous positions are actually better/safer
+              const targetPiece =
+                candidates[Math.floor(Math.random() * candidates.length)];
+              return targetPiece.square as Square;
+            }
+            case "cursedGlyph":
+            case "pressureField":
+            case "nullfield": {
+              return emptySquares.length > 0
+                ? (emptySquares[
+                    Math.floor(Math.random() * emptySquares.length)
+                  ] as Square)
+                : null;
+            }
+            case "kingsGambit": {
+              const king = allComputerPieces.find((p) => p.piece.type === "k");
+              // Ensure king has legal moves available after the spell would be cast (potential first move)
+              if (!king) return null;
+              const kingMoves = this.gameManager.getLegalMovesFrom(
+                king.square as Square
+              );
+              return kingMoves.length > 0 ? (king.square as Square) : null;
+            }
+            case "darkConversion": {
+              // Prefer pawns that are closer to promotion or can attack something valuable after conversion
+              const pawns = allComputerPieces.filter(
+                (p) => p.piece.type === "p"
+              );
+              if (pawns.length === 0) return null;
+              // Simple logic: pick a random pawn for now
+              // TODO: Add evaluation for best pawn to convert
+              const targetPawn =
+                pawns[Math.floor(Math.random() * pawns.length)];
+              return targetPawn.square as Square;
+            }
+            case "spiritLink": {
+              if (allComputerPieces.length < 2) return null;
+              const indices = Array.from(allComputerPieces.keys());
+              const i1 = indices.splice(
+                Math.floor(Math.random() * indices.length),
+                1
+              )[0];
+              const i2 = indices[Math.floor(Math.random() * indices.length)];
+              return [
+                allComputerPieces[i1].square,
+                allComputerPieces[i2].square,
+              ] as Square[];
+            }
+            case "veilOfShadows": {
+              return allComputerPieces.length > 0
+                ? (allComputerPieces[
+                    Math.floor(Math.random() * allComputerPieces.length)
+                  ].square as Square)
+                : null;
+            }
+            case "raiseBonewalker": {
+              const targetRank1 = this.color === "w" ? 1 : 8;
+              const targetRank2 = this.color === "w" ? 2 : 7;
+              const validSquares = emptySquares.filter(
+                (sq) =>
+                  parseInt(sq[1]) === targetRank1 ||
+                  parseInt(sq[1]) === targetRank2
+              );
+              return validSquares.length > 0
+                ? (validSquares[
+                    Math.floor(Math.random() * validSquares.length)
+                  ] as Square)
+                : null;
+            }
+            case "secondWind": {
+              // Self-targeted, no specific square needed by findValidTargetsForSpell
+              return null;
+            }
+            default:
+              console.warn(
+                `Computer does not know how to find targets for spell: ${spellId}`
+              );
+              return null;
           }
-          case "cursedGlyph":
-          case "pressureField":
-          case "nullfield": {
-            return emptySquares.length > 0
-              ? (emptySquares[
-                  Math.floor(Math.random() * emptySquares.length)
-                ] as Square)
-              : null;
-          }
-          case "kingsGambit": {
-            const king = allComputerPieces.find((p) => p.piece.type === "k");
-            // Ensure king has legal moves available after the spell would be cast (potential first move)
-            if (!king) return null;
-            const kingMoves = this.gameManager.getLegalMovesFrom(
-              king.square as Square
-            );
-            return kingMoves.length > 0 ? (king.square as Square) : null;
-          }
-          case "darkConversion": {
-            // Prefer pawns that are closer to promotion or can attack something valuable after conversion
-            const pawns = allComputerPieces.filter((p) => p.piece.type === "p");
-            if (pawns.length === 0) return null;
-            // Simple logic: pick a random pawn for now
-            // TODO: Add evaluation for best pawn to convert
-            const targetPawn = pawns[Math.floor(Math.random() * pawns.length)];
-            return targetPawn.square as Square;
-          }
-          case "spiritLink": {
-            if (allComputerPieces.length < 2) return null;
-            const indices = Array.from(allComputerPieces.keys());
-            const i1 = indices.splice(
-              Math.floor(Math.random() * indices.length),
-              1
-            )[0];
-            const i2 = indices[Math.floor(Math.random() * indices.length)];
-            return [
-              allComputerPieces[i1].square,
-              allComputerPieces[i2].square,
-            ] as Square[];
-          }
-          case "veilOfShadows": {
-            return allComputerPieces.length > 0
-              ? (allComputerPieces[
-                  Math.floor(Math.random() * allComputerPieces.length)
-                ].square as Square)
-              : null;
-          }
-          case "raiseBonewalker": {
-            const targetRank1 = this.color === "w" ? 1 : 8;
-            const targetRank2 = this.color === "w" ? 2 : 7;
-            const validSquares = emptySquares.filter(
-              (sq) =>
-                parseInt(sq[1]) === targetRank1 ||
-                parseInt(sq[1]) === targetRank2
-            );
-            return validSquares.length > 0
-              ? (validSquares[
-                  Math.floor(Math.random() * validSquares.length)
-                ] as Square)
-              : null;
-          }
-          case "secondWind": {
-            // Self-targeted, no specific square needed by findValidTargetsForSpell
-            return null;
-          }
-          default:
-            console.warn(
-              `Computer does not know how to find targets for spell: ${spellId}`
-            );
-            return null;
-        }
+        } // End of inner scope for default case logic
       } // End of default block scope
     }
   }
@@ -879,33 +947,16 @@ export class ComputerPlayer {
         console.log(
           `Computer attempting standard move: ${moveDecision.from} to ${moveDecision.to}`
         );
-
-        // Try to make the move using the game manager (assuming makeMove is synchronous)
         const success = this.gameManager.makeMove(
           moveDecision.from,
           moveDecision.to
         );
-
-        if (success) {
-          console.log("Computer successfully made standard move");
-          return true;
-        } else {
-          console.warn(
-            "Computer standard move failed (potentially invalid after spell?)"
-          );
-          // Optionally, could try a random move as fallback, but might be complex if state changed mid-turn
-        }
-      } else {
-        console.warn("Could not decide on a standard move.");
+        return success;
       }
     } catch (error) {
-      console.error(
-        "Error during computer standard move selection/execution:",
-        error
-      );
+      console.error("Error while computer making standard move:", error);
     }
 
-    console.warn("Computer failed to execute a standard move this attempt.");
     return false;
   }
 
@@ -939,13 +990,15 @@ export class ComputerPlayer {
    * @returns The *current* GameManager instance (as a placeholder for a cloned state).
    */
   private simulateSpellCast() {
+    // Removed unused parameters
     // Placeholder: Returns the current manager. Needs proper cloning.
     // We cannot safely modify and revert the main GameManager.
     // The evaluation will be based on the state *before* the spell, which is inaccurate.
     console.warn(
       "Spell simulation is using current state, not a cloned future state."
     );
-    return this; // Returns 'this' (ComputerPlayer) - needs to return a simulated GameManager
+    // Returning null to indicate simulation failure/inaccuracy
+    return null; // Changed to return null
   }
 
   // --- Board Evaluation Logic ---
@@ -957,64 +1010,211 @@ export class ComputerPlayer {
    * @returns A numerical score representing the board state.
    */
   private evaluateBoardState(board: (Piece | null)[][]): number {
-    let score = 0;
-    // const opponentColor = this.color === "w" ? "b" : "w"; // Unused for now
+    // NOTE: Wrapping the entire content in a block to avoid lexical declaration issues
+    {
+      let score = 0;
+      // const opponentColor = this.color === "w" ? "b" : "w"; // Unused for now
 
-    // 1. Material Calculation & Positional Factors
-    for (let rank = 0; rank < 8; rank++) {
-      for (let file = 0; file < 8; file++) {
-        const piece = board[rank][file];
-        if (piece) {
-          const square = `${String.fromCharCode(97 + file)}${8 - rank}`; // Calculate square name
-          const pieceValue = PIECE_VALUES[piece.type] || 0;
-          let positionalScore = 0;
+      // Use try-catch for safety during evaluation
+      try {
+        // 1. Material Calculation & Positional Factors
+        for (let rank = 0; rank < 8; rank++) {
+          for (let file = 0; file < 8; file++) {
+            const piece = board[rank][file];
+            if (piece) {
+              const square = `${String.fromCharCode(97 + file)}${8 - rank}`;
+              const pieceValue = PIECE_VALUES[piece.type] || 0;
+              let positionalScore = 0;
 
-          // Bonus for center control
-          if (CENTER_SQUARES.includes(square)) {
-            positionalScore += 10;
-          } else if (SEMI_CENTER_SQUARES.includes(square)) {
-            positionalScore += 5;
-          }
+              // Bonus for center control
+              if (CENTER_SQUARES.includes(square)) {
+                positionalScore += 10;
+              } else if (SEMI_CENTER_SQUARES.includes(square)) {
+                positionalScore += 5;
+              }
 
-          // Bonus for advanced pawns
-          if (piece.type === "p") {
-            if (piece.color === "w" && 8 - rank >= 5)
-              positionalScore += (8 - rank - 4) * 10;
-            if (piece.color === "b" && 8 - rank <= 4)
-              positionalScore += (5 - (8 - rank)) * 10;
-          }
+              // Bonus for advanced pawns
+              if (piece.type === "p") {
+                if (piece.color === "w" && 8 - rank >= 5)
+                  positionalScore += (8 - rank - 4) * 10;
+                if (piece.color === "b" && 8 - rank <= 4)
+                  positionalScore += (5 - (8 - rank)) * 10;
+              }
 
-          if (piece.color === this.color) {
-            score += pieceValue + positionalScore;
-          } else {
-            score -= pieceValue + positionalScore;
+              if (piece.color === this.color) {
+                score += pieceValue + positionalScore;
+              } else {
+                score -= pieceValue + positionalScore;
+              }
+            }
           }
         }
+      } catch (error) {
+        console.error("Error during board evaluation:", error);
+        return 0; // Return neutral score on error
       }
+
+      // TODO: Add King Safety, Checks, Spell Effects evaluations
+
+      return score;
     }
-
-    // TODO: Add King Safety, Checks, Spell Effects evaluations
-
-    return score;
   }
 
   // --- Helper for placeholder spell scoring ---
   private getHeuristicSpellScore(spellId: SpellId): number {
-    switch (spellId) {
-      case "emberCrown":
-        return this.evaluateEmberCrownScore();
-      case "arcaneAnchor":
-        return this.evaluateArcaneAnchorScore();
-      case "darkConversion":
-        return this.evaluateDarkConversionScore();
-      case "chronoRecall":
-        return this.evaluateChronoRecallScore();
-      case "kingsGambit":
-        return this.evaluateKingsGambitScore();
-      case "astralSwap":
-        return this.evaluateAstralSwapScore();
-      default:
-        return 50; // Default base score
+    {
+      switch (spellId) {
+        case "emberCrown":
+          return this.evaluateEmberCrownScore();
+        case "arcaneAnchor":
+          return this.evaluateArcaneAnchorScore();
+        case "darkConversion":
+          return this.evaluateDarkConversionScore();
+        case "chronoRecall":
+          return this.evaluateChronoRecallScore();
+        case "kingsGambit":
+          return this.evaluateKingsGambitScore();
+        case "astralSwap":
+          return this.evaluateAstralSwapScore();
+        default:
+          return 50; // Default base score
+      }
+    }
+  }
+
+  // --- Move Evaluation Helpers (Refactored) ---
+
+  private _findBestStandardMove(
+    possibleMoves: Array<{ from: Square; to: Square }>
+  ): { move: { from: Square; to: Square }; score: number } | null {
+    {
+      if (possibleMoves.length === 0) return null;
+
+      // Use difficulty to select evaluation method
+      let evaluatedMoves;
+      switch (this.difficulty) {
+        case "easy":
+          // Easy just picks random, evaluation score isn't really used here
+          const randomMove = this.getRandomMove(possibleMoves);
+          // Assign a dummy score for consistency, though it won't be used for decision
+          return { move: randomMove, score: 0 };
+        case "medium":
+          evaluatedMoves = this.evaluateMovesTactically(possibleMoves);
+          break;
+        case "hard":
+          evaluatedMoves = this.evaluateMovesStrategically(possibleMoves);
+          break;
+        default:
+          evaluatedMoves = this.evaluateMovesTactically(possibleMoves);
+          break;
+      }
+
+      if (!evaluatedMoves || evaluatedMoves.length === 0) return null;
+
+      // For Medium/Hard, pick based on probability
+      let chosenMoveData;
+      if (this.difficulty === "medium") {
+        if (Math.random() < 0.7 || evaluatedMoves.length < 3) {
+          chosenMoveData = evaluatedMoves[0];
+        } else {
+          const randomIndex = Math.floor(
+            Math.random() * Math.min(3, evaluatedMoves.length)
+          );
+          chosenMoveData = evaluatedMoves[randomIndex];
+        }
+      } else {
+        // Hard difficulty
+        if (Math.random() < 0.9 || evaluatedMoves.length < 2) {
+          chosenMoveData = evaluatedMoves[0];
+        } else {
+          chosenMoveData = evaluatedMoves[1];
+        }
+      }
+
+      return {
+        move: { from: chosenMoveData.from, to: chosenMoveData.to },
+        score: chosenMoveData.score,
+      };
+    }
+  }
+
+  private evaluateMovesTactically(
+    moves: Array<{ from: Square; to: Square }>
+  ): Array<{ from: Square; to: Square; score: number }> {
+    {
+      // Evaluate moves based on resulting board state score
+      const evaluatedMoves = moves
+        .map((move) => {
+          let score = -Infinity; // Default to worst score
+          const tempChess = this.simulateChessMove(move.from, move.to);
+          if (tempChess) {
+            score = this.evaluateBoardState(tempChess.board()); // Evaluate the simulated board
+            const resultingFEN = tempChess.fen();
+            if (this.gameManager.isPositionRepeated(resultingFEN)) {
+              score += REPETITION_PENALTY;
+            }
+          }
+          return { ...move, score };
+        })
+        .filter((move) => move.score > -Infinity); // Filter out failed simulations
+
+      // Sort by score (highest first)
+      evaluatedMoves.sort((a, b) => b.score - a.score);
+
+      return evaluatedMoves;
+    }
+  }
+
+  /**
+   * Select an advanced strategic move (hard difficulty)
+   * Considers piece development, board control, king safety
+   */
+  private evaluateMovesStrategically(
+    moves: Array<{ from: Square; to: Square }>
+  ): Array<{ from: Square; to: Square; score: number }> {
+    {
+      // Use the same evaluation logic as medium for now, just potentially pick differently
+      const evaluatedMoves = moves
+        .map((move) => {
+          let score = -Infinity;
+          const tempChess = this.simulateChessMove(move.from, move.to);
+          if (tempChess) {
+            score = this.evaluateBoardState(tempChess.board()); // Evaluate the simulated board
+            const resultingFEN = tempChess.fen();
+            if (this.gameManager.isPositionRepeated(resultingFEN)) {
+              score += REPETITION_PENALTY;
+            }
+          }
+          return { ...move, score };
+        })
+        .filter((move) => move.score > -Infinity);
+
+      // Sort by score (highest first)
+      evaluatedMoves.sort((a, b) => b.score - a.score);
+
+      return evaluatedMoves;
+    }
+  }
+
+  // Helper to execute a move (used by makeMove)
+  private async _executeMove(move: {
+    from: Square;
+    to: Square;
+  }): Promise<boolean> {
+    try {
+      console.log(`Computer executing move: ${move.from} to ${move.to}`);
+      // Note: gameManager.makeMove is currently synchronous in the base code.
+      // If it were async, we would await it here.
+      const success = this.gameManager.makeMove(move.from, move.to);
+      if (success) {
+        console.log("Move execution successful.");
+      } else {
+        console.warn("Move execution failed.");
+      }
+      return success;
+    } catch (error) {
+      console.error(`Error executing move ${move.from} to ${move.to}:`, error);
+      return false;
     }
   }
 }
