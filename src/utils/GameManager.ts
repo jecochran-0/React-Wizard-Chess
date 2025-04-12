@@ -3,7 +3,6 @@ import {
   BoardState,
   Square as SquareType,
   PlayerColor,
-  PieceMeta,
   MoveResult,
   SpellTarget,
   SpellCastResult,
@@ -28,7 +27,9 @@ export class GameManager {
   private customBoardState: BoardState;
   private currentPlayer: PlayerColor = "w";
   private lastMove: { from: SquareType; to: SquareType } | null = null;
-  private effectTimers: Record<string, unknown> = {}; // Tracks time-based effects
+  // Kept for future implementation but marked as ignored for TypeScript
+  // @ts-expect-error - Will be used in future implementations
+  private effectTimers: Record<string, unknown> = {};
   private glyphs: Record<string, GlyphInfo> = {};
   private playerMana: Record<PlayerColor, number> = { w: 10, b: 10 };
   private turn = 1;

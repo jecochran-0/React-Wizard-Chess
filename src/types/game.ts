@@ -90,3 +90,6 @@ export interface ComputerOpponent {
   color: PlayerColor; // Automatically set based on player's choice
   difficulty: "easy" | "medium" | "hard";
 }
+
+// AI difficulty levels for the chessAI utility
+export type AIDifficulty = "none" | "apprentice" | "novice" | "master";

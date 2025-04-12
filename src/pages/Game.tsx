@@ -17,9 +17,7 @@ const SettingsPanel: React.FC<{
 }> = ({ bgAudioRef }) => {
   const [isOpen, setIsOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { volume, setVolume, playSelectSound } = useSound();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [musicVolume, setMusicVolume] = useState(0.6);
+  const [, setMusicVolume] = useState(0.6);
 
   // Initialize music volume state based on current audio volume
   useEffect(() => {
@@ -28,37 +26,7 @@ const SettingsPanel: React.FC<{
     }
   }, [bgAudioRef]);
 
-  // Handle music volume change with throttling
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleMusicVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setMusicVolume(newVolume);
-
-    // Set the music volume directly on the passed audio reference
-    if (bgAudioRef.current) {
-      bgAudioRef.current.volume = newVolume;
-
-      // If the music is currently muted but we're adjusting volume, unmute it
-      if (bgAudioRef.current.muted) {
-        bgAudioRef.current.muted = false;
-      }
-    }
-  };
-
-  // Handle effects volume change
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleEffectsVolumeChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-
-    // Play a sound effect when changing volume to provide immediate feedback
-    playSelectSound();
-  };
-
   // Settings icon to toggle panel
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const SettingsIcon = () => (
     <button
       onClick={() => setIsOpen(!isOpen)}

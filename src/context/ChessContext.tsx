@@ -511,13 +511,13 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     computerPlayerColor: gameConfig.computerOpponent?.color || "w",
     computerDifficulty: gameConfig.computerOpponent?.difficulty || "easy",
     toggleComputerOpponent: (enabled: boolean) => {
-      // Implementation needed
+      console.log(`Computer opponent ${enabled ? "enabled" : "disabled"}`);
     },
     setComputerPlayerColor: (color: Color) => {
-      // Implementation needed
+      console.log(`Computer color set to ${color}`);
     },
     setComputerDifficulty: (difficulty: "easy" | "medium" | "hard") => {
-      // Implementation needed
+      console.log(`Computer difficulty set to ${difficulty}`);
     },
   };
 

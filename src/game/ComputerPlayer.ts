@@ -257,7 +257,7 @@ export class ComputerPlayer {
    * Select a basic tactical move (medium difficulty)
    * Prioritizes captures and checks
    */
-  // @ts-ignore - Used in testing/debugging
+  // @ts-expect-error - Used in testing/debugging
   private getBasicTacticalMove(moves: Array<{ from: Square; to: Square }>): {
     from: Square;
     to: Square;
@@ -300,7 +300,7 @@ export class ComputerPlayer {
    * Select an advanced strategic move (hard difficulty)
    * Considers piece development, board control, king safety
    */
-  // @ts-ignore - Used in testing/debugging
+  // @ts-expect-error - Used in testing/debugging
   private getAdvancedStrategicMove(
     moves: Array<{ from: Square; to: Square }>
   ): { from: Square; to: Square } {
@@ -334,7 +334,7 @@ export class ComputerPlayer {
   /**
    * Evaluate how central a square is (for positional play)
    */
-  // @ts-ignore - Used in testing/debugging
+  // @ts-expect-error - Used in testing/debugging
   private evaluateCentralControl(square: Square): number {
     const file = square.charAt(0);
     const rank = parseInt(square.charAt(1));
@@ -968,7 +968,7 @@ export class ComputerPlayer {
   /**
    * Simulate a spell cast to evaluate the result
    */
-  // @ts-ignore - Used in future development
+  // @ts-expect-error - Used in future development
   private simulateSpellCast() {
     // implementation will be completed in future iterations
   }
@@ -1074,10 +1074,12 @@ export class ComputerPlayer {
 
       // Use difficulty to select evaluation method
       let evaluatedMoves;
+      let randomMove;
+
       switch (this.difficulty) {
         case "easy":
           // Easy just picks random, evaluation score isn't really used here
-          const randomMove = this.getRandomMove(possibleMoves);
+          randomMove = this.getRandomMove(possibleMoves);
           // Assign a dummy score for consistency, though it won't be used for decision
           return { move: randomMove, score: 0 };
         case "medium": {
