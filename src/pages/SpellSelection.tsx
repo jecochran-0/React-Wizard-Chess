@@ -1,6 +1,5 @@
 import { useGame } from "../context/GameContext";
 import { useState, useEffect, useRef } from "react";
-import { Spell } from "../types/types"; // Import the Spell type
 
 // Import all spell card images
 import astralSwapImg from "/assets/Chess_Spells/ChatGPT Image Apr 4, 2025, 05_35_35 PM.png";
@@ -472,7 +471,9 @@ const SpellSelection = () => {
                   willChange: "transform, opacity", // Performance hint
                   zIndex: isPageLoaded ? 2 : 1, // Higher z-index during animation
                 }}
-                className="spell-card-container"
+                className={`spell-card ${
+                  isSpellSelected(spell.id) ? "selected" : ""
+                }`}
               >
                 {/* Arcane Rune Circle - appears when selected */}
                 {isSpellSelected(spell.id) && (

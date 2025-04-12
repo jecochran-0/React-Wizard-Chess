@@ -108,168 +108,6 @@ const SettingsPanel: React.FC<{
       </svg>
     </button>
   );
-
-  return (
-    <>
-      <SettingsIcon />
-
-      {isOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "70px",
-            right: "20px",
-            width: "280px",
-            backgroundColor: "rgba(15, 23, 42, 0.9)",
-            backdropFilter: "blur(8px)",
-            borderRadius: "12px",
-            padding: "20px",
-            color: "white",
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.3)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            zIndex: 2000,
-            transform: isOpen ? "translateY(0)" : "translateY(-20px)",
-            opacity: isOpen ? 1 : 0,
-            transition: "transform 0.3s ease, opacity 0.3s ease",
-            fontFamily: "'Cinzel', serif",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "1.2rem",
-              textAlign: "center",
-              backgroundImage:
-                "linear-gradient(135deg, #ffb347 10%, #ffcc33 45%, #ffd700 70%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              color: "transparent",
-              textShadow: "0 0 10px rgba(255, 165, 0, 0.3)",
-            }}
-          >
-            Sound Settings
-          </h3>
-
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontSize: "0.9rem",
-              }}
-            >
-              Music Volume
-            </label>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={musicVolume}
-                onChange={handleMusicVolumeChange}
-                style={{
-                  flex: 1,
-                  height: "4px",
-                  accentColor: "#ffd700",
-                  background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${
-                    musicVolume * 100
-                  }%, #444 ${musicVolume * 100}%, #444 100%)`,
-                  outline: "none",
-                  WebkitAppearance: "none",
-                  cursor: "pointer",
-                }}
-              />
-              <span
-                style={{
-                  marginLeft: "10px",
-                  fontSize: "0.9rem",
-                  minWidth: "40px",
-                  textAlign: "right",
-                }}
-              >
-                {Math.round(musicVolume * 100)}%
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontSize: "0.9rem",
-              }}
-            >
-              Effect Volume
-            </label>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleEffectsVolumeChange}
-                style={{
-                  flex: 1,
-                  height: "4px",
-                  accentColor: "#ffd700",
-                  background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${
-                    volume * 100
-                  }%, #444 ${volume * 100}%, #444 100%)`,
-                  outline: "none",
-                  WebkitAppearance: "none",
-                  cursor: "pointer",
-                }}
-              />
-              <span
-                style={{
-                  marginLeft: "10px",
-                  fontSize: "0.9rem",
-                  minWidth: "40px",
-                  textAlign: "right",
-                }}
-              >
-                {Math.round(volume * 100)}%
-              </span>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "20px",
-            }}
-          >
-            <button
-              onClick={() => setIsOpen(false)}
-              style={{
-                backgroundColor: "rgba(30, 41, 59, 0.8)",
-                color: "white",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontFamily: "'Cinzel', serif",
-                fontSize: "0.9rem",
-                transition: "all 0.2s ease",
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(51, 65, 85, 0.8)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(30, 41, 59, 0.8)";
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
 };
 
 // Map spell IDs to their respective image paths
@@ -790,6 +628,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
         transition: "opacity 1.5s ease-in",
         position: "relative",
       }}
+      className="wizard-chess-game"
     >
       {/* Settings Panel */}
       <SettingsPanel bgAudioRef={audioRef} />
@@ -856,651 +695,466 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          height: "calc(100vh - 60px)",
+          flex: 1,
           width: "100%",
-          opacity: isGameLoaded ? 1 : 0,
-          transform: isGameLoaded ? "scale(1)" : "scale(0.95)",
-          transition: "opacity 1.2s ease-out, transform 1.2s ease-out",
-          transitionDelay: "0.3s",
-          position: "relative",
-          zIndex: 2,
-          padding: "20px",
-          boxSizing: "border-box",
         }}
+        className="main-content-row"
       >
-        {/* Game status bar - now at the top of the entire layout */}
+        {/* Spell cards column */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "10px 20px",
-            width: "calc(100% - 430px)", // Adjust width to match board container width
-            marginBottom: "15px",
-            backgroundColor: "rgba(15, 23, 42, 0.5)",
+            flexDirection: "column",
+            justifyContent: "center",
+            padding: "10px",
+            width: "140px",
+            background: "rgba(15, 23, 42, 0.3)",
             backdropFilter: "blur(3px)",
             borderRadius: "8px",
-            transform: isGameLoaded ? "translateY(0)" : "translateY(-20px)",
+            marginRight: "15px",
+            height: "auto", // Will be sized by content
+            transform: isGameLoaded ? "translateX(0)" : "translateX(-50px)",
             opacity: isGameLoaded ? 1 : 0,
             transition: "transform 1s ease-out, opacity 1s ease-out",
-            transitionDelay: "0.4s",
-            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-            borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRight: "1px solid rgba(30, 30, 60, 0.4)",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L70 30 L30 30 Z' stroke='rgba(255,255,255,0.05)' fill='none'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(255,255,255,0.03)' fill='none'/%3E%3C/svg%3E")`,
-            backgroundSize: "100px 100px",
-            marginLeft: "155px", // Align with board container
+            transitionDelay: "0.5s",
+            borderRight: "1px solid rgba(100, 116, 139, 0.2)",
           }}
+          className="spell-column"
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "6px 12px",
-              background:
-                "linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(51, 65, 85, 0.85) 100%)",
-              borderRadius: "6px",
-              color: "white",
-              boxShadow: "0 0 10px rgba(59, 130, 246, 0.3)",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Arcane rune decoration */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0 L40 20 L20 40 L0 20 Z' stroke='rgba(255,255,255,0.1)' fill='none'/%3E%3C/svg%3E")`,
-                backgroundSize: "20px 20px",
-                opacity: 0.5,
-                mixBlendMode: "overlay",
-                zIndex: 0,
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: "bold",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              Turn:
-            </span>
-            <span
-              style={{
-                fontWeight: "bold",
-                backgroundColor: currentPlayer === "w" ? "#d1d5db" : "#111827",
-                backgroundImage:
-                  currentPlayer === "w"
-                    ? "linear-gradient(135deg, #d1d5db 0%, #f9fafb 100%)"
-                    : "linear-gradient(135deg, #111827 0%, #1f2937 100%)",
-                color: currentPlayer === "w" ? "#1e293b" : "white",
-                padding: "3px 10px",
-                borderRadius: "4px",
-                fontFamily: "'Cinzel', serif",
-                boxShadow:
-                  currentPlayer === "w"
-                    ? "0 0 8px rgba(255, 255, 255, 0.5)"
-                    : "0 0 8px rgba(0, 0, 0, 0.5)",
-                border:
-                  currentPlayer === "w"
-                    ? "1px solid rgba(255, 255, 255, 0.7)"
-                    : "1px solid rgba(50, 50, 50, 0.7)",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              {currentPlayer === "w" ? "White" : "Black"}
-            </span>
-          </div>
-
-          {/* Turn counter in the center showing current turn and spell unlock status */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: "3px",
-              padding: "6px 15px",
-              background:
-                "linear-gradient(135deg, rgba(20, 83, 136, 0.85) 0%, rgba(30, 128, 210, 0.85) 100%)",
-              borderRadius: "6px",
-              color: "white",
-              boxShadow: "0 0 10px rgba(30, 144, 255, 0.4)",
-              border: "1px solid rgba(100, 180, 255, 0.2)",
-              position: "relative",
-              overflow: "hidden",
+              justifyContent: "space-around",
+              gap: "15px",
+              paddingTop: "15px",
+              paddingBottom: "15px",
             }}
           >
-            {/* Magical rune background */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='50' height='50' viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='25' cy='25' r='20' stroke='rgba(255,255,255,0.1)' fill='none'/%3E%3Cpath d='M25 5 L45 25 L25 45 L5 25 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E")`,
-                backgroundSize: "25px 25px",
-                opacity: 0.5,
-                mixBlendMode: "overlay",
-                zIndex: 0,
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: "bold",
-                fontSize: "18px",
-                position: "relative",
-                zIndex: 1,
-                background: "linear-gradient(to right, #60a5fa, #93c5fd)",
-                backgroundClip: "text",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-                textShadow: "0 0 5px rgba(59, 130, 246, 0.7)",
-              }}
-            >
-              Turn {currentTurnNumber}
-            </span>
-            <span
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontSize: "10px",
-                position: "relative",
-                zIndex: 1,
-                color: currentTurnNumber > 5 ? "#6ee7b7" : "#fcd34d",
-                textShadow:
-                  currentTurnNumber > 5
-                    ? "0 0 5px rgba(110, 231, 183, 0.7)"
-                    : "0 0 5px rgba(252, 211, 77, 0.7)",
-                fontWeight: "bold",
-              }}
-            >
-              {currentTurnNumber > 5 ? "Spells Unlocked" : `Spells unlock T6`}
-            </span>
-          </div>
+            {spells.map((spell, index) => {
+              if (!spell) return null;
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "6px 12px",
-              background:
-                "linear-gradient(135deg, rgba(88, 28, 135, 0.7) 0%, rgba(109, 40, 217, 0.7) 100%)",
-              borderRadius: "6px",
-              color: "white",
-              boxShadow: "0 0 15px rgba(139, 92, 246, 0.4)",
-              border: "1px solid rgba(139, 92, 246, 0.3)",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Magical energy animation */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z' stroke='rgba(139, 92, 246, 0.15)' fill='none'/%3E%3Ccircle cx='30' cy='30' r='15' stroke='rgba(139, 92, 246, 0.1)' fill='none'/%3E%3C/svg%3E")`,
-                backgroundSize: "30px 30px",
-                opacity: 0.7,
-                mixBlendMode: "overlay",
-                animation: "rotate-magic 10s linear infinite",
-                zIndex: 0,
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: "bold",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              Mana:
-            </span>
-            <span
-              style={{
-                background: "linear-gradient(to right, #a855f7, #d8b4fe)",
-                backgroundClip: "text",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-                fontWeight: "bold",
-                fontFamily: "'Cinzel', serif",
-                textShadow: "0 0 5px rgba(168, 85, 247, 0.7)",
-                fontSize: "16px",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              {playerMana[currentPlayer]}/10
-            </span>
+              // Check if player has enough mana
+              const hasEnoughMana = playerMana[currentPlayer] >= spell.manaCost;
+              // Check if spells are allowed yet (after turn 5)
+              const spellsAllowed = currentTurnNumber > 5;
+              // Determine if the card is usable
+              const isUsable = hasEnoughMana && spellsAllowed;
 
-            <button
-              onClick={toggleMute}
-              style={{
-                width: "32px",
-                height: "32px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "4px",
-                color: "rgba(255, 255, 255, 0.7)",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                padding: 0,
-                fontSize: "16px",
-                boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
-                background:
-                  "linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(51, 65, 85, 0.85) 100%)",
-              }}
-              title="Toggle Sound"
-            >
-              {isMuted ? "🔇" : "🔊"}
-            </button>
-          </div>
-        </div>
-
-        {/* Main content row (contains spells, board, game log) */}
-        <div
-          style={{
-            display: "flex",
-            flex: 1,
-            width: "100%",
-          }}
-        >
-          {/* Spell cards column */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              padding: "10px",
-              width: "140px",
-              background: "rgba(15, 23, 42, 0.3)",
-              backdropFilter: "blur(3px)",
-              borderRadius: "8px",
-              marginRight: "15px",
-              height: "auto", // Will be sized by content
-              transform: isGameLoaded ? "translateX(0)" : "translateX(-50px)",
-              opacity: isGameLoaded ? 1 : 0,
-              transition: "transform 1s ease-out, opacity 1s ease-out",
-              transitionDelay: "0.5s",
-              borderRight: "1px solid rgba(100, 116, 139, 0.2)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "space-around",
-                gap: "15px",
-                paddingTop: "15px",
-                paddingBottom: "15px",
-              }}
-            >
-              {spells.map((spell, index) => {
-                if (!spell) return null;
-
-                // Check if player has enough mana
-                const hasEnoughMana =
-                  playerMana[currentPlayer] >= spell.manaCost;
-                // Check if spells are allowed yet (after turn 5)
-                const spellsAllowed = currentTurnNumber > 5;
-                // Determine if the card is usable
-                const isUsable = hasEnoughMana && spellsAllowed;
-
-                return (
-                  <div
-                    key={spell.id}
-                    onClick={() =>
-                      isUsable ? handleSpellSelect(spell.id) : null
+              return (
+                <div
+                  key={spell.id}
+                  onClick={() =>
+                    isUsable ? handleSpellSelect(spell.id) : null
+                  }
+                  style={{
+                    opacity: isGameLoaded ? 1 : 0,
+                    transition:
+                      "opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.3s ease",
+                    transitionDelay: `${0.6 + index * 0.1}s`,
+                    cursor: isUsable ? "pointer" : "not-allowed",
+                    position: "relative",
+                    width: "100px", // Reduced width to fit better
+                    boxShadow:
+                      selectedSpell === spell.id
+                        ? "0 0 15px 5px rgba(168, 85, 247, 0.7)"
+                        : "0 4px 6px rgba(0, 0, 0, 0.3)",
+                    transform:
+                      selectedSpell === spell.id
+                        ? "translateY(-5px)"
+                        : "translateY(0)",
+                    animation:
+                      selectedSpell === spell.id
+                        ? "pulse 1.5s infinite"
+                        : "none",
+                    transformOrigin: "center center",
+                  }}
+                  className="spell-card-hover"
+                  title={`${spell.name}: ${spell.description} (Cost: ${
+                    spell.manaCost
+                  }${!spellsAllowed ? " - Spells unlock after turn 5" : ""})`}
+                >
+                  <img
+                    src={
+                      spellImageMapping[spell.id] ||
+                      `/assets/Chess_Spells/${spell.id}.png`
                     }
+                    alt={spell.name}
                     style={{
-                      opacity: isGameLoaded ? 1 : 0,
-                      transition:
-                        "opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.3s ease",
-                      transitionDelay: `${0.6 + index * 0.1}s`,
-                      cursor: isUsable ? "pointer" : "not-allowed",
-                      position: "relative",
-                      width: "100px", // Reduced width to fit better
-                      boxShadow:
-                        selectedSpell === spell.id
-                          ? "0 0 15px 5px rgba(168, 85, 247, 0.7)"
-                          : "0 4px 6px rgba(0, 0, 0, 0.3)",
-                      transform:
-                        selectedSpell === spell.id
-                          ? "translateY(-5px)"
-                          : "translateY(0)",
-                      animation:
-                        selectedSpell === spell.id
-                          ? "pulse 1.5s infinite"
-                          : "none",
-                      transformOrigin: "center center",
+                      width: "100%",
+                      height: "auto",
+                      display: "block",
+                      opacity: isUsable ? 1 : 0.7,
                     }}
-                    className="spell-card-hover"
-                    title={`${spell.name}: ${spell.description} (Cost: ${
-                      spell.manaCost
-                    }${!spellsAllowed ? " - Spells unlock after turn 5" : ""})`}
-                  >
-                    <img
-                      src={
-                        spellImageMapping[spell.id] ||
-                        `/assets/Chess_Spells/${spell.id}.png`
+                    onError={(e) => {
+                      // If image fails to load, show a colored placeholder with spell name
+                      const target = e.target as HTMLImageElement;
+                      const canvas = document.createElement("canvas");
+                      canvas.width = 100;
+                      canvas.height = 140;
+                      const ctx = canvas.getContext("2d");
+                      if (ctx) {
+                        // Draw gradient background
+                        const gradient = ctx.createLinearGradient(
+                          0,
+                          0,
+                          0,
+                          canvas.height
+                        );
+                        gradient.addColorStop(0, "#2e1e5b");
+                        gradient.addColorStop(1, "#3a3fbd");
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                        // Draw spell name
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "bold 12px Arial";
+                        ctx.textAlign = "center";
+                        ctx.fillText(
+                          spell.name,
+                          canvas.width / 2,
+                          canvas.height / 2
+                        );
                       }
-                      alt={spell.name}
+                      target.src = canvas.toDataURL();
+                    }}
+                  />
+
+                  {/* Description overlay that appears on hover */}
+                  <div className="description-overlay">
+                    <div className="spell-name">{spell.name}</div>
+                    <div className="spell-description">{spell.description}</div>
+                    <div
                       style={{
-                        width: "100%",
-                        height: "auto",
-                        display: "block",
-                        opacity: isUsable ? 1 : 0.7,
+                        marginTop: "4px",
+                        fontSize: "10px",
+                        color: "#93c5fd",
                       }}
-                      onError={(e) => {
-                        // If image fails to load, show a colored placeholder with spell name
-                        const target = e.target as HTMLImageElement;
-                        const canvas = document.createElement("canvas");
-                        canvas.width = 100;
-                        canvas.height = 140;
-                        const ctx = canvas.getContext("2d");
-                        if (ctx) {
-                          // Draw gradient background
-                          const gradient = ctx.createLinearGradient(
-                            0,
-                            0,
-                            0,
-                            canvas.height
-                          );
-                          gradient.addColorStop(0, "#2e1e5b");
-                          gradient.addColorStop(1, "#3a3fbd");
-                          ctx.fillStyle = gradient;
-                          ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                          // Draw spell name
-                          ctx.fillStyle = "#ffffff";
-                          ctx.font = "bold 12px Arial";
-                          ctx.textAlign = "center";
-                          ctx.fillText(
-                            spell.name,
-                            canvas.width / 2,
-                            canvas.height / 2
-                          );
-                        }
-                        target.src = canvas.toDataURL();
-                      }}
-                    />
-
-                    {/* Description overlay that appears on hover */}
-                    <div className="description-overlay">
-                      <div className="spell-name">{spell.name}</div>
-                      <div className="spell-description">
-                        {spell.description}
-                      </div>
-                      <div
-                        style={{
-                          marginTop: "4px",
-                          fontSize: "10px",
-                          color: "#93c5fd",
-                        }}
-                      >
-                        Cost: {spell.manaCost} mana
-                      </div>
+                    >
+                      Cost: {spell.manaCost} mana
                     </div>
+                  </div>
 
-                    {/* Mana cost badge */}
+                  {/* Mana cost badge */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "-5px",
+                      right: "-5px",
+                      backgroundColor: "rgba(139, 92, 246, 0.9)",
+                      color: "white",
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "11px",
+                      fontWeight: "bold",
+                      border: "2px solid white",
+                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
+                      zIndex: 2,
+                    }}
+                  >
+                    {spell.manaCost}
+                  </div>
+
+                  {/* Add a disabled overlay when spell can't be cast */}
+                  {!isUsable && (
                     <div
                       style={{
                         position: "absolute",
-                        top: "-5px",
-                        right: "-5px",
-                        backgroundColor: "rgba(139, 92, 246, 0.9)",
-                        color: "white",
-                        width: "20px",
-                        height: "20px",
-                        borderRadius: "50%",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        color: "white",
                         fontSize: "11px",
                         fontWeight: "bold",
-                        border: "2px solid white",
-                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
-                        zIndex: 2,
                       }}
                     >
-                      {spell.manaCost}
+                      {!hasEnoughMana
+                        ? "Need Mana"
+                        : !spellsAllowed
+                        ? "Unlock T6"
+                        : "Cannot Cast"}
                     </div>
-
-                    {/* Add a disabled overlay when spell can't be cast */}
-                    {!isUsable && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                          height: "100%",
-                          backgroundColor: "rgba(0, 0, 0, 0.6)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontSize: "11px",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {!hasEnoughMana
-                          ? "Need Mana"
-                          : !spellsAllowed
-                          ? "Unlock T6"
-                          : "Cannot Cast"}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={handleEndTurn}
-              aria-label="End Turn"
-              title="Press to end turn"
-              style={{
-                position: "absolute",
-                width: "1px",
-                height: "1px",
-                padding: 0,
-                margin: "-1px",
-                overflow: "hidden",
-                clip: "rect(0, 0, 0, 0)",
-                whiteSpace: "nowrap",
-                border: 0,
-              }}
-            >
-              End Turn
-            </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Board container - center area */}
-          <div
+          <button
+            onClick={handleEndTurn}
+            aria-label="End Turn"
+            title="Press to end turn"
             style={{
-              display: "flex",
-              flexDirection: "column",
-              flexGrow: 1,
-              height: "auto",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(15, 23, 42, 0.3)",
-              backdropFilter: "blur(3px)",
-              borderRadius: "8px",
-              padding: "15px",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-            }}
-          >
-            {/* Chess board */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                width: "100%",
-                opacity: isGameLoaded ? 1 : 0,
-                transition: "opacity 1s ease-out",
-                transitionDelay: "0.7s",
-              }}
-            >
-              <div
-                style={{
-                  transform: "scale(1.7)",
-                  transformOrigin: "center center",
-                }}
-              >
-                <ChessBoard playerPerspective={playerColor} />
-              </div>
-            </div>
-          </div>
-
-          {/* Game log */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              padding: "12px",
-              background:
-                "linear-gradient(135deg, rgba(15, 23, 42, 0.5) 0%, rgba(44, 31, 75, 0.6) 100%)",
-              backdropFilter: "blur(3px)",
-              width: "260px",
-              color: "white",
-              height: "auto", // Will match sibling's height
-              transform: isGameLoaded ? "translateX(0)" : "translateX(50px)",
-              opacity: isGameLoaded ? 1 : 0,
-              transition: "transform 1s ease-out, opacity 1s ease-out",
-              transitionDelay: "0.5s",
-              borderLeft: "1px solid rgba(100, 116, 139, 0.3)",
-              boxShadow: "inset 0 0 15px rgba(138, 43, 226, 0.15)",
-              position: "relative",
+              position: "absolute",
+              width: "1px",
+              height: "1px",
+              padding: 0,
+              margin: "-1px",
               overflow: "hidden",
-              borderRadius: "8px",
-              marginLeft: "15px",
+              clip: "rect(0, 0, 0, 0)",
+              whiteSpace: "nowrap",
+              border: 0,
+            }}
+          >
+            End Turn
+          </button>
+        </div>
+
+        {/* Board container - center area */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            height: "auto",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(15, 23, 42, 0.3)",
+            backdropFilter: "blur(3px)",
+            borderRadius: "8px",
+            padding: "15px",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+          }}
+          className="board-container"
+        >
+          {/* Chess board */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              width: "100%",
+              opacity: isGameLoaded ? 1 : 0,
+              transition: "opacity 1s ease-out",
+              transitionDelay: "0.7s",
             }}
           >
             <div
               style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='40' stroke='rgba(138, 43, 226, 0.1)' fill='none' stroke-dasharray='5 3'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(138, 43, 226, 0.07)' fill='none'/%3E%3C/svg%3E")`,
-                backgroundSize: "200px 200px",
-                zIndex: -1,
-                opacity: 0.5,
-                pointerEvents: "none",
+                transform: "scale(1.7)",
+                transformOrigin: "center center",
               }}
-            />
-
-            <h2
-              style={{
-                fontSize: "14px",
-                margin: "0 0 12px 0",
-                textAlign: "center",
-                padding: "6px 0",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                color: "rgba(255, 255, 255, 0.9)",
-                fontFamily: "'Cinzel', serif",
-                background:
-                  "linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.2), transparent)",
-                borderBottom: "1px solid rgba(138, 43, 226, 0.3)",
-                position: "relative",
-                textShadow: "0 0 8px rgba(138, 43, 226, 0.5)",
-              }}
-              onClick={() => setLogExpanded(!logExpanded)}
+              className="chess-board-wrapper"
             >
-              <span style={{ margin: "0 auto" }}>Game Log</span>
-              <span style={{ position: "absolute", right: "0" }}>
-                {logExpanded ? "▲" : "▼"}
-              </span>
-            </h2>
-
-            {logExpanded && (
-              <div
-                style={{
-                  flexGrow: 1,
-                  overflowY: "auto",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                  fontSize: "12px",
-                  opacity: isGameLoaded ? 1 : 0,
-                  transition: "opacity 0.5s ease-out",
-                  transitionDelay: "1s",
-                  maxHeight: "400px", // Add fixed maximum height
-                  height: "calc(100vh - 300px)", // Responsive height based on viewport
-                  scrollbarWidth: "thin",
-                  scrollbarColor: "rgba(138, 43, 226, 0.3) transparent",
-                  padding: "0 4px",
-                  overflowX: "hidden", // Prevent horizontal overflow
-                }}
-                className="custom-scrollbar" // Add class for custom scrollbar styling
-              >
-                {gameLog.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "8px",
-                      color: "rgba(255, 255, 255, 0.6)",
-                      fontStyle: "italic",
-                      textAlign: "center",
-                      background: "rgba(0, 0, 0, 0.2)",
-                      borderRadius: "4px",
-                      border: "1px dashed rgba(138, 43, 226, 0.2)",
-                    }}
-                  >
-                    No moves yet
-                  </div>
-                ) : (
-                  gameLog.map((log, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        padding: "6px 8px",
-                        borderRadius: "4px",
-                        opacity: isGameLoaded ? 1 : 0,
-                        transform: isGameLoaded
-                          ? "translateX(0)"
-                          : "translateX(10px)",
-                        transition:
-                          "opacity 0.3s ease-out, transform 0.3s ease-out",
-                        transitionDelay: `${1 + index * 0.05}s`,
-                        background: "rgba(15, 23, 42, 0.3)",
-                        borderLeft:
-                          index % 2 === 0
-                            ? "2px solid rgba(138, 43, 226, 0.4)"
-                            : "2px solid rgba(65, 105, 225, 0.4)",
-                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-                        marginBottom: "2px",
-                        wordBreak: "break-word", // Ensures long text wraps
-                      }}
-                    >
-                      {log}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+              <ChessBoard playerPerspective={playerColor} />
+            </div>
           </div>
         </div>
+
+        {/* Game log */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            padding: "12px",
+            background:
+              "linear-gradient(135deg, rgba(15, 23, 42, 0.5) 0%, rgba(44, 31, 75, 0.6) 100%)",
+            backdropFilter: "blur(3px)",
+            width: "260px",
+            color: "white",
+            height: "auto", // Will match sibling's height
+            transform: isGameLoaded ? "translateX(0)" : "translateX(50px)",
+            opacity: isGameLoaded ? 1 : 0,
+            transition: "transform 1s ease-out, opacity 1s ease-out",
+            transitionDelay: "0.5s",
+            borderLeft: "1px solid rgba(100, 116, 139, 0.3)",
+            boxShadow: "inset 0 0 15px rgba(138, 43, 226, 0.15)",
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: "8px",
+            marginLeft: "15px",
+          }}
+          className="game-log-container"
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='40' stroke='rgba(138, 43, 226, 0.1)' fill='none' stroke-dasharray='5 3'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(138, 43, 226, 0.07)' fill='none'/%3E%3C/svg%3E")`,
+              backgroundSize: "200px 200px",
+              zIndex: -1,
+              opacity: 0.5,
+              pointerEvents: "none",
+            }}
+          />
+
+          <h2
+            style={{
+              fontSize: "14px",
+              margin: "0 0 12px 0",
+              textAlign: "center",
+              padding: "6px 0",
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              color: "rgba(255, 255, 255, 0.9)",
+              fontFamily: "'Cinzel', serif",
+              background:
+                "linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.2), transparent)",
+              borderBottom: "1px solid rgba(138, 43, 226, 0.3)",
+              position: "relative",
+              textShadow: "0 0 8px rgba(138, 43, 226, 0.5)",
+            }}
+            onClick={() => setLogExpanded(!logExpanded)}
+          >
+            <span style={{ margin: "0 auto" }}>Game Log</span>
+            <span style={{ position: "absolute", right: "0" }}>
+              {logExpanded ? "▲" : "▼"}
+            </span>
+          </h2>
+
+          {logExpanded && (
+            <div
+              style={{
+                flexGrow: 1,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                fontSize: "12px",
+                opacity: isGameLoaded ? 1 : 0,
+                transition: "opacity 0.5s ease-out",
+                transitionDelay: "1s",
+                maxHeight: "400px", // Add fixed maximum height
+                height: "calc(100vh - 300px)", // Responsive height based on viewport
+                scrollbarWidth: "thin",
+                scrollbarColor: "rgba(138, 43, 226, 0.3) transparent",
+                padding: "0 4px",
+                overflowX: "hidden", // Prevent horizontal overflow
+              }}
+              className="custom-scrollbar" // Add class for custom scrollbar styling
+            >
+              {gameLog.length === 0 ? (
+                <div
+                  style={{
+                    padding: "8px",
+                    color: "rgba(255, 255, 255, 0.6)",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    background: "rgba(0, 0, 0, 0.2)",
+                    borderRadius: "4px",
+                    border: "1px dashed rgba(138, 43, 226, 0.2)",
+                  }}
+                >
+                  No moves yet
+                </div>
+              ) : (
+                gameLog.map((log, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: "4px",
+                      opacity: isGameLoaded ? 1 : 0,
+                      transform: isGameLoaded
+                        ? "translateX(0)"
+                        : "translateX(10px)",
+                      transition:
+                        "opacity 0.3s ease-out, transform 0.3s ease-out",
+                      transitionDelay: `${1 + index * 0.05}s`,
+                      background: "rgba(15, 23, 42, 0.3)",
+                      borderLeft:
+                        index % 2 === 0
+                          ? "2px solid rgba(138, 43, 226, 0.4)"
+                          : "2px solid rgba(65, 105, 225, 0.4)",
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                      marginBottom: "2px",
+                      wordBreak: "break-word", // Ensures long text wraps
+                    }}
+                  >
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Game status bar - now at the top of the entire layout */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px 20px",
+          width: "calc(100% - 430px)", // Adjust width to match board container width
+          marginBottom: "15px",
+          backgroundColor: "rgba(15, 23, 42, 0.5)",
+          backdropFilter: "blur(3px)",
+          borderRadius: "8px",
+          transform: isGameLoaded ? "translateY(0)" : "translateY(-20px)",
+          opacity: isGameLoaded ? 1 : 0,
+          transition: "transform 1s ease-out, opacity 1s ease-out",
+          transitionDelay: "0.4s",
+          borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+          borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
+          borderRight: "1px solid rgba(30, 30, 60, 0.4)",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L70 30 L30 30 Z' stroke='rgba(255,255,255,0.05)' fill='none'/%3E%3Ccircle cx='50' cy='50' r='30' stroke='rgba(255,255,255,0.03)' fill='none'/%3E%3C/svg%3E")`,
+          backgroundSize: "100px 100px",
+          marginLeft: "155px", // Align with board container
+        }}
+        className="game-status-bar"
+      >
+        {/* Game status bar content */}
       </div>
 
       <style>
         {`
+          @keyframes pulse-glow {
+            0%, 100% { opacity: 0.9; filter: brightness(1); }
+            50% { opacity: 1; filter: brightness(1.2); }
+          }
+          
+          @keyframes scale-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          
+          @keyframes fade-in {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes slide-in-right {
+            0% { transform: translateX(-50px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          
+          @keyframes float-particle {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.2); }
+          }
+          
+          @keyframes expand-fade {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2.5); opacity: 0; }
+          }
+          
+          @keyframes flow-to-center {
+            0% { transform: translateX(0) translateY(0); opacity: 0.8; }
+            100% { transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)); opacity: 0; }
+          }
+          
+          @keyframes burst-out {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+          }
+          
           @keyframes game-entrance-particle {
             0% { transform: scale(0) rotate(0deg); opacity: 0; }
             50% { opacity: 0.8; }
@@ -1518,34 +1172,9 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             100% { box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7); }
           }
           
-          @keyframes scale-in {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-          }
-          
-          @keyframes fade-in {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
-          }
-          
-          @keyframes slide-in-right {
-            0% { transform: translateX(-50px); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-          }
-          
-          @keyframes expand-fade {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(2.5); opacity: 0; }
-          }
-          
-          @keyframes flow-to-center {
-            0% { transform: translateX(0) translateY(0); opacity: 0.8; }
-            100% { transform: translateX(calc(50vw - 50%)) translateY(calc(50vh - 50%)); opacity: 0; }
-          }
-          
-          @keyframes burst-out {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(3); opacity: 0; }
+          @keyframes shine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
           }
           
           .spell-card-hover {
@@ -1614,11 +1243,6 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             opacity: 0.7;
           }
           
-          @keyframes shine {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-          
           /* Custom scrollbar styling */
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -1653,6 +1277,119 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
             filter: blur(5px);
             z-index: -1;
             opacity: 0.7;
+          }
+          
+          /* Responsive mobile layouts */
+          @media (max-width: 768px) {
+            /* Game container */
+            .wizard-chess-game {
+              height: auto !important;
+              min-height: 100vh !important;
+              overflow-y: auto !important;
+            }
+            
+            /* Status bar adjustments */
+            div[style*="width: calc(100% - 430px)"] {
+              width: 100% !important;
+              margin-left: 0 !important;
+              padding: 8px 10px !important;
+              flex-wrap: wrap !important;
+              justify-content: center !important;
+              gap: 0.5rem !important;
+            }
+            
+            div[style*="width: calc(100% - 430px)"] > div {
+              margin: 0 4px !important;
+            }
+            
+            div[style*="width: calc(100% - 430px)"] span {
+              font-size: 0.9rem !important;
+            }
+            
+            /* Main content layout - Stack vertically */
+            .main-content-row {
+              flex-direction: column !important;
+              align-items: center !important;
+              gap: 0.75rem !important;
+            }
+            
+            /* Board container */
+            .board-container {
+              order: 1 !important;
+              width: 100% !important;
+              margin-bottom: 1rem !important;
+              padding: 8px !important;
+            }
+            
+            /* Chess board scaling */
+            .chess-board-wrapper {
+              transform: scale(1.05) !important;
+            }
+            
+            /* Spell column layout */
+            .spell-column {
+              order: 2 !important;
+              flex-direction: row !important;
+              width: 100% !important;
+              overflow-x: auto !important;
+              overflow-y: hidden !important;
+              margin-right: 0 !important;
+              height: auto !important;
+              min-height: 140px !important;
+              padding: 10px 5px !important;
+            }
+            
+            /* Spell cards */
+            .spell-column > div > div {
+              width: 100px !important;
+            }
+            
+            /* Game log */
+            .game-log-container {
+              order: 3 !important;
+              width: 100% !important;
+              height: 160px !important;
+              margin-left: 0 !important;
+            }
+          }
+          
+          /* Extra small screens - mobile portrait */
+          @media (max-width: 480px) {
+            .chess-board-wrapper {
+              transform: scale(0.85) !important;
+            }
+            
+            .spell-column {
+              min-height: 130px !important;
+            }
+            
+            .spell-column > div > div {
+              width: 85px !important;
+            }
+            
+            div[style*="width: calc(100% - 430px)"] {
+              padding: 6px !important;
+              font-size: 0.8rem !important;
+              gap: 0.3rem !important;
+            }
+
+            div[style*="width: calc(100% - 430px)"] > div {
+              padding: 4px 8px !important;
+            }
+            
+            div[style*="width: calc(100% - 430px)"] span {
+              font-size: 0.8rem !important;
+            }
+            
+            .game-log-container {
+              height: 140px !important;
+              font-size: 0.8rem !important;
+            }
+            
+            /* Button and interactible elements adjustments */
+            button {
+              min-height: 32px !important;
+            }
           }
         `}
       </style>

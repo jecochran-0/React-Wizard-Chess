@@ -93,3 +93,69 @@
     box-shadow: 0 0 8px 2px rgba(168, 85, 247, 0.7);
   }
 }
+
+.spell-card-hover {
+  transition: all 0.3s ease;
+  overflow: visible;
+  position: relative;
+  width: 100px;
+}
+
+.spell-card-hover:hover {
+  transform: translateY(-2px) scale(1.05);
+  z-index: 10;
+}
+
+/* Description overlay that appears on hover */
+.spell-card-hover .description-overlay {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  width: max-content;
+  min-width: 150px;
+  background-color: rgba(15, 23, 42, 0.95);
+  color: white;
+  padding: 10px 15px;
+  font-size: 10px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spell-card-hover:hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 0px;
+  box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.7);
+  animation: pulse 1.5s infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Responsive adjustments for spell cards */
+@media (max-width: 1200px) {
+  .spell-card-hover {
+    width: 90px;
+  }
+  .spell-card-hover .description-overlay {
+    min-width: 140px;
+    padding: 8px 12px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 768px) {
+  .spell-card-hover {
+    width: 75px;
+  }
+  .spell-card-hover .description-overlay {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .spell-card-hover {
+    width: 60px;
+  }
+}

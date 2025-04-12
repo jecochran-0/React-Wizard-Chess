@@ -1,7 +1,7 @@
 import { useGame } from "../context/GameContext";
-import { PlayerColor, ComputerOpponent } from "../types/game";
+import React, { useState, useEffect, useRef } from "react";
+import { PlayerColor } from "../types/game";
 import backgroundImage from "/assets/MainMenu_Background.png";
-import { useState, useEffect, useRef } from "react";
 import { SoundProvider, useSound } from "../context/SoundContext";
 
 // Settings Panel Component
@@ -243,6 +243,27 @@ export default function MainMenuWrapper() {
     </SoundProvider>
   );
 }
+
+// Define keyframes for animations used in MainMenu
+const keyframes = `
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+  @keyframes pulse-glow-title {
+    0%, 100% { text-shadow: 0 0 20px rgba(255, 165, 0, 0.6), 0 0 40px rgba(255, 140, 0, 0.4); filter: brightness(1); }
+    50% { text-shadow: 0 0 30px rgba(255, 165, 0, 0.9), 0 0 60px rgba(255, 140, 0, 0.7); filter: brightness(1.2); }
+  }
+  @keyframes sparkle-anim {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+  @keyframes menu-fade-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+  }
+`;
 
 const MainMenu = () => {
   const { gameConfig, selectPlayerColor, setComputerOpponent, startGame } =
@@ -525,7 +546,7 @@ const MainMenu = () => {
               mana.color
             }, 0 0 20px 6px ${mana.color.replace("0.7", "0.3")}`,
             opacity: 0.7,
-            animation: `float-up 10s infinite ${mana.delay}s`,
+            animation: `float 10s infinite ${mana.delay}s`,
             zIndex: 0,
           }}
         />
@@ -578,7 +599,7 @@ const MainMenu = () => {
         >
           <h1
             style={{
-              fontSize: "5rem",
+              fontSize: "clamp(3rem, 10vw, 6rem)",
               fontWeight: "bold",
               textAlign: "center",
               fontFamily: "'Cinzel', serif",
@@ -587,11 +608,10 @@ const MainMenu = () => {
               backgroundClip: "text",
               WebkitBackgroundClip: "text",
               color: "transparent",
-              WebkitTextStroke: "1px rgba(255, 255, 255, 0.2)",
+              WebkitTextStroke: "1px rgba(255, 255, 255, 0.1)",
               textShadow:
-                "0 0 20px rgba(255, 165, 0, 0.7), 0 0 40px rgba(255, 140, 0, 0.5)",
-              animation: "magical-swirl 10s infinite", // Removed pulse-glow animation
-              position: "relative",
+                "0 0 15px rgba(255, 165, 0, 0.6), 0 0 30px rgba(255, 140, 0, 0.4)",
+              animation: "pulse-glow-title 2.5s infinite",
             }}
           >
             Wizard's Chess
@@ -615,22 +635,23 @@ const MainMenu = () => {
         {/* Main Card with arcane-themed design */}
         <div
           style={{
-            width: "100%",
-            maxWidth: "450px",
+            width: "90%",
+            maxWidth: "500px",
             background:
               "linear-gradient(135deg, rgba(46, 30, 91, 0.85) 0%, rgba(58, 63, 189, 0.7) 100%)",
             backdropFilter: "blur(8px)",
             borderRadius: "1rem",
-            padding: "1.5rem",
+            padding: "clamp(1.5rem, 5vw, 2.5rem)",
             boxShadow:
               "0 0 30px rgba(58, 63, 189, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.1)",
             border: "1px solid rgba(255, 255, 255, 0.2)",
             marginBottom: "1.5rem",
             position: "relative",
             overflow: "hidden",
-            animation: "float 6s ease-in-out infinite",
+            animation:
+              "float 6s ease-in-out infinite, menu-fade-in 0.8s ease-out forwards",
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L90 50 L70 90 L30 90 L10 50 L30 10 L70 10 L90 50 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E")`,
-            paddingBottom: gameConfig.computerOpponent ? "1rem" : "1.5rem", // Adjust padding if computer settings are shown
+            paddingBottom: gameConfig.computerOpponent ? "1rem" : "1.5rem",
           }}
         >
           {/* Ancient rune frame border */}
@@ -686,9 +707,9 @@ const MainMenu = () => {
             style={{
               display: "flex",
               justifyContent: "space-between",
-              gap: "1rem",
-              marginBottom: "1.2rem",
-              position: "relative",
+              gap: "1.5rem",
+              marginBottom: "1.5rem",
+              flexWrap: "wrap",
             }}
           >
             <button
@@ -698,7 +719,7 @@ const MainMenu = () => {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                padding: "0.8rem",
+                padding: "0.8rem 2rem",
                 borderRadius: "0.7rem",
                 backgroundColor:
                   gameConfig.playerColor === "w"
@@ -815,7 +836,7 @@ const MainMenu = () => {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                padding: "0.8rem",
+                padding: "0.8rem 2rem",
                 borderRadius: "0.7rem",
                 backgroundColor:
                   gameConfig.playerColor === "b"
@@ -992,15 +1013,15 @@ const MainMenu = () => {
           <button
             onClick={handleStartGame}
             disabled={isTransitioning}
-            className="begin-journey-btn"
+            className="start-game-button"
             style={{
               width: "100%",
               backgroundColor: "rgba(168, 74, 47, 0.7)",
               color: "white",
-              padding: "0.9rem 1rem",
+              padding: "0.8rem 2rem",
               borderRadius: "0.7rem",
               fontWeight: "bold",
-              fontSize: "1.1rem",
+              fontSize: "clamp(1rem, 4vw, 1.2rem)",
               fontFamily: "'Cinzel', serif",
               border: "2px solid rgba(255, 200, 120, 0.3)",
               cursor: isTransitioning ? "default" : "pointer",
@@ -1118,6 +1139,7 @@ const MainMenu = () => {
 
       {/* CSS animations */}
       <style>
+        {keyframes}
         {`
           @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Uncial+Antiqua&display=swap');
           
@@ -1134,7 +1156,7 @@ const MainMenu = () => {
           
           @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-15px); }
           }
           
           @keyframes float-up {
@@ -1187,6 +1209,69 @@ const MainMenu = () => {
             top: 60%;
             left: 150%;
             transition: all 0.7s;
+          }
+
+          /* Base button styles */
+          .player-select-button, .start-game-button {
+            transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+          }
+
+          .player-select-button:hover:not(:disabled),
+          .start-game-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+          }
+
+          /* Media Query for smaller screens */
+          @media (max-width: 768px) {
+            .main-title {
+              margin-bottom: 1.5rem; /* Reduce margin */
+            }
+            .menu-box {
+              padding: 1.5rem; /* Adjust padding */
+            }
+            .player-select-container {
+              gap: 1rem; /* Reduce gap */
+              margin-bottom: 1rem;
+            }
+            .player-select-button {
+              padding: 0.6rem 1.2rem;
+              font-size: 0.9rem;
+            }
+            .computer-settings-container {
+              margin-top: 1rem;
+              padding: 0.6rem;
+            }
+            .computer-settings-label {
+               font-size: 0.9rem;
+            }
+            .difficulty-select {
+               padding: 6px 8px;
+               font-size: 0.8rem;
+            }
+            .start-game-button {
+               padding: 0.7rem 1.5rem;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .main-title {
+               font-size: 3rem; /* Further reduce title size */
+            }
+             .menu-box {
+               width: 95%; /* Increase width usage slightly */
+               padding: 1rem;
+             }
+             .player-select-container {
+                flex-direction: column; /* Stack color choice vertically */
+                align-items: stretch; /* Make buttons full width */
+             }
+             .computer-settings-container {
+                margin-top: 0.8rem;
+             }
+             .start-game-button {
+                width: 100%; /* Full width start button */
+             }
           }
         `}
       </style>
