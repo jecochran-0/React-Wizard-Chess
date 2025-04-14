@@ -1625,6 +1625,69 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
               font-size: 2rem !important;
             }
           }
+
+          /* MacBook Air specific adjustments */
+          @media (min-width: 1280px) and (max-width: 1440px) {
+            .game-layout {
+              height: calc(100vh - 50px);
+              max-height: 840px;
+            }
+            
+            .main-content-row {
+              gap: 5px;
+            }
+            
+            .chess-board-scale {
+              transform: scale(1.6) !important; /* Much smaller scale for MacBook Air */
+            }
+            
+            .spell-column {
+              width: 90px; /* Even narrower spell column */
+              padding: 4px;
+            }
+            
+            .spell-card {
+              width: 75px; /* Smaller spell cards */
+              margin-bottom: 5px;
+            }
+            
+            .spells-container {
+              gap: 5px;
+              padding: 4px;
+            }
+            
+            .game-log-container {
+              width: 160px; /* Narrower game log */
+              padding: 4px;
+            }
+            
+            .log-content {
+              max-height: 450px;
+              font-size: 10px;
+            }
+            
+            .log-entry {
+              padding: 3px 5px;
+              margin-bottom: 2px;
+            }
+            
+            .board-container {
+              height: auto;
+              padding: 8px;
+              max-height: 700px;
+            }
+            
+            /* Ensure the status bar fits */
+            .game-status-bar {
+              padding: 4px 6px;
+              margin-bottom: 5px;
+            }
+            
+            .status-left, .status-center, .status-right {
+              padding: 2px 5px;
+              font-size: 0.85rem;
+            }
+          }
         `}
       </style>
     </div>
