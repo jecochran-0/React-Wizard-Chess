@@ -4,7 +4,7 @@ import { ChessProvider, useChess } from "../context/ChessContext";
 import { getSpellById } from "../utils/spells";
 import { SpellId } from "../types/types";
 import "../styles/SpellCard.css";
-import gameBackgroundImage from "/assets/Game_Background.png";
+import gameBackgroundImage from "/assets/Game_Background.jpg";
 import { useGame } from "../context/GameContext";
 import { SoundProvider, useSound } from "../context/SoundContext";
 import { Color } from "chess.js";
@@ -100,21 +100,21 @@ const SettingsPanel: React.FC<{
 
 // Map spell IDs to their respective image paths
 const spellImageMapping: Record<string, string> = {
-  astralSwap: "/assets/Chess_Spells/ChatGPT Image Apr 4, 2025, 05_35_35 PM.png",
-  phantomStep: "/assets/Chess_Spells/Phantom_Step.png",
-  emberCrown: "/assets/Chess_Spells/Ember_Crown.png",
-  arcaneArmor: "/assets/Chess_Spells/Arcane_Anchor.png",
-  mistformKnight: "/assets/Chess_Spells/Mistform_Knight.png",
-  chronoRecall: "/assets/Chess_Spells/Chrono_Recall.png",
-  cursedGlyph: "/assets/Chess_Spells/Cursed_Glyph.png",
-  kingsGambit: "/assets/Chess_Spells/Kings_Gambit.png",
-  darkConversion: "/assets/Chess_Spells/Dark_Conversion.png",
-  spiritLink: "/assets/Chess_Spells/Spirit_Link.png",
-  secondWind: "/assets/Chess_Spells/Second_Wind.png",
-  pressureField: "/assets/Chess_Spells/Pressure_Field.png",
-  nullfield: "/assets/Chess_Spells/nullfield.png",
-  veilOfShadows: "/assets/Chess_Spells/Veil_Of_Shadows.png",
-  bonewalker: "/assets/Chess_Spells/Raise_The_Bonewalker.png",
+  astralSwap: "/assets/Chess_Spells/Astral_Swap.jpg",
+  phantomStep: "/assets/Chess_Spells/Phantom_Step.jpg",
+  emberCrown: "/assets/Chess_Spells/Ember_Crown.jpg",
+  arcaneArmor: "/assets/Chess_Spells/Arcane_Anchor.jpg",
+  mistformKnight: "/assets/Chess_Spells/Mistform_Knight.jpg",
+  chronoRecall: "/assets/Chess_Spells/Chrono_Recall.jpg",
+  cursedGlyph: "/assets/Chess_Spells/Cursed_Glyph.jpg",
+  kingsGambit: "/assets/Chess_Spells/Kings_Gambit.jpg",
+  darkConversion: "/assets/Chess_Spells/Dark_Conversion.jpg",
+  spiritLink: "/assets/Chess_Spells/Spirit_Link.jpg",
+  secondWind: "/assets/Chess_Spells/Second_Wind.jpg",
+  pressureField: "/assets/Chess_Spells/Pressure_Field.jpg",
+  nullfield: "/assets/Chess_Spells/nullfield.jpg",
+  veilOfShadows: "/assets/Chess_Spells/Veil_Of_Shadows.jpg",
+  bonewalker: "/assets/Chess_Spells/Raise_The_Bonewalker.jpg",
 };
 
 const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
@@ -456,7 +456,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                       <img
                         src={
                           spellImageMapping[spell.id] ||
-                          `/assets/Chess_Spells/${spell.id}.png`
+                          `/assets/Chess_Spells/${spell.id}.jpg`
                         }
                         alt={spell.name}
                         onError={(e) => {
@@ -897,7 +897,7 @@ const GameContent: React.FC<{ playerColor: string }> = ({ playerColor }) => {
                     <img
                       src={
                         spellImageMapping[spell.id] ||
-                        `/assets/Chess_Spells/${spell.id}.png`
+                        `/assets/Chess_Spells/${spell.id}.jpg`
                       }
                       alt={spell.name}
                       style={{

@@ -4,23 +4,23 @@ import { Spell } from "../../types/types";
 // Clean mapping from SpellId to image filename
 const spellIdToFileMap: Record<string, string> = {
   // CamelCase IDs mapped to their respective image files
-  astralSwap: "ChatGPT Image Apr 4, 2025, 05_35_35 PM.png",
-  phantomStep: "Phantom_Step.png",
-  emberCrown: "Ember_Crown.png",
-  arcaneArmor: "Arcane_Anchor.png",
-  frostShield: "Arcane_Anchor.png",
-  shadowStrike: "Veil_Of_Shadows.png",
-  chronoRecall: "Chrono_Recall.png",
-  mistformKnight: "Mistform_Knight.png",
-  kingsGambit: "Kings_Gambit.png",
-  darkConversion: "Dark_Conversion.png",
-  spiritLink: "Spirit_Link.png",
-  secondWind: "Second_Wind.png",
-  pressureField: "Pressure_Field.png",
-  nullfield: "nullfield.png",
-  veilOfShadows: "Veil_Of_Shadows.png",
-  raiseBonewalker: "Raise_The_Bonewalker.png",
-  cursedGlyph: "Cursed_Glyph.png",
+  astralSwap: "Astral_Swap.jpg",
+  phantomStep: "Phantom_Step.jpg",
+  emberCrown: "Ember_Crown.jpg",
+  arcaneArmor: "Arcane_Anchor.jpg",
+  frostShield: "Arcane_Anchor.jpg",
+  shadowStrike: "Veil_Of_Shadows.jpg",
+  chronoRecall: "Chrono_Recall.jpg",
+  mistformKnight: "Mistform_Knight.jpg",
+  kingsGambit: "Kings_Gambit.jpg",
+  darkConversion: "Dark_Conversion.jpg",
+  spiritLink: "Spirit_Link.jpg",
+  secondWind: "Second_Wind.jpg",
+  pressureField: "Pressure_Field.jpg",
+  nullfield: "nullfield.jpg",
+  veilOfShadows: "Veil_Of_Shadows.jpg",
+  raiseBonewalker: "Raise_The_Bonewalker.jpg",
+  cursedGlyph: "Cursed_Glyph.jpg",
 };
 
 interface SpellCardProps {
@@ -59,7 +59,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
   // Get the spell's image
   const getSpellImage = () => {
     // Find the appropriate filename for the spell ID or use the default
-    const filename = spellIdToFileMap[spell.id] || "spell_card_back.png";
+    const filename = spellIdToFileMap[spell.id] || "spell_card_back.jpg";
     const imagePath = `/assets/Chess_Spells/${filename}`;
 
     return (

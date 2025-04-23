@@ -1,16 +1,16 @@
 // Import all chess piece images
-import bBishop from "/assets/Chess_Sprites/b_bishop.png";
-import bKing from "/assets/Chess_Sprites/b_king.png";
-import bKnight from "/assets/Chess_Sprites/b_knight.png";
-import bPawn from "/assets/Chess_Sprites/b_pawn.png";
-import bQueen from "/assets/Chess_Sprites/b_queen.png";
-import bRook from "/assets/Chess_Sprites/b_rook.png";
-import wBishop from "/assets/Chess_Sprites/w_bishop.png";
-import wKing from "/assets/Chess_Sprites/w_king.png";
-import wKnight from "/assets/Chess_Sprites/w_knight.png";
-import wPawn from "/assets/Chess_Sprites/w_pawn.png";
-import wQueen from "/assets/Chess_Sprites/w_queen.png";
-import wRook from "/assets/Chess_Sprites/w_rook.png";
+import bBishop from "/assets/Chess_Sprites/b_bishop-min.png";
+import bKing from "/assets/Chess_Sprites/b_king-min.png";
+import bKnight from "/assets/Chess_Sprites/b_knight-min.png";
+import bPawn from "/assets/Chess_Sprites/b_pawn-min.png";
+import bQueen from "/assets/Chess_Sprites/b_queen-min.png";
+import bRook from "/assets/Chess_Sprites/b_rook-min.png";
+import wBishop from "/assets/Chess_Sprites/w_bishop-min.png";
+import wKing from "/assets/Chess_Sprites/w_king-min.png";
+import wKnight from "/assets/Chess_Sprites/w_knight-min.png";
+import wPawn from "/assets/Chess_Sprites/w_pawn-min.png";
+import wQueen from "/assets/Chess_Sprites/w_queen-min.png";
+import wRook from "/assets/Chess_Sprites/w_rook-min.png";
 
 export type PieceCode =
   | "bB"

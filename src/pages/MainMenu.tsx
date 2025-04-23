@@ -1,7 +1,7 @@
 import { useGame } from "../context/GameContext";
 import React, { useState, useEffect, useRef } from "react";
 import { PlayerColor } from "../types/game";
-import backgroundImage from "/assets/MainMenu_Background.png";
+import backgroundImage from "/assets/MainMenu.jpg";
 import { SoundProvider, useSound } from "../context/SoundContext";
 
 // Settings Panel Component

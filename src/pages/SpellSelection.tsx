@@ -2,21 +2,21 @@ import { useGame } from "../context/GameContext";
 import { useState, useEffect, useRef } from "react";
 
 // Import all spell card images
-import astralSwapImg from "/assets/Chess_Spells/ChatGPT Image Apr 4, 2025, 05_35_35 PM.png";
-import phantomStepImg from "/assets/Chess_Spells/Phantom_Step.png";
-import emberCrownImg from "/assets/Chess_Spells/Ember_Crown.png";
-import arcaneAnchorImg from "/assets/Chess_Spells/Arcane_Anchor.png";
-import mistformKnightImg from "/assets/Chess_Spells/Mistform_Knight.png";
-import chronoRecallImg from "/assets/Chess_Spells/Chrono_Recall.png";
-import cursedGlyphImg from "/assets/Chess_Spells/Cursed_Glyph.png";
-import kingsGambitImg from "/assets/Chess_Spells/Kings_Gambit.png";
-import darkConversionImg from "/assets/Chess_Spells/Dark_Conversion.png";
-import spiritLinkImg from "/assets/Chess_Spells/Spirit_Link.png";
-import secondWindImg from "/assets/Chess_Spells/Second_Wind.png";
-import pressureFieldImg from "/assets/Chess_Spells/Pressure_Field.png";
-import nullfieldImg from "/assets/Chess_Spells/nullfield.png";
-import veilOfShadowsImg from "/assets/Chess_Spells/Veil_Of_Shadows.png";
-import bonewalkerImg from "/assets/Chess_Spells/Raise_The_Bonewalker.png";
+import astralSwapImg from "/assets/Chess_Spells/Astral_Swap.jpg";
+import phantomStepImg from "/assets/Chess_Spells/Phantom_Step.jpg";
+import emberCrownImg from "/assets/Chess_Spells/Ember_Crown.jpg";
+import arcaneAnchorImg from "/assets/Chess_Spells/Arcane_Anchor.jpg";
+import mistformKnightImg from "/assets/Chess_Spells/Mistform_Knight.jpg";
+import chronoRecallImg from "/assets/Chess_Spells/Chrono_Recall.jpg";
+import cursedGlyphImg from "/assets/Chess_Spells/Cursed_Glyph.jpg";
+import kingsGambitImg from "/assets/Chess_Spells/Kings_Gambit.jpg";
+import darkConversionImg from "/assets/Chess_Spells/Dark_Conversion.jpg";
+import spiritLinkImg from "/assets/Chess_Spells/Spirit_Link.jpg";
+import secondWindImg from "/assets/Chess_Spells/Second_Wind.jpg";
+import pressureFieldImg from "/assets/Chess_Spells/Pressure_Field.jpg";
+import nullfieldImg from "/assets/Chess_Spells/nullfield.jpg";
+import veilOfShadowsImg from "/assets/Chess_Spells/Veil_Of_Shadows.jpg";
+import bonewalkerImg from "/assets/Chess_Spells/Raise_The_Bonewalker.jpg";
 
 // Map spell IDs to their respective images
 const spellImages: Record<string, string> = {
@@ -432,7 +432,7 @@ const SpellSelection = () => {
           padding: 2rem;
           color: white;
           background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #3b0764 100%);
-          background-image: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 27, 75, 0.85) 50%, rgba(59, 7, 100, 0.85) 100%), url("/assets/MainMenu_Background.png");
+          background-image: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 27, 75, 0.85) 50%, rgba(59, 7, 100, 0.85) 100%), url("/assets/MainMenu_Background.jpg");
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;

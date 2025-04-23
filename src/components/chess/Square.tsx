@@ -5,7 +5,7 @@ import { useChess } from "../../context/ChessContext";
 import "./square.css"; // Import the CSS for animations
 
 // Import glyph image
-// import cursedGlyphIcon from "/assets/Chess_Effects/cursedGlyphIcon.png";
+// import cursedGlyphIcon from "/assets/Chess_Effects/cursedGlyphIcon.jpg";
 
 export interface SquareProps {
   square: ChessSquare;
@@ -38,13 +38,11 @@ const getPieceDisplayType = (type: string): string => {
 
 // Helper function to get the piece image path
 const getPieceImage = (piece: PieceMeta): string => {
-  const pieceColor = piece.color === "w" ? "White" : "Black";
-
   // If this piece has an ember crown effect, ALWAYS use the ember queen image
   if (piece.effects?.some((effect) => effect.source === "emberCrown")) {
     return piece.color === "w"
-      ? "/assets/Chess_Sprites/W_Ember_Q.png"
-      : "/assets/Chess_Sprites/B_Ember_Queen.png";
+      ? "/assets/Chess_Sprites/W_Ember_Q-min.png"
+      : "/assets/Chess_Sprites/B_Ember_Queen-min.png";
   }
 
   // If this piece is a Mistform Knight clone, use the special mist knight image
@@ -54,11 +52,14 @@ const getPieceImage = (piece: PieceMeta): string => {
         effect.source === "mistformKnight" && effect.modifiers?.isMistformClone
     )
   ) {
-    return `/assets/Chess_Effects/Mist_K.png`;
+    return `/assets/Chess_Sprites/Mist_K-min.png`;
   }
 
+  // Convert the piece type to its full name and make it lowercase
+  const pieceFullName = getPieceDisplayType(piece.type).toLowerCase();
+
   // Standard image based on piece type
-  return `/assets/Chess_Sprites/${pieceColor}_${piece.type.toUpperCase()}.png`;
+  return `/assets/Chess_Sprites/${piece.color}_${pieceFullName}-min.png`;
 };
 
 const Square: React.FC<SquareProps> = ({
@@ -373,7 +374,7 @@ const Square: React.FC<SquareProps> = ({
             }}
           >
             <img
-              src="/assets/Chess_Effects/arcaneAnchorIcon.png"
+              src="/assets/Chess_Effects/arcaneAnchorIcon.jpg"
               alt="Arcane Anchor Icon"
               style={{ width: "100%", height: "100%" }}
             />
@@ -398,7 +399,7 @@ const Square: React.FC<SquareProps> = ({
             }}
           >
             <img
-              src="/assets/Chess_Effects/cursedGlyphIcon.png"
+              src="/assets/Chess_Effects/cursedGlyphIcon.jpg"
               alt="Cursed Glyph Icon"
               style={{
                 width: "100%",
@@ -456,7 +457,7 @@ const Square: React.FC<SquareProps> = ({
           className="glyph-container"
         >
           <img
-            src="/assets/Chess_Effects/cursedGlyphIcon.png"
+            src="/assets/Chess_Effects/cursedGlyphIcon.jpg"
             alt="Cursed Glyph"
             className="cursed-glyph"
             style={{
