@@ -1,10 +1,73 @@
+/**
+ * MainMenu.tsx - Main Menu Interface
+ *
+ * This is the landing page of the Wizard Chess application where players configure
+ * their game settings before starting a match. It provides a magical-themed interface
+ * with particle effects, background music, and game configuration options.
+ *
+ * ARCHITECTURE OVERVIEW:
+ * - Uses GameContext for global game state management
+ * - Uses SoundContext for audio management
+ * - Implements magical visual effects with CSS animations
+ * - Provides game configuration interface
+ *
+ * KEY FEATURES:
+ * - Player color selection (White/Black pieces)
+ * - Computer opponent configuration with difficulty settings
+ * - Background music with volume controls
+ * - Magical particle effects and animations
+ * - Settings panel for audio configuration
+ * - Responsive design for different screen sizes
+ *
+ * STATE MANAGEMENT:
+ * - Uses GameContext for game configuration (playerColor, computerOpponent)
+ * - Uses SoundContext for audio controls (volume, mute)
+ * - Local state for UI interactions (settings panel, transitions)
+ * - Background music management with HTMLAudioElement
+ *
+ * DATA FLOW:
+ * 1. Reads gameConfig from GameContext via useGame() hook
+ * 2. Updates gameConfig when player makes selections
+ * 3. Calls startGame() to advance to spell selection phase
+ * 4. Manages background music and sound effects via SoundContext
+ *
+ * DEPENDENCIES:
+ * - GameContext: Global game state (./context/GameContext.tsx)
+ * - SoundContext: Audio management (./context/SoundContext.tsx)
+ * - PlayerColor type: From ../types/game.ts
+ * - Background image: /assets/MainMenu.jpg
+ *
+ * USED BY: App.tsx when gameState === "main-menu"
+ */
+
 import { useGame } from "../context/GameContext";
 import React, { useState, useEffect, useRef } from "react";
 import { PlayerColor } from "../types/game";
 import backgroundImage from "/assets/MainMenu.jpg";
 import { SoundProvider, useSound } from "../context/SoundContext";
 
-// Settings Panel Component
+/**
+ * SettingsPanel Component
+ *
+ * PURPOSE: Provides audio settings interface for the main menu.
+ * Allows players to control music volume and sound effects volume.
+ *
+ * PROPS:
+ * - bgAudioRef: Reference to the background music audio element
+ *
+ * STATE MANAGEMENT:
+ * - isOpen: Controls visibility of the settings panel
+ * - musicVolume: Controls background music volume
+ * - Uses SoundContext for sound effects volume control
+ *
+ * FEATURES:
+ * - Music volume slider with real-time control
+ * - Sound effects volume slider with immediate feedback
+ * - Toggle button to show/hide settings panel
+ * - Magical-themed styling with backdrop blur
+ *
+ * USED BY: MainMenu component for audio configuration
+ */
 const SettingsPanel: React.FC<{
   bgAudioRef: React.RefObject<HTMLAudioElement | null>;
 }> = ({ bgAudioRef }) => {
@@ -235,7 +298,21 @@ const SettingsPanel: React.FC<{
   );
 };
 
-// Wrap the MainMenu export with SoundProvider
+/**
+ * MainMenuWrapper Component
+ *
+ * PURPOSE: Wraps the MainMenu component with SoundProvider to provide
+ * audio context for the main menu interface.
+ *
+ * ARCHITECTURE:
+ * - Provides SoundContext to MainMenu component
+ * - Enables audio functionality for background music and sound effects
+ * - Acts as a bridge between App.tsx and MainMenu.tsx
+ *
+ * USAGE:
+ * - Exported as default component for App.tsx to use
+ * - Wraps MainMenu with necessary context providers
+ */
 export default function MainMenuWrapper() {
   return (
     <SoundProvider>
@@ -265,6 +342,40 @@ const keyframes = `
   }
 `;
 
+/**
+ * MainMenu Component
+ *
+ * PURPOSE: Main menu interface that provides game configuration options
+ * and magical visual effects for the Wizard Chess application.
+ *
+ * STATE MANAGEMENT:
+ * - Uses GameContext for game configuration (playerColor, computerOpponent)
+ * - Local state for visual effects (sparkles, mana orbs, transitions)
+ * - Background music management with HTMLAudioElement
+ * - Transition state for smooth page transitions
+ *
+ * KEY FEATURES:
+ * - Player color selection with visual feedback
+ * - Computer opponent toggle with difficulty settings
+ * - Magical particle effects (sparkles, mana orbs)
+ * - Background music with autoplay handling
+ * - Smooth transitions to spell selection
+ * - Responsive design for mobile devices
+ *
+ * VISUAL EFFECTS:
+ * - Floating sparkles with random positions and timing
+ * - Mana orbs with different colors and animations
+ * - Transition particles for page changes
+ * - Magical styling with gradients and glows
+ *
+ * AUDIO FEATURES:
+ * - Background music with loop and volume control
+ * - Sound effects for button interactions
+ * - Autoplay handling for browser restrictions
+ * - Fade out effects during transitions
+ *
+ * USED BY: MainMenuWrapper component
+ */
 const MainMenu = () => {
   const { gameConfig, selectPlayerColor, setComputerOpponent, startGame } =
     useGame();

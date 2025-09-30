@@ -1,3 +1,44 @@
+/**
+ * SoundContext.tsx - Audio Management System
+ *
+ * This file provides comprehensive audio management for the Wizard Chess application.
+ * It handles sound effects, background music, volume controls, and audio state management.
+ *
+ * ARCHITECTURE OVERVIEW:
+ * - Uses React Context API for global audio state management
+ * - Manages HTMLAudioElement instances for all sound effects
+ * - Provides volume control and muting functionality
+ * - Handles sound conflict management and priority system
+ *
+ * AUDIO SYSTEM FEATURES:
+ * - Sound Effects: Move, capture, selection, spell casting, check/checkmate
+ * - Spell-Specific Sounds: Each spell has its unique audio effect
+ * - Volume Control: Global volume with individual sound volume ratios
+ * - Mute Functionality: Complete audio muting capability
+ * - Conflict Management: Priority system to prevent audio overlap
+ *
+ * SOUND CATEGORIES:
+ * - UI Sounds: Selection, spell selection (lower volume, priority 1)
+ * - Game Sounds: Move, piece capture (normal volume, priority 1-2)
+ * - Important Sounds: Check, checkmate, spell effects (high volume, priority 2-3)
+ *
+ * DATA FLOW:
+ * 1. SoundProvider initializes all audio elements on mount
+ * 2. Components use useSound() hook to access audio functions
+ * 3. Sound functions play audio with appropriate volume and priority
+ * 4. Volume changes update all audio elements in real-time
+ *
+ * DEPENDENCIES:
+ * - Uses SpellId type from ../types/types.ts for spell sound mapping
+ * - Audio files stored in /assets/Sounds/ directory
+ *
+ * USED BY:
+ * - MainMenu.tsx: Background music and UI sounds
+ * - ChessBoard.tsx: Move sounds and game effects
+ * - SpellCard.tsx: Spell selection sounds
+ * - Game.tsx: Check/checkmate sounds
+ */
+
 import React, {
   createContext,
   useContext,
@@ -51,6 +92,39 @@ const spellSoundMap: Record<string, string> = {
   // Add any other spell mappings here
 };
 
+/**
+ * SoundProvider Component
+ *
+ * PURPOSE: Provides audio management functionality to all child components.
+ * Manages sound effects, volume control, and audio state for the entire application.
+ *
+ * STATE MANAGEMENT:
+ * - isMuted: Global mute state for all audio
+ * - volume: Global volume level (0.0 to 1.0)
+ * - soundsLoaded: Tracks when all audio files are loaded
+ * - soundEffects: Ref to all loaded audio elements
+ * - currentlyPlaying: Tracks currently playing sounds for conflict management
+ *
+ * AUDIO INITIALIZATION:
+ * - Loads all sound effect files on component mount
+ * - Sets up spell-specific sound mappings
+ * - Applies initial volume settings
+ * - Handles cleanup on component unmount
+ *
+ * VOLUME MANAGEMENT:
+ * - Updates all audio elements when volume changes
+ * - Maintains volume ratios for different sound types
+ * - Applies volume changes to currently playing sounds
+ *
+ * CONFLICT MANAGEMENT:
+ * - Priority system prevents audio overlap
+ * - High-priority sounds can interrupt lower-priority ones
+ * - Maintains volume ratios during conflicts
+ *
+ * USAGE:
+ * - Wraps components that need audio functionality
+ * - Used by MainMenu, Game, and other components with audio
+ */
 export const SoundProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -259,7 +333,32 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
-// Hook to use the sound context
+/**
+ * useSound Hook
+ *
+ * PURPOSE: Custom hook that provides access to the SoundContext
+ *
+ * USAGE:
+ * - Must be used within a SoundProvider component
+ * - Returns the complete SoundContextType object
+ * - Throws error if used outside of SoundProvider
+ *
+ * RETURN VALUE:
+ * - Sound playing functions (playMoveSound, playSpellSound, etc.)
+ * - Volume control (volume, setVolume)
+ * - Mute control (isMuted, setIsMuted)
+ *
+ * SOUND FUNCTIONS:
+ * - playMoveSound: Plays sound for piece movements
+ * - playPieceDyingSound: Plays sound for piece captures
+ * - playSelectSound: Plays sound for UI selections
+ * - playSpellSelectedSound: Plays sound for spell selection
+ * - playKingCheckSound: Plays sound for check situations
+ * - playKingCheckmateSound: Plays sound for checkmate
+ * - playSpellSound: Plays spell-specific sound effects
+ *
+ * USED BY: All components that need audio functionality
+ */
 export const useSound = (): SoundContextType => {
   const context = useContext(SoundContext);
   if (context === undefined) {

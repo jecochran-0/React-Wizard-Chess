@@ -1,3 +1,42 @@
+/**
+ * ChessContext.tsx - Chess Game State Management
+ *
+ * This file provides the chess-specific state management for the Wizard Chess game.
+ * It manages the actual chess game state, piece movements, spell casting, and AI opponent.
+ *
+ * ARCHITECTURE OVERVIEW:
+ * - Uses React Context API for chess game state management
+ * - Integrates with GameManager class for core game logic
+ * - Manages ComputerPlayer for AI opponent functionality
+ * - Provides real-time state synchronization between GameManager and React components
+ *
+ * STATE MANAGEMENT:
+ * - boardState: Current positions of all pieces on the board
+ * - currentPlayer: Which player's turn it is (white/black)
+ * - playerMana: Mana available to each player for spell casting
+ * - selectedPiece/selectedSpell: Current user selections
+ * - legalMoves: Valid moves for the selected piece
+ * - gameStatus: Current game state (active, check, checkmate, etc.)
+ *
+ * DATA FLOW:
+ * 1. GameManager handles core chess logic and spell effects
+ * 2. ChessContext syncs GameManager state with React state
+ * 3. Components use useChess() hook to access chess state
+ * 4. State changes trigger re-renders across chess components
+ *
+ * DEPENDENCIES:
+ * - GameManager: Core game logic (../game/GameManager.ts)
+ * - ComputerPlayer: AI opponent logic (../game/ComputerPlayer.ts)
+ * - GameContext: Global game configuration (./GameContext.tsx)
+ * - chess.js: Traditional chess rules and validation
+ *
+ * USED BY:
+ * - Game.tsx: Main game interface component
+ * - ChessBoard.tsx: Board rendering and interaction
+ * - Square.tsx: Individual square rendering
+ * - Piece.tsx: Piece rendering and effects
+ */
+
 import React, {
   createContext,
   useContext,
@@ -12,7 +51,48 @@ import { useGame } from "./GameContext";
 import { PieceMeta, SpellId, PlayerSpells, Effect } from "../types/types";
 import { ChessGameStatus } from "../types/game";
 
-// Define the context type
+/**
+ * ChessContextType Interface
+ *
+ * Defines the complete interface for chess game state and actions.
+ * This interface is what components receive when using the useChess() hook.
+ *
+ * GAME STATE PROPERTIES:
+ * - currentPlayer: Which player's turn it is ("w" or "b")
+ * - playerMana: Mana available to each player for spell casting
+ * - playerSpells: Spells available to each player
+ * - lastMove: The most recent move made (from/to squares)
+ * - boardState: Current piece positions and their metadata
+ * - gameLog: History of all moves and actions
+ * - boardGlyphs: Cursed glyph effects on the board
+ * - currentTurnNumber: Current turn number in the game
+ * - gameStatus: Current game state (active, check, checkmate, etc.)
+ *
+ * COMPUTER OPPONENT PROPERTIES:
+ * - isComputerOpponentEnabled: Whether AI opponent is active
+ * - computerPlayerColor: Color assigned to the computer player
+ * - computerDifficulty: AI difficulty level (easy/medium/hard)
+ * - toggleComputerOpponent: Enable/disable computer opponent
+ * - setComputerPlayerColor: Change computer player color
+ * - setComputerDifficulty: Change AI difficulty
+ *
+ * SELECTION STATE:
+ * - selectedPiece: Currently selected piece square
+ * - selectedSpell: Currently selected spell ID
+ * - legalMoves: Valid moves for the selected piece
+ *
+ * GAME ACTIONS:
+ * - selectPiece: Select a piece for movement
+ * - selectSpell: Select a spell for casting
+ * - makeMove: Execute a piece movement
+ * - castSpell: Cast a spell with targets
+ * - endTurn: End the current player's turn
+ * - triggerComputerMove: Trigger AI opponent move
+ *
+ * SETUP FUNCTIONS:
+ * - setPlayerSpells: Set available spells for players
+ * - initializePlayerColor: Initialize player color settings
+ */
 export interface ChessContextType {
   // Game state
   currentPlayer: Color;
@@ -66,7 +146,35 @@ const initialPlayerSpells: PlayerSpells = {
   b: [],
 };
 
-// Provider component
+/**
+ * ChessProvider Component
+ *
+ * PURPOSE: Provides chess game state to all child components within the game interface.
+ * This is the main provider that manages the chess game state and coordinates between
+ * the GameManager (core logic) and React components (UI).
+ *
+ * STATE MANAGEMENT:
+ * - Integrates with GameManager for core chess logic
+ * - Manages ComputerPlayer for AI opponent functionality
+ * - Syncs GameManager state with React state via useEffect hooks
+ * - Handles real-time state updates after moves and spell casts
+ *
+ * KEY FEATURES:
+ * - Automatic computer move triggering when it's AI's turn
+ * - Legal move calculation with spell effect filtering
+ * - State synchronization between GameManager and React
+ * - Turn management and game flow control
+ *
+ * DEPENDENCIES:
+ * - Uses GameContext via useGame() hook for global game configuration
+ * - Integrates with GameManager for core game logic
+ * - Manages ComputerPlayer instance for AI functionality
+ *
+ * USAGE:
+ * - Wraps the Game component in App.tsx
+ * - Provides chess state to all chess-related components
+ * - Used by ChessBoard, Square, Piece, and other chess components
+ */
 export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -337,7 +445,31 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Make a move
+  /**
+   * makeMove Function
+   *
+   * PURPOSE: Executes a piece movement on the chess board, handling both normal moves
+   * and special spell effects like King's Gambit.
+   *
+   * LOGIC:
+   * 1. Checks if the moving piece has special effects (like King's Gambit)
+   * 2. Calls GameManager.makeMove() to execute the move
+   * 3. Updates React state to reflect the new board position
+   * 4. Triggers computer move if it's the AI's turn
+   *
+   * SPECIAL HANDLING:
+   * - King's Gambit: Allows king to move twice in one turn
+   * - Prevents turn change for King's Gambit moves
+   * - Maintains piece selection for consecutive moves
+   *
+   * STATE UPDATES:
+   * - Updates boardState with new piece positions
+   * - Updates playerMana if mana was spent
+   * - Updates gameLog with move history
+   * - Updates boardGlyphs for any spell effects
+   *
+   * USED BY: ChessBoard.tsx for piece movement interactions
+   */
   const makeMove = (from: Square, to: Square): boolean => {
     const movingPiece = boardState[from as Square];
     const isKing = movingPiece && movingPiece.type === "k";
@@ -394,7 +526,31 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
     return result;
   };
 
-  // Cast a spell
+  /**
+   * castSpell Function
+   *
+   * PURPOSE: Executes spell casting with the specified targets, handling both standard
+   * spells and special cases like Dark Conversion.
+   *
+   * LOGIC:
+   * 1. Handles special case for Dark Conversion spell (requires piece type selection)
+   * 2. Calls GameManager.castSpell() to execute the spell
+   * 3. Updates React state to reflect spell effects
+   * 4. Triggers computer move if it's the AI's turn
+   *
+   * SPECIAL HANDLING:
+   * - Dark Conversion: Requires piece type parameter (knight/bishop)
+   * - Different target formats: single square, array of squares, or from/to object
+   * - Mana deduction handled by GameManager
+   *
+   * STATE UPDATES:
+   * - Updates boardState with spell effects
+   * - Updates playerMana (mana cost deducted)
+   * - Updates gameLog with spell cast history
+   * - Updates boardGlyphs for spell effects
+   *
+   * USED BY: ChessBoard.tsx for spell casting interactions
+   */
   const castSpell = (
     spellId: SpellId,
     targets: Square | Square[] | { from: Square; to: Square },
@@ -528,7 +684,24 @@ export const ChessProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
-// Custom hook to use the chess context
+/**
+ * useChess Hook
+ *
+ * PURPOSE: Custom hook that provides access to the ChessContext
+ *
+ * USAGE:
+ * - Must be used within a ChessProvider component
+ * - Returns the complete ChessContextType object
+ * - Throws error if used outside of ChessProvider
+ *
+ * RETURN VALUE:
+ * - All chess game state (boardState, currentPlayer, playerMana, etc.)
+ * - All chess game actions (makeMove, castSpell, selectPiece, etc.)
+ * - Computer opponent configuration and controls
+ * - Game status and turn information
+ *
+ * USED BY: All chess-related components that need access to game state
+ */
 export const useChess = (): ChessContextType => {
   const context = useContext(ChessContext);
   if (context === undefined) {
