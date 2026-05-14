@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wizard Chess — Project file tree</title>
+  <style>
+    :root {
+      --bg: #0c1222;
+      --text: #e2e8f0;
+      --dir: #7dd3fc;
+      --file: #c4b5fd;
+      --comment: #64748b;
+      --line: #334155;
+      --accent: #fbbf24;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "SF Mono", "Consolas", "Menlo", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 1.5rem;
+    }
+    h1 {
+      font-family: system-ui, sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0 0 0.25rem 0;
+      color: var(--accent);
+    }
+    .sub {
+      color: var(--comment);
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+      font-family: system-ui, sans-serif;
+    }
+    .tree {
+      white-space: pre;
+      overflow-x: auto;
+      padding: 1rem 1.25rem;
+      background: #080c14;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 0;
+    }
+    .tree .d { color: var(--dir); }
+    .tree .f { color: var(--file); }
+    .tree .c { color: var(--comment); }
+    footer {
+      margin-top: 1.25rem;
+      color: var(--comment);
+      font-size: 0.75rem;
+      font-family: system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <h1>wizard-chess — file tree (top → bottom)</h1>
+  <p class="sub">Standalone reference. Open in any browser. <span class="c" style="color:var(--comment)">Directories end with /</span></p>
+
+  <pre class="tree" id="tree"><span class="d">wizard-chess/</span>                                    <span class="c">repository root</span>
+├── <span class="f">.gitignore</span>                               <span class="c">git ignore rules</span>
+├── <span class="f">README.md</span>                                <span class="c">readme</span>
+├── <span class="f">TECHNICAL_REPORT.md</span>                      <span class="c">technical write-up</span>
+├── <span class="f">implementation.md</span>                      <span class="c">implementation notes</span>
+├── <span class="f">package.json</span>                             <span class="c">dependencies & npm scripts</span>
+├── <span class="f">package-lock.json</span>                      <span class="c">locked dependency tree</span>
+├── <span class="f">index.html</span>                             <span class="c">Vite HTML shell (mount root)</span>
+├── <span class="f">vite.config.ts</span>                           <span class="c">Vite bundler config</span>
+├── <span class="f">tsconfig.json</span>                            <span class="c">TypeScript root</span>
+├── <span class="f">tsconfig.app.json</span>                        <span class="c">TS config for app src</span>
+├── <span class="f">tsconfig.node.json</span>                       <span class="c">TS config for Node tooling</span>
+├── <span class="f">eslint.config.js</span>                         <span class="c">ESLint rules</span>
+├── <span class="f">tailwind.config.js</span>                       <span class="c">Tailwind theme extensions</span>
+│
+├── <span class="d">dist/</span>                                    <span class="c">production build output (npm run build)</span>
+│   ├── <span class="f">index.html</span>
+│   ├── <span class="f">vite.svg</span>
+│   └── <span class="d">assets/</span>                              <span class="c">hashed JS/CSS + copied static files</span>
+│
+├── <span class="d">public/</span>                                  <span class="c">static files served at /…</span>
+│   ├── <span class="f">vite.svg</span>
+│   └── <span class="d">assets/</span>
+│       ├── <span class="d">Chess_Effects/</span>                     <span class="c">effect overlay PNG/JPG (link, veil, glyph, …)</span>
+│       ├── <span class="d">Chess_Spells/</span>                      <span class="c">spell card JPEGs</span>
+│       ├── <span class="d">Chess_Sprites/</span>                     <span class="c">piece sprites incl. ember/mist variants</span>
+│       ├── <span class="d">Sounds/</span>                            <span class="c">MP3 SFX & music</span>
+│       ├── <span class="f">Game_Background.jpg</span>
+│       └── <span class="f">MainMenu.jpg</span>
+│
+├── <span class="d">Wizard Chess Assets/</span>                     <span class="c">source / working art & audio (not Vite root)</span>
+│   ├── <span class="d">Chess_Effects/</span>
+│   ├── <span class="d">Chess_Spells/</span>
+│   ├── <span class="d">Chess_Sprites/</span>
+│   ├── <span class="d">Wizard Chess Images/</span>
+│   └── <span class="d">Wizard Chess Sounds/</span>
+│
+├── <span class="d">standalone/</span>                            <span class="c">docs-only; not imported by app</span>
+│   ├── <span class="d">architecture-visual/</span>
+│   │   └── <span class="f">index.html</span>                       <span class="c">architecture diagrams</span>
+│   └── <span class="d">project-tree/</span>
+│       └── <span class="f">index.html</span>                       <span class="c">this file</span>
+│
+└── <span class="d">src/</span>                                     <span class="c">application source</span>
+    ├── <span class="f">main.tsx</span>                             <span class="c">React entry: createRoot(App)</span>
+    ├── <span class="f">index.css</span>                            <span class="c">global CSS + Tailwind</span>
+    ├── <span class="f">App.tsx</span>                              <span class="c">GameProvider + route by gameState</span>
+    ├── <span class="f">vite-env.d.ts</span>                        <span class="c">Vite / env TypeScript types</span>
+    │
+    ├── <span class="d">pages/</span>
+    │   ├── <span class="f">MainMenu.tsx</span>                       <span class="c">main menu screen</span>
+    │   ├── <span class="f">SpellSelection.tsx</span>                 <span class="c">draft 5 of 10 spells</span>
+    │   └── <span class="f">Game.tsx</span>                           <span class="c">match HUD, board, log, game over</span>
+    │
+    ├── <span class="d">context/</span>
+    │   ├── <span class="f">GameContext.tsx</span>                    <span class="c">lobby flow + gameConfig + useGame()</span>
+    │   ├── <span class="f">ChessContext.tsx</span>                   <span class="c">match state + GameManager + useChess()</span>
+    │   └── <span class="f">SoundContext.tsx</span>                   <span class="c">SFX pool + useSound()</span>
+    │
+    ├── <span class="d">game/</span>
+    │   ├── <span class="f">GameManager.ts</span>                     <span class="c">chess.js + custom board + mana + log</span>
+    │   ├── <span class="f">SpellEngine.ts</span>                     <span class="c">per-spell implementations</span>
+    │   └── <span class="f">ComputerPlayer.ts</span>                  <span class="c">AI opponent</span>
+    │
+    ├── <span class="d">data/</span>
+    │   └── <span class="f">spells.ts</span>                          <span class="c">SPELLS catalog for selection</span>
+    │
+    ├── <span class="d">types/</span>
+    │   ├── <span class="f">game.ts</span>                            <span class="c">GameConfig, menu Spell, ChessGameStatus, …</span>
+    │   └── <span class="f">types.ts</span>                           <span class="c">PieceMeta, Effect, engine Spell, PlayerSpells</span>
+    │
+    ├── <span class="d">utils/</span>
+    │   ├── <span class="f">helpers.ts</span>                         <span class="c">shuffle, small helpers</span>
+    │   ├── <span class="f">spells.ts</span>                          <span class="c">getSpellById for engine/UI</span>
+    │   ├── <span class="f">chessAI.ts</span>                         <span class="c">AI evaluation helpers</span>
+    │   ├── <span class="f">GameManager.ts</span>                     <span class="c">⚠ duplicate / unused — use src/game/</span>
+    │   └── <span class="f">SpellEngine.ts</span>                     <span class="c">⚠ duplicate / unused — use src/game/</span>
+    │
+    ├── <span class="d">styles/</span>
+    │   └── <span class="f">SpellCard.css</span>                      <span class="c">shared spell card styles</span>
+    │
+    └── <span class="d">components/</span>
+        ├── <span class="f">SpellCard.css</span>                      <span class="c">duplicate spell card CSS path</span>
+        ├── <span class="d">chess/</span>
+        │   ├── <span class="f">ChessBoard.tsx</span>                   <span class="c">board grid + input + targeting</span>
+        │   ├── <span class="f">Square.tsx</span>                       <span class="c">one square + piece rendering</span>
+        │   ├── <span class="f">PieceTypeSelector.tsx</span>            <span class="c">Dark Conversion knight/bishop modal</span>
+        │   ├── <span class="f">SpellCard.tsx</span>                    <span class="c">reusable card (not main Game strip)</span>
+        │   ├── <span class="f">Piece.tsx</span>                        <span class="c">simple piece (unused in main path)</span>
+        │   ├── <span class="f">pieceImages.ts</span>                   <span class="c">sprite map for Piece.tsx</span>
+        │   └── <span class="f">square.css</span>                       <span class="c">square animations</span>
+        ├── <span class="d">settings/</span>
+        │   └── <span class="f">ComputerSettings.tsx</span>           <span class="c">AI panel (unused in current menu)</span>
+        └── <span class="d">ui/</span>
+            └── <span class="f">Popup.tsx</span>                        <span class="c">generic popup (unused)</span>
+</pre>
+
+  <footer>
+    Open this file directly in a browser. Path: <code>standalone/project-tree/index.html</code>
+  </footer>
+</body>
+</html>

@@ -1,5 +1,7 @@
 import { useGame } from "../context/GameContext";
 import { useState, useEffect, useRef } from "react";
+import { SoundProvider } from "../context/SoundContext";
+import { AudioSettingsPanel } from "../components/settings/AudioSettingsPanel";
 
 // Import all spell card images
 import astralSwapImg from "/assets/Chess_Spells/Astral_Swap.jpg";
@@ -37,7 +39,7 @@ const spellImages: Record<string, string> = {
   bonewalker: bonewalkerImg,
 };
 
-const SpellSelection = () => {
+const SpellSelectionContent = () => {
   const { gameConfig, availableSpells, toggleSpellSelection, startGame } =
     useGame();
   const { selectedSpells } = gameConfig;
@@ -118,6 +120,20 @@ const SpellSelection = () => {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
+    };
+  }, []);
+
+  /** Full-screen layout: prevent the document from scrolling behind this page. */
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, []);
 
@@ -238,6 +254,17 @@ const SpellSelection = () => {
   // --- REFACTORED JSX Structure ---
   return (
     <div className={`spell-selection-page ${isPageLoaded ? "loaded" : ""}`}>
+      <div
+        style={{
+          position: "absolute",
+          top: "15px",
+          right: "15px",
+          zIndex: 2000,
+        }}
+      >
+        <AudioSettingsPanel bgAudioRef={audioRef} />
+      </div>
+
       <div className="background-overlay ancient-overlay"></div>
       <div className="background-overlay golden-overlay"></div>
 
@@ -425,6 +452,9 @@ const SpellSelection = () => {
         /* Base Styles (Desktop First) */
         .spell-selection-page {
           min-height: 100vh;
+          height: 100vh;
+          max-height: 100vh;
+          box-sizing: border-box;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -444,6 +474,13 @@ const SpellSelection = () => {
         }
         .spell-selection-page.loaded {
           opacity: 1;
+        }
+        @supports (height: 100dvh) {
+          .spell-selection-page {
+            min-height: 100dvh;
+            height: 100dvh;
+            max-height: 100dvh;
+          }
         }
 
         /* Background Overlays */
@@ -478,6 +515,7 @@ const SpellSelection = () => {
         /* Title Section */
         .title-container {
           position: relative;
+          flex-shrink: 0;
           margin-bottom: 2.5rem;
           width: 100%;
           max-width: 800px;
@@ -527,9 +565,13 @@ const SpellSelection = () => {
 
         /* Main Card Section */
         .main-card {
+          flex: 1 1 0;
+          min-height: 0;
           width: 100%;
           max-width: 1000px; /* Increased max-width slightly */
           margin: 0 auto 1.5rem auto;
+          display: flex;
+          flex-direction: column;
           background: linear-gradient(135deg, rgba(46, 30, 91, 0.85) 0%, rgba(58, 63, 189, 0.7) 100%);
           background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 50 L90 50 L70 90 L30 90 L10 50 L30 10 L70 10 L90 50 Z' stroke='rgba(255,255,255,0.07)' fill='none'/%3E%3C/svg%3E");
           background-size: 100px 100px;
@@ -557,14 +599,23 @@ const SpellSelection = () => {
 
         /* Spell Cards Grid */
         .scrollable-card-grid {
+          flex: 1 1 0;
+          min-height: 0;
           overflow-y: auto;
-          max-height: 65vh;
+          overflow-x: hidden;
           display: grid;
           grid-template-columns: repeat(5, 1fr);
           gap: 20px;
           padding: 1.5rem;
           justify-items: center;
           position: relative;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .scrollable-card-grid::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
         }
 
         @media (max-width: 1200px) {
@@ -597,6 +648,7 @@ const SpellSelection = () => {
         }
 
         .selected-spells-container {
+          flex-shrink: 0;
           display: flex;
           justify-content: center;
           gap: 20px;
@@ -709,12 +761,15 @@ const SpellSelection = () => {
         .overlay-spell-description {
           font-size: 0.75rem; line-height: 1.3; margin-bottom: 0.3rem;
           max-height: 60%; /* Limit height */
-          overflow-y: auto; /* Allow scrolling if needed */
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+          overflow-y: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
-        .overlay-spell-description::-webkit-scrollbar { width: 4px; }
-        .overlay-spell-description::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 2px; }
+        .overlay-spell-description::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
         .overlay-mana-cost {
           margin-top: auto; /* Push to bottom */
           font-size: 0.7rem; color: #93c5fd;
@@ -769,6 +824,7 @@ const SpellSelection = () => {
 
         /* Begin Journey Button */
         .begin-journey-btn {
+          flex-shrink: 0;
           width: 100%; max-width: 250px; background-color: rgba(100, 100, 100, 0.7);
           color: rgba(255, 255, 255, 0.7); padding: 0.9rem 1rem; border-radius: 0.7rem;
           font-weight: bold; font-size: 1.1rem; font-family: 'Cinzel', serif;
@@ -994,4 +1050,14 @@ const SpellSelection = () => {
   );
 };
 
-export default SpellSelection;
+/**
+ * Wraps spell selection in SoundProvider so AudioSettingsPanel can use useSound()
+ * for effect volume (same pattern as MainMenuWrapper).
+ */
+export default function SpellSelection() {
+  return (
+    <SoundProvider>
+      <SpellSelectionContent />
+    </SoundProvider>
+  );
+}
